@@ -566,18 +566,9 @@
                 <button class="modal-close" type="button">&times;</button>
             </div>
 
-            <!-- Step 1: Select Date & Time -->
+            <!-- Step 1: Select Duration & Pack -->
             <div class="booking-step active" data-step="1">
-                <h3>Step 1: Choose Your Date & Time</h3>
-                <p style="margin-bottom: 20px; color: #666;">Select your preferred date and time. Available slots shown below.</p>
-                <div id="available-dates" class="calendar-grid"></div>
-                <h4 style="margin-top: 25px; margin-bottom: 15px;">Available Times</h4>
-                <div id="available-times" class="time-slots"></div>
-            </div>
-
-            <!-- Step 2: Select Duration & Pack -->
-            <div class="booking-step" data-step="2">
-                <h3>Step 2: Choose Session Type</h3>
+                <h3>Step 1: Choose Session Type</h3>
                 <p style="margin-bottom: 20px; color: #666;">Select how long you'd like your session to be, and whether you want a single session or a 3-pack.</p>
                 
                 <h4 style="margin-bottom: 15px;">Duration</h4>
@@ -626,6 +617,15 @@
                     </div>
                 </div>
                 <p style="margin-top: 15px; font-size: 0.9em; color: #888;">💡 Travel fee may apply for in-home sessions</p>
+            </div>
+
+            <!-- Step 2: Select Date & Time -->
+            <div class="booking-step" data-step="2">
+                <h3>Step 2: Choose Your Date & Time</h3>
+                <p style="margin-bottom: 20px; color: #666;">Select your preferred date and time. Available slots shown below.</p>
+                <div id="available-dates" class="calendar-grid"></div>
+                <h4 style="margin-top: 25px; margin-bottom: 15px;">Available Times</h4>
+                <div id="available-times" class="time-slots"></div>
             </div>
 
             <!-- Step 3: Client Information -->
@@ -1017,8 +1017,8 @@
         }
 
         function canProceedToNextStep() {
-            if (bookingState.currentStep === 1) return bookingState.selectedDate && bookingState.selectedTime;
-            if (bookingState.currentStep === 2) return bookingState.selectedDuration;
+            if (bookingState.currentStep === 1) return bookingState.selectedDuration;
+            if (bookingState.currentStep === 2) return bookingState.selectedDate && bookingState.selectedTime;
             if (bookingState.currentStep === 3) return bookingState.name && bookingState.email && bookingState.phone;
             return true;
         }
@@ -1034,6 +1034,9 @@
             if (canProceedToNextStep()) {
                 bookingState.currentStep++;
                 updateBookingStep();
+                if (bookingState.currentStep === 2) {
+                    loadAvailableDates();
+                }
                 if (bookingState.currentStep === 4) {
                     updatePriceSummary();
                 }
@@ -1124,11 +1127,6 @@
         }
 
         async function loadAvailableTimes(dateStr) {
-            if (!bookingState.selectedDuration) {
-                alert('Please select a session duration first');
-                return;
-            }
-
             try {
                 const response = await fetch(`/api/availability?date=${dateStr}&duration=${bookingState.selectedDuration}`);
                 const data = await response.json();
@@ -1158,12 +1156,7 @@
             }
         }
 
-        // Initialize date picker when modal opens
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAvailableDates();
-        });
-
-        // Duration selection
+        // Duration selection - handled in step 1 now
         document.querySelectorAll('.duration-card').forEach(card => {
             card.addEventListener('click', () => {
                 document.querySelectorAll('.duration-card').forEach(c => c.classList.remove('selected'));
