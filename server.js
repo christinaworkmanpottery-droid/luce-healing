@@ -174,6 +174,44 @@ function initializeDatabase() {
     )
   `);
 
+  // Blog posts table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS blog_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      content TEXT NOT NULL,
+      excerpt TEXT,
+      published INTEGER DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Newsletter subscribers table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT,
+      subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      active INTEGER DEFAULT 1
+    )
+  `);
+
+  // Reviews/Testimonials table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      rating INTEGER NOT NULL,
+      review_text TEXT NOT NULL,
+      session_type TEXT,
+      approved INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Initialize default availability if empty
   const availabilityCount = dbGet('SELECT COUNT(*) as count FROM availability');
   if (availabilityCount.count === 0) {
@@ -190,6 +228,133 @@ function initializeDatabase() {
     defaultAvailability.forEach(slot => {
       dbRun('INSERT INTO availability (day_of_week, start_time, end_time, is_available) VALUES (?, ?, ?, 1)', 
         [slot.day, slot.start, slot.end]);
+    });
+  }
+
+  // Initialize starter blog posts if empty
+  const blogCount = dbGet('SELECT COUNT(*) as count FROM blog_posts');
+  if (blogCount.count === 0) {
+    const starterPosts = [
+      {
+        title: "You Are Your Own Healer",
+        slug: "you-are-your-own-healer",
+        excerpt: "Understanding that no one can heal you but yourself — and why that's empowering.",
+        content: `<p>One of the most important truths I've learned through decades of energy work is this: <strong>I don't heal you. You heal yourself.</strong></p>
+
+<p>No one else can do it for you. Not me, not another healer, not a doctor, not anyone.</p>
+
+<p>What I do is move energy. I clear what's blocking you. I give you tools. I hold space while you remember your own power. But the actual healing work? That happens inside you.</p>
+
+<h3>Why This Matters</h3>
+
+<p>When you understand this, everything shifts. You stop waiting for someone to fix you. You stop giving away your power to an external source. Instead, you step into the truth: <strong>you were never broken in the first place.</strong></p>
+
+<p>You're simply stuck. Blocked. Full of energy that isn't flowing, emotions that aren't moving, old stories that are taking up space.</p>
+
+<h3>My Role</h3>
+
+<p>What I do is help you unstick. I work with the energy around you and within you. I show you where things are congested. I move the stagnant energy. I give you practices and tools to continue that work on your own.</p>
+
+<p>But the transformation? That's all you.</p>
+
+<p>Every shift you feel after our session — that clarity, that lightness, that sense of possibility — that's you doing your own healing work.</p>
+
+<h3>This Is Empowering</h3>
+
+<p>It might sound like I'm saying "I can't help you," but it's actually the opposite. I'm saying you're more powerful than you think. You don't need rescuing. You need remembering.</p>
+
+<p>When you own your own healing, you own your own power. And that changes everything.</p>`
+      },
+      {
+        title: "What to Expect in an Energy Healing Session",
+        slug: "what-to-expect-in-energy-healing",
+        excerpt: "Demystifying the process so you feel safe, grounded, and empowered.",
+        content: `<p>If you've never had an energy healing session before, it's natural to wonder what's going to happen. What do I do? What will you feel? Is it real? Will it be weird?</p>
+
+<p>Let me walk you through what a typical session looks like, from start to finish.</p>
+
+<h3>Before Your Session</h3>
+
+<p>Come as you are. No special preparation needed. You might want to wear something comfortable and avoid heavy meals right before, but that's about it.</p>
+
+<p>If it's a distance session, find a quiet, comfortable space where you can lie down or sit without interruption for the duration of our time together.</p>
+
+<h3>The Beginning</h3>
+
+<p>We start with a conversation. I want to know what brought you here. What are you hoping for? What's weighing on you? Is there anything you need me to know?</p>
+
+<p>This isn't a therapy session, but I do listen deeply. Your intention matters. The more I understand what you're working with, the more focused and effective our work can be.</p>
+
+<h3>The Work</h3>
+
+<p>Depending on whether you're in-person or distance, you'll either lie on a table or settle into a comfortable position. I'll guide you into a relaxed state.</p>
+
+<p>What happens next varies. Some people feel a lot of sensation — warmth, tingling, movement of energy through their body. Some feel deeply relaxed. Some see colors or images. Some feel nothing particularly special in the moment, but notice shifts later.</p>
+
+<p>All of this is normal and valuable.</p>
+
+<p>During the session, I'm working with your energy field. Moving what's stuck. Clearing what no longer serves you. Sometimes I'll narrate what I'm sensing or suggest gentle breathing or movement to support the work.</p>
+
+<h3>Integration</h3>
+
+<p>As we finish, we'll spend some time grounding you back into your body. I might share observations about what came up or suggest practices to support your continued healing.</p>
+
+<p>You might feel spacey, relaxed, emotional, or energized. This is all part of the process. Drink water. Rest. Let yourself integrate.</p>
+
+<h3>After the Session</h3>
+
+<p>The real work often happens after we're done. Insights emerge. Emotions move. You might sleep deeply. You might feel unusually awake. You might notice shifts over the next few days or weeks.</p>
+
+<p>This is why I always say: no one heals you but yourself. The session creates space for healing. What you do with that space is up to you.</p>`
+      },
+      {
+        title: "Why Your Space Holds Energy (And How to Clear It)",
+        slug: "why-space-holds-energy",
+        excerpt: "Understanding how environments absorb energy — and why clearing them matters.",
+        content: `<p>Your home is alive with energy. Not metaphorically — literally.</p>
+
+<p>Every space absorbs the energy of everyone who's been in it. The emotions. The conflicts. The grief. The joy. The trauma. It all gets stored in the walls, the furniture, the air itself.</p>
+
+<h3>What Gets Stored?</h3>
+
+<p>Think about places that feel heavy or stuck. A bedroom where someone struggled with illness. A kitchen where a marriage fell apart. A living room where arguments happened repeatedly. These spaces carry the residue of those experiences.</p>
+
+<p>You can feel it when you walk in. That heaviness. That sense that something happened here and it never quite left.</p>
+
+<p>The same is true for spaces where beautiful things happened — they carry that lightness too. But when we don't clear the old, stagnant, or traumatic energy, it gets thicker and thicker.</p>
+
+<h3>How It Affects You</h3>
+
+<p>When you live or work in a space full of stuck energy, you absorb it. It drains you. Makes it harder to sleep. Creates subtle anxiety or sadness you can't quite explain. Affects your creativity, your mood, your sense of peace.</p>
+
+<p>You might not consciously notice it, but your body knows. Your energy knows.</p>
+
+<h3>How to Clear It</h3>
+
+<p>There are many ways to clear space energy. Some are simple practices you can do yourself:</p>
+
+<ul>
+<li><strong>Intentional cleansing:</strong> Open windows. Let sunlight and fresh air move through. Set an intention: "I clear this space of all stuck and stagnant energy."</li>
+<li><strong>Sound:</strong> Ring bells, play certain music, clap your hands in corners and doorways. Sound moves energy.</li>
+<li><strong>Smoke or incense:</strong> Sage, palo santo, or other sacred plants have been used for centuries to clear energy.</li>
+<li><strong>Salt:</strong> Place salt in corners or around doorways. Salt absorbs negative energy.</li>
+</ul>
+
+<p>For deeper clearing — especially if a space holds heavy trauma, grief, or conflict — you might want to work with someone experienced in space clearing work. I do this kind of clearing, and it's profound work.</p>
+
+<h3>Maintaining the Shift</h3>
+
+<p>After clearing, maintain the lightness. Open windows regularly. Play music that lifts you. Spend time in that space consciously, with good intention. Move stagnant energy regularly.</p>
+
+<p>Your space is an extension of you. When it's clear and light, you feel clear and light too.</p>`
+      }
+    ];
+
+    starterPosts.forEach(post => {
+      dbRun(
+        'INSERT INTO blog_posts (title, slug, content, excerpt, published, created_at, updated_at) VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+        [post.title, post.slug, post.content, post.excerpt]
+      );
     });
   }
 }
