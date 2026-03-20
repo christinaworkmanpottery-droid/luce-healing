@@ -341,7 +341,7 @@
                 </div>
             </div>
             <div class="pricing-note">
-                <p>✦ All sessions available in-person (Marina del Rey) or distance ✦ Payment required at time of booking ✦ Travel fee applies for in-home sessions ✦ Space & land clearing priced separately</p>
+                <p>✦ All sessions available in-person (Marina del Rey) or distance ✦ Payment required at time of booking ✦ Travel fee applies for in-home sessions ✦ Space & land clearing priced separately ✦ <strong>24-hour cancellation policy applies</strong></p>
             </div>
         </div>
     </section>
@@ -638,6 +638,9 @@
             <!-- Step 1: Select Duration & Pack -->
             <div class="booking-step active" data-step="1">
                 <h3>Step 1: Choose Session Type</h3>
+                <div style="margin-bottom: 20px; padding: 12px; background-color: #fef3c7; border-radius: 4px; border-left: 3px solid #f59e0b;">
+                    <p style="margin: 0; font-size: 0.9em; color: #92400e;"><strong>⚠️ Please note:</strong> A strict 24-hour cancellation policy applies to all sessions.</p>
+                </div>
                 <p style="margin-bottom: 20px; color: #666;">Select how long you'd like your session to be, and whether you want a single session or a 3-pack.</p>
                 
                 <h4 style="margin-bottom: 15px;">Duration</h4>
@@ -800,6 +803,31 @@
                     ✓ You'll receive a confirmation email<br>
                     ✓ Christina will reach out within 24 hours if any prep is needed
                 </p>
+
+                <div style="margin-top: 30px; padding: 20px; background-color: #fffaf0; border-radius: 8px; border-left: 4px solid var(--primary-gold);">
+                    <h4 style="margin-top: 0; margin-bottom: 15px;">Policies & Disclaimers</h4>
+                    
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.95em; margin: 0;">
+                            <input type="checkbox" id="policy-cancellation" style="margin-top: 2px; cursor: pointer;">
+                            <span>I understand and agree that there is a <strong>strict 24-hour cancellation policy</strong>. Cancellations made less than 24 hours before the scheduled session will result in forfeiture of the session. No exceptions.</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.95em; margin: 0;">
+                            <input type="checkbox" id="policy-nonrefundable" style="margin-top: 2px; cursor: pointer;">
+                            <span>I understand that <strong>all sessions are non-refundable</strong>.</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.95em; margin: 0;">
+                            <input type="checkbox" id="policy-disclaimer" style="margin-top: 2px; cursor: pointer;">
+                            <span>I understand that <strong>energy healing is not therapy, medical treatment, or a substitute for licensed medical or mental health care</strong>. Luce Healing services are complementary in nature and are not intended to diagnose, treat, cure, or prevent any disease or condition.</span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <!-- Step Navigation -->
@@ -1314,6 +1342,12 @@
             if (bookingState.currentStep === 2) return bookingState.selectedDate && bookingState.selectedTime;
             if (bookingState.currentStep === 3) return bookingState.sessionFormat && (bookingState.sessionFormat === 'in-person' || bookingState.remoteType);
             if (bookingState.currentStep === 4) return bookingState.name && bookingState.email && bookingState.phone && bookingState.dob;
+            if (bookingState.currentStep === 5) {
+                // All three policies must be checked
+                return document.getElementById('policy-cancellation')?.checked &&
+                       document.getElementById('policy-nonrefundable')?.checked &&
+                       document.getElementById('policy-disclaimer')?.checked;
+            }
             return true;
         }
 
@@ -1347,7 +1381,7 @@
                 120: { single: 200, pack: 525 }
             };
             const price = pricing[bookingState.selectedDuration][bookingState.isPack ? 'pack' : 'single'];
-            document.querySelector('.price-summary .amount').textContent = `\$${price}`;
+            document.querySelector('.price-summary.amount').textContent = `\${price}`;
             document.getElementById('summary-date').textContent = bookingState.selectedDate;
             document.getElementById('summary-time').textContent = bookingState.selectedTime;
             document.getElementById('summary-duration').textContent = `${bookingState.selectedDuration} minutes`;
@@ -1524,6 +1558,21 @@
                 bookingState.remoteType = option.dataset.remoteType;
                 updateStepIndicators();
             });
+        });
+
+        // Policy checkbox handlers - enable/disable Book & Pay button
+        const policyCheckboxes = [
+            document.getElementById('policy-cancellation'),
+            document.getElementById('policy-nonrefundable'),
+            document.getElementById('policy-disclaimer')
+        ];
+
+        policyCheckboxes.forEach(checkbox => {
+            if (checkbox) {
+                checkbox.addEventListener('change', () => {
+                    updateStepIndicators();
+                });
+            }
         });
 
         // Client info form
