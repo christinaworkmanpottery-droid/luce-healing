@@ -1,0 +1,16 @@
+# Luce Healing - robots.txt
+# https://www.lucehealing.com
+
+# Allow all bots
+User-agent: *
+Allow: /
+
+# Disallow admin or private areas (none for this static site)
+# Disallow: /admin/
+# Disallow: /private/
+
+# Sitemap
+Sitemap: https://www.lucehealing.com/sitemap.xml
+
+# Specific crawl delays (optional)
+Crawl-delay: 1
