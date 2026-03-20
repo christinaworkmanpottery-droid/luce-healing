@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
-const Database = require('better-sqlite3');
+const fs = require('fs');
+const initSqlJs = require('sql.js');
 const cors = require('cors');
 const stripeKey = process.env.STRIPE_SECRET_KEY;
 if (!stripeKey) {
@@ -10,7 +11,8 @@ const stripe = stripeKey ? require('stripe')(stripeKey) : null;
 
 const app = express();
 const dbPath = path.join(__dirname, 'luce-healing.db');
-const db = new Database(dbPath);
+
+let db = null; // Will be initialized async
 
 // Middleware
 app.use(cors());
@@ -21,6 +23,50 @@ app.use(express.static(__dirname));
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 
 const PORT = process.env.PORT || 3000;
+
+// ============================================================================
+// SQL.JS HELPER FUNCTIONS
+// ============================================================================
+
+function dbRun(sql, params = []) {
+  db.run(sql, params);
+  saveDb();
+}
+
+function dbGet(sql, params = []) {
+  const stmt = db.prepare(sql);
+  stmt.bind(params);
+  let result = null;
+  if (stmt.step()) {
+    result = stmt.getAsObject();
+  }
+  stmt.free();
+  return result;
+}
+
+function dbAll(sql, params = []) {
+  const stmt = db.prepare(sql);
+  stmt.bind(params);
+  const results = [];
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+
+function saveDb() {
+  const data = db.export();
+  fs.writeFileSync(dbPath, Buffer.from(data));
+}
+
+function loadDb() {
+  if (fs.existsSync(dbPath)) {
+    const fileBuffer = fs.readFileSync(dbPath);
+    return new (require('sql.js')).Database(fileBuffer);
+  }
+  return null;
+}
 
 // ============================================================================
 // DATABASE INITIALIZATION
@@ -85,7 +131,7 @@ function initializeDatabase() {
   `);
 
   // Initialize default availability if empty
-  const availabilityCount = db.prepare('SELECT COUNT(*) as count FROM availability').get();
+  const availabilityCount = dbGet('SELECT COUNT(*) as count FROM availability');
   if (availabilityCount.count === 0) {
     const defaultAvailability = [
       { day: 0, start: '09:00', end: '18:00' }, // Monday 9am-6pm
@@ -97,14 +143,12 @@ function initializeDatabase() {
       // Sunday (6) is closed, no entry
     ];
 
-    const stmt = db.prepare('INSERT INTO availability (day_of_week, start_time, end_time, is_available) VALUES (?, ?, ?, 1)');
     defaultAvailability.forEach(slot => {
-      stmt.run(slot.day, slot.start, slot.end);
+      dbRun('INSERT INTO availability (day_of_week, start_time, end_time, is_available) VALUES (?, ?, ?, 1)', 
+        [slot.day, slot.start, slot.end]);
     });
   }
 }
-
-initializeDatabase();
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -147,7 +191,7 @@ function getAvailableSlots(dateStr, duration) {
   const dayOfWeek = getDayOfWeek(dateStr);
   
   // Get availability for this day
-  const dayAvail = db.prepare('SELECT * FROM availability WHERE day_of_week = ?').get(dayOfWeek);
+  const dayAvail = dbGet('SELECT * FROM availability WHERE day_of_week = ?', [dayOfWeek]);
   if (!dayAvail || !dayAvail.is_available) {
     return [];
   }
@@ -156,14 +200,14 @@ function getAvailableSlots(dateStr, duration) {
   const endMins = timeToMinutes(dayAvail.end_time);
 
   // Get blocked times for this date
-  const blocked = db.prepare('SELECT * FROM blocked_times WHERE date = ?').all(dateStr);
+  const blocked = dbAll('SELECT * FROM blocked_times WHERE date = ?', [dateStr]);
   const blockedRanges = blocked.map(b => ({
     start: timeToMinutes(b.start_time),
     end: timeToMinutes(b.end_time)
   }));
 
   // Get booked times for this date (with 15 min buffer)
-  const bookings = db.prepare('SELECT time, duration FROM bookings WHERE date = ? AND status = ?').all(dateStr, 'completed');
+  const bookings = dbAll('SELECT time, duration FROM bookings WHERE date = ? AND status = ?', [dateStr, 'completed']);
   const bookedRanges = bookings.map(b => {
     const bookStart = timeToMinutes(b.time);
     const bookEnd = bookStart + b.duration + 15; // 15 min buffer
@@ -231,7 +275,7 @@ app.get('/api/availability/week', (req, res) => {
     date.setUTCDate(date.getUTCDate() + i);
     const dateStr = date.toISOString().split('T')[0];
     
-    const dayAvail = db.prepare('SELECT * FROM availability WHERE day_of_week = ?').get((i + 1) % 7);
+    const dayAvail = dbGet('SELECT * FROM availability WHERE day_of_week = ?', [(i + 1) % 7]);
     weekData[dateStr] = dayAvail ? {
       available: dayAvail.is_available,
       start: dayAvail.start_time,
@@ -329,26 +373,26 @@ app.post('/api/stripe/webhook', async (req, res) => {
     const metadata = session.metadata;
 
     // Get or create client
-    let client = db.prepare('SELECT * FROM clients WHERE email = ?').get(metadata.email);
+    let client = dbGet('SELECT * FROM clients WHERE email = ?', [metadata.email]);
     if (!client) {
-      db.prepare('INSERT INTO clients (name, email, phone, sessions_remaining) VALUES (?, ?, ?, ?)').run(
+      dbRun('INSERT INTO clients (name, email, phone, sessions_remaining) VALUES (?, ?, ?, ?)', [
         metadata.client_name,
         metadata.email,
         metadata.phone,
         metadata.is_pack === 'true' ? 3 : 0
-      );
-      client = db.prepare('SELECT * FROM clients WHERE email = ?').get(metadata.email);
+      ]);
+      client = dbGet('SELECT * FROM clients WHERE email = ?', [metadata.email]);
     } else if (metadata.is_pack === 'true') {
       // Update sessions remaining if it's a pack
-      db.prepare('UPDATE clients SET sessions_remaining = sessions_remaining + 3 WHERE id = ?').run(client.id);
+      dbRun('UPDATE clients SET sessions_remaining = sessions_remaining + 3 WHERE id = ?', [client.id]);
     }
 
     // Create booking record
-    db.prepare(`
+    dbRun(`
       INSERT INTO bookings 
       (client_name, email, phone, session_type, duration, date, time, is_pack, status, stripe_session_id, stripe_payment_status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
+    `, [
       metadata.client_name,
       metadata.email,
       metadata.phone,
@@ -360,7 +404,7 @@ app.post('/api/stripe/webhook', async (req, res) => {
       'completed',
       session.id,
       'paid'
-    );
+    ]);
 
     console.log(`Booking created for ${metadata.client_name} on ${metadata.date} at ${metadata.time}`);
   }
@@ -391,12 +435,12 @@ app.get('/api/admin/bookings', checkAdminPassword, (req, res) => {
   }
 
   query += ' ORDER BY date ASC, time ASC';
-  const bookings = db.prepare(query).all(...params);
+  const bookings = dbAll(query, params);
   res.json(bookings);
 });
 
 app.get('/api/admin/clients', checkAdminPassword, (req, res) => {
-  const clients = db.prepare(`
+  const clients = dbAll(`
     SELECT 
       c.*,
       COUNT(DISTINCT b.id) as total_bookings,
@@ -407,7 +451,7 @@ app.get('/api/admin/clients', checkAdminPassword, (req, res) => {
     LEFT JOIN bookings b ON c.id = (SELECT id FROM clients WHERE email = b.email)
     GROUP BY c.id
     ORDER BY c.created_at DESC
-  `).all();
+  `);
   res.json(clients);
 });
 
@@ -415,7 +459,7 @@ app.get('/api/admin/dashboard', checkAdminPassword, (req, res) => {
   const stats = {};
 
   // Total revenue (prices in cents)
-  const revenue = db.prepare(`
+  const revenue = dbGet(`
     SELECT SUM(
       CASE 
         WHEN is_pack = 1 AND duration = 15 THEN 12500
@@ -434,19 +478,19 @@ app.get('/api/admin/dashboard', checkAdminPassword, (req, res) => {
     ) as total
     FROM bookings
     WHERE status = 'completed'
-  `).get();
+  `);
 
   stats.total_revenue = (revenue.total || 0) / 100;
 
   // Upcoming bookings
   const today = new Date().toISOString().split('T')[0];
-  stats.upcoming_bookings = db.prepare('SELECT COUNT(*) as count FROM bookings WHERE date >= ? AND status = ?').get(today, 'completed').count;
+  stats.upcoming_bookings = dbGet('SELECT COUNT(*) as count FROM bookings WHERE date >= ? AND status = ?', [today, 'completed']).count;
 
   // Total clients
-  stats.total_clients = db.prepare('SELECT COUNT(*) as count FROM clients').get().count;
+  stats.total_clients = dbGet('SELECT COUNT(*) as count FROM clients').count;
 
   // Completed bookings
-  stats.completed_bookings = db.prepare('SELECT COUNT(*) as count FROM bookings WHERE status = ?').get('completed').count;
+  stats.completed_bookings = dbGet('SELECT COUNT(*) as count FROM bookings WHERE status = ?', ['completed']).count;
 
   res.json(stats);
 });
@@ -456,10 +500,10 @@ app.put('/api/admin/availability', checkAdminPassword, (req, res) => {
   
   try {
     db.exec('DELETE FROM availability');
-    const stmt = db.prepare('INSERT INTO availability (day_of_week, start_time, end_time, is_available) VALUES (?, ?, ?, ?)');
     
     availability.forEach(slot => {
-      stmt.run(slot.day_of_week, slot.start_time, slot.end_time, slot.is_available ? 1 : 0);
+      dbRun('INSERT INTO availability (day_of_week, start_time, end_time, is_available) VALUES (?, ?, ?, ?)', 
+        [slot.day_of_week, slot.start_time, slot.end_time, slot.is_available ? 1 : 0]);
     });
 
     res.json({ success: true });
@@ -476,12 +520,12 @@ app.post('/api/admin/block', checkAdminPassword, (req, res) => {
   }
 
   try {
-    db.prepare('INSERT INTO blocked_times (date, start_time, end_time, reason) VALUES (?, ?, ?, ?)').run(
+    dbRun('INSERT INTO blocked_times (date, start_time, end_time, reason) VALUES (?, ?, ?, ?)', [
       date,
       start_time,
       end_time,
       reason || ''
-    );
+    ]);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -490,7 +534,7 @@ app.post('/api/admin/block', checkAdminPassword, (req, res) => {
 
 app.delete('/api/admin/block/:id', checkAdminPassword, (req, res) => {
   try {
-    db.prepare('DELETE FROM blocked_times WHERE id = ?').run(req.params.id);
+    dbRun('DELETE FROM blocked_times WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -510,12 +554,6 @@ app.get('/booking-cancel.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'booking-cancel.html'));
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`Luce Healing server running on http://localhost:${PORT}`);
-  console.log(`Database: ${dbPath}`);
-});
-
 // ============================================================================
 // GET BOOKING SESSION DETAILS (for success page)
 // ============================================================================
@@ -528,4 +566,32 @@ app.get('/api/booking/session/:sessionId', async (req, res) => {
     console.error('Error retrieving session:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// ============================================================================
+// START SERVER WITH ASYNC DB INITIALIZATION
+// ============================================================================
+
+async function startServer() {
+  const SQL = await initSqlJs();
+  
+  // Load existing database or create new one
+  if (fs.existsSync(dbPath)) {
+    const fileBuffer = fs.readFileSync(dbPath);
+    db = new SQL.Database(fileBuffer);
+  } else {
+    db = new SQL.Database();
+  }
+  
+  initializeDatabase();
+  
+  app.listen(PORT, () => {
+    console.log(`Luce Healing server running on http://localhost:${PORT}`);
+    console.log(`Database: ${dbPath}`);
+  });
+}
+
+startServer().catch(error => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 });
