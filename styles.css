@@ -476,7 +476,7 @@ section {
 .pricing-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 30px;
+    gap: 25px;
     margin-top: 50px;
 }
 
@@ -528,13 +528,31 @@ section {
 
 .pricing-amount {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: #D4A574;
-    margin-bottom: 25px;
-    padding: 10px 0;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #2c2c2c;
+    margin-bottom: 5px;
+    padding-top: 10px;
     border-top: 1px solid #f0ebe5;
+}
+
+.pricing-pack {
+    font-family: 'Lato', sans-serif;
+    font-size: 0.95rem;
+    color: #D4A574;
+    font-weight: 600;
+    margin-bottom: 8px;
+    padding-bottom: 15px;
     border-bottom: 1px solid #f0ebe5;
+}
+
+.pricing-note-small {
+    font-family: 'Lato', sans-serif;
+    font-size: 0.8rem;
+    color: #b09a88;
+    font-style: italic;
+    margin-bottom: 15px;
+    margin-top: -5px;
 }
 
 .pricing-note {
