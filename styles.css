@@ -145,6 +145,15 @@ section {
     align-items: center;
 }
 
+.nav-logo-img {
+    height: 36px;
+    width: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
 .nav-logo a {
     font-family: var(--font-serif);
     font-size: 1.5rem;
@@ -248,40 +257,17 @@ section {
 
 .hero-visual {
     position: relative;
-    height: 400px;
-}
-
-.hero-gradient {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, rgba(212, 165, 116, 0.15), rgba(184, 201, 184, 0.1), rgba(212, 196, 229, 0.1));
-    border-radius: 50%;
-    animation: float 6s ease-in-out infinite;
-}
-
-.spiritual-symbols {
-    position: absolute;
-    width: 100%;
-    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 4rem;
 }
 
-.symbol {
-    opacity: 0.3;
-    animation: float 8s ease-in-out infinite;
-    margin: 0 1rem;
-}
-
-.symbol:nth-child(2) {
-    animation-delay: 2s;
-}
-
-.symbol:nth-child(3) {
-    animation-delay: 4s;
+.hero-logo-img {
+    width: 280px;
+    height: 280px;
+    object-fit: contain;
+    animation: float 6s ease-in-out infinite;
+    filter: drop-shadow(0 4px 20px rgba(212, 165, 116, 0.3));
 }
 
 @keyframes float {
@@ -339,9 +325,22 @@ section {
 
 .about-content {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 280px 1fr 1fr;
     gap: 3rem;
     align-items: start;
+}
+
+.about-photo {
+    display: flex;
+    justify-content: center;
+}
+
+.about-img {
+    width: 260px;
+    height: 320px;
+    object-fit: cover;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
 }
 
 .about-text p {
@@ -587,8 +586,22 @@ section {
 
 .booking-content {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 280px 1fr 1fr;
     gap: 3rem;
+    align-items: start;
+}
+
+.booking-photo {
+    display: flex;
+    justify-content: center;
+}
+
+.booking-img {
+    width: 260px;
+    height: 320px;
+    object-fit: cover;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
 }
 
 .booking-text h3,
@@ -924,7 +937,14 @@ section {
     }
 
     .hero-visual {
-        display: none;
+        display: block;
+    }
+
+    .hero-logo-img {
+        width: 180px;
+        height: 180px;
+        margin: 0 auto 20px;
+        display: block;
     }
 
     /* About */
@@ -932,9 +952,21 @@ section {
         grid-template-columns: 1fr;
     }
 
+    .about-img {
+        width: 200px;
+        height: 250px;
+        margin: 0 auto;
+    }
+
     /* Booking */
     .booking-content {
         grid-template-columns: 1fr;
+    }
+
+    .booking-img {
+        width: 200px;
+        height: 250px;
+        margin: 0 auto;
     }
 
     /* Contact */
