@@ -1692,13 +1692,21 @@
         }
 
         async function saveBlockedTime() {
-            const date = document.getElementById('block-date').value;
-            const start_time = document.getElementById('block-start').value;
-            const end_time = document.getElementById('block-end').value;
-            const reason = document.getElementById('block-reason').value;
+            const dateEl = document.getElementById('block-date');
+            const startEl = document.getElementById('block-start');
+            const endEl = document.getElementById('block-end');
+            const reasonEl = document.getElementById('block-reason');
+            
+            const date = dateEl ? dateEl.value : '';
+            const start_time = startEl ? startEl.value : '';
+            const end_time = endEl ? endEl.value : '';
+            const reason = reasonEl ? reasonEl.value : '';
+
+            console.log('Block time values:', { date, start_time, end_time, reason });
+            console.log('Elements found:', { dateEl: !!dateEl, startEl: !!startEl, endEl: !!endEl });
 
             if (!date || !start_time || !end_time) {
-                alert('Please fill in date, start time, and end time');
+                alert('Please fill in date, start time, and end time.\n\nDebug: date=' + date + ' start=' + start_time + ' end=' + end_time);
                 return;
             }
 
