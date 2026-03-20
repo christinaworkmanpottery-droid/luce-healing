@@ -884,38 +884,38 @@
                     <div class="availability-grid">
                         <div class="day-availability">
                             <label><input type="checkbox" checked> Monday</label>
-                            <input type="time" value="09:00">
-                            <input type="time" value="18:00">
+                            <select class="avail-time" data-default="09:00"></select>
+                            <select class="avail-time" data-default="18:00"></select>
                         </div>
                         <div class="day-availability">
                             <label><input type="checkbox" checked> Tuesday</label>
-                            <input type="time" value="09:00">
-                            <input type="time" value="18:00">
+                            <select class="avail-time" data-default="09:00"></select>
+                            <select class="avail-time" data-default="18:00"></select>
                         </div>
                         <div class="day-availability">
                             <label><input type="checkbox" checked> Wednesday</label>
-                            <input type="time" value="09:00">
-                            <input type="time" value="18:00">
+                            <select class="avail-time" data-default="09:00"></select>
+                            <select class="avail-time" data-default="18:00"></select>
                         </div>
                         <div class="day-availability">
                             <label><input type="checkbox" checked> Thursday</label>
-                            <input type="time" value="09:00">
-                            <input type="time" value="18:00">
+                            <select class="avail-time" data-default="09:00"></select>
+                            <select class="avail-time" data-default="18:00"></select>
                         </div>
                         <div class="day-availability">
                             <label><input type="checkbox" checked> Friday</label>
-                            <input type="time" value="09:00">
-                            <input type="time" value="18:00">
+                            <select class="avail-time" data-default="09:00"></select>
+                            <select class="avail-time" data-default="18:00"></select>
                         </div>
                         <div class="day-availability">
                             <label><input type="checkbox" checked> Saturday</label>
-                            <input type="time" value="10:00">
-                            <input type="time" value="14:00">
+                            <select class="avail-time" data-default="10:00"></select>
+                            <select class="avail-time" data-default="14:00"></select>
                         </div>
                         <div class="day-availability">
                             <label><input type="checkbox"> Sunday</label>
-                            <input type="time" value="10:00">
-                            <input type="time" value="14:00">
+                            <select class="avail-time" data-default="10:00"></select>
+                            <select class="avail-time" data-default="14:00"></select>
                         </div>
                     </div>
                     <button class="btn btn-primary" style="margin-top: 20px;" onclick="saveAvailability()">Save Availability</button>
@@ -932,12 +932,78 @@
                         <input type="date" id="block-date">
                     </div>
                     <div class="form-group">
-                        <label>Start Time</label>
-                        <input type="time" id="block-start">
+                        <label>Start Time (e.g. 9:00 AM)</label>
+                        <select id="block-start" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
+                            <option value="">Select time...</option>
+                            <option value="06:00">6:00 AM</option>
+                            <option value="06:30">6:30 AM</option>
+                            <option value="07:00">7:00 AM</option>
+                            <option value="07:30">7:30 AM</option>
+                            <option value="08:00">8:00 AM</option>
+                            <option value="08:30">8:30 AM</option>
+                            <option value="09:00">9:00 AM</option>
+                            <option value="09:30">9:30 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="10:30">10:30 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="11:30">11:30 AM</option>
+                            <option value="12:00">12:00 PM</option>
+                            <option value="12:30">12:30 PM</option>
+                            <option value="13:00">1:00 PM</option>
+                            <option value="13:30">1:30 PM</option>
+                            <option value="14:00">2:00 PM</option>
+                            <option value="14:30">2:30 PM</option>
+                            <option value="15:00">3:00 PM</option>
+                            <option value="15:30">3:30 PM</option>
+                            <option value="16:00">4:00 PM</option>
+                            <option value="16:30">4:30 PM</option>
+                            <option value="17:00">5:00 PM</option>
+                            <option value="17:30">5:30 PM</option>
+                            <option value="18:00">6:00 PM</option>
+                            <option value="18:30">6:30 PM</option>
+                            <option value="19:00">7:00 PM</option>
+                            <option value="19:30">7:30 PM</option>
+                            <option value="20:00">8:00 PM</option>
+                            <option value="20:30">8:30 PM</option>
+                            <option value="21:00">9:00 PM</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>End Time</label>
-                        <input type="time" id="block-end">
+                        <select id="block-end" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
+                            <option value="">Select time...</option>
+                            <option value="06:00">6:00 AM</option>
+                            <option value="06:30">6:30 AM</option>
+                            <option value="07:00">7:00 AM</option>
+                            <option value="07:30">7:30 AM</option>
+                            <option value="08:00">8:00 AM</option>
+                            <option value="08:30">8:30 AM</option>
+                            <option value="09:00">9:00 AM</option>
+                            <option value="09:30">9:30 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="10:30">10:30 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="11:30">11:30 AM</option>
+                            <option value="12:00">12:00 PM</option>
+                            <option value="12:30">12:30 PM</option>
+                            <option value="13:00">1:00 PM</option>
+                            <option value="13:30">1:30 PM</option>
+                            <option value="14:00">2:00 PM</option>
+                            <option value="14:30">2:30 PM</option>
+                            <option value="15:00">3:00 PM</option>
+                            <option value="15:30">3:30 PM</option>
+                            <option value="16:00">4:00 PM</option>
+                            <option value="16:30">4:30 PM</option>
+                            <option value="17:00">5:00 PM</option>
+                            <option value="17:30">5:30 PM</option>
+                            <option value="18:00">6:00 PM</option>
+                            <option value="18:30">6:30 PM</option>
+                            <option value="19:00">7:00 PM</option>
+                            <option value="19:30">7:30 PM</option>
+                            <option value="20:00">8:00 PM</option>
+                            <option value="20:30">8:30 PM</option>
+                            <option value="21:00">9:00 PM</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Reason (optional)</label>
@@ -1634,18 +1700,40 @@
             }
         }
 
+        // Populate time select dropdowns
+        function populateTimeSelects() {
+            const times = [];
+            for (let h = 5; h <= 22; h++) {
+                for (let m = 0; m < 60; m += 30) {
+                    const val = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+                    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                    const ampm = h < 12 ? 'AM' : 'PM';
+                    const label = hour12 + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+                    times.push({ val, label });
+                }
+            }
+            document.querySelectorAll('select.avail-time').forEach(sel => {
+                const def = sel.getAttribute('data-default') || '09:00';
+                times.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.val;
+                    opt.textContent = t.label;
+                    if (t.val === def) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            });
+        }
+        populateTimeSelects();
+
         // Availability: toggle time inputs when checkbox changes
         document.querySelectorAll('.day-availability').forEach(row => {
             const checkbox = row.querySelector('input[type="checkbox"]');
-            const timeInputs = row.querySelectorAll('input[type="time"]');
+            const selects = row.querySelectorAll('select');
             checkbox.addEventListener('change', () => {
-                timeInputs.forEach(input => {
-                    input.disabled = !checkbox.checked;
-                });
+                selects.forEach(s => { s.disabled = !checkbox.checked; });
             });
-            // Set initial state
             if (!checkbox.checked) {
-                timeInputs.forEach(input => input.disabled = true);
+                selects.forEach(s => { s.disabled = true; });
             }
         });
 
@@ -1669,11 +1757,11 @@
             
             rows.forEach((row, index) => {
                 const checkbox = row.querySelector('input[type="checkbox"]');
-                const timeInputs = row.querySelectorAll('input[type="time"]');
+                const selects = row.querySelectorAll('select');
                 availability.push({
                     day_of_week: dayMap[index],
-                    start_time: timeInputs[0].value || '09:00',
-                    end_time: timeInputs[1].value || '17:00',
+                    start_time: selects[0].value || '09:00',
+                    end_time: selects[1].value || '17:00',
                     is_available: checkbox.checked
                 });
             });
@@ -1710,7 +1798,7 @@
             console.log('Elements found:', { dateEl: !!dateEl, startEl: !!startEl, endEl: !!endEl });
 
             if (!date || !start_time || !end_time) {
-                alert('Please fill in date, start time, and end time.\n\nDebug: date=' + date + ' start=' + start_time + ' end=' + end_time);
+                alert('Please fill in date, start time, and end time.');
                 return;
             }
 
