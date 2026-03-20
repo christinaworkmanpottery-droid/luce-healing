@@ -1120,7 +1120,9 @@
                     document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
                     dayBtn.classList.add('selected');
                     bookingState.selectedDate = dateStr;
+                    bookingState.selectedTime = null;
                     loadAvailableTimes(dateStr);
+                    updateStepIndicators();
                 };
                 container.appendChild(dayBtn);
             }
@@ -1146,6 +1148,7 @@
                             document.querySelectorAll('.time-slot').forEach(t => t.classList.remove('selected'));
                             timeBtn.classList.add('selected');
                             bookingState.selectedTime = time;
+                            updateStepIndicators();
                         };
                         container.appendChild(timeBtn);
                     });
@@ -1162,6 +1165,7 @@
                 document.querySelectorAll('.duration-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 bookingState.selectedDuration = parseInt(card.dataset.duration);
+                updateStepIndicators();
                 if (bookingState.selectedDate) {
                     loadAvailableTimes(bookingState.selectedDate);
                 }
