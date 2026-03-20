@@ -138,7 +138,7 @@
                     Whether you're seeking personal healing, support through grief, or energetic clearing of your space, I'm here to help you feel more grounded, more yourself.
                 </p>
                 <div class="hero-cta">
-                    <a href="#work-with-me" class="btn btn-primary">Work With Me</a>
+                    <button class="btn btn-primary open-booking">Work With Me</button>
                     <a href="#services" class="btn btn-secondary">Explore Services</a>
                 </div>
             </div>
@@ -289,7 +289,7 @@
                     <div class="pricing-amount">$45</div>
                     <div class="pricing-pack">3-Pack: $125</div>
                     <p class="pricing-note-small">*Requires at least one 30-min session first</p>
-                    <a href="#contact" class="btn btn-secondary">Book Now</a>
+                    <button class="btn btn-secondary open-booking">Book Now</button>
                 </div>
                 <div class="pricing-card">
                     <div class="pricing-icon">✦✦</div>
@@ -297,7 +297,7 @@
                     <p class="pricing-desc">Focused session for a specific intention</p>
                     <div class="pricing-amount">$60</div>
                     <div class="pricing-pack">3-Pack: $150</div>
-                    <a href="#contact" class="btn btn-secondary">Book Now</a>
+                    <button class="btn btn-secondary open-booking">Book Now</button>
                 </div>
                 <div class="pricing-card featured">
                     <div class="pricing-icon">✦✦✦</div>
@@ -305,7 +305,7 @@
                     <p class="pricing-desc">Full healing session — most popular</p>
                     <div class="pricing-amount">$75</div>
                     <div class="pricing-pack">3-Pack: $175</div>
-                    <a href="#contact" class="btn btn-primary">Book Now</a>
+                    <button class="btn btn-primary open-booking">Book Now</button>
                 </div>
                 <div class="pricing-card">
                     <div class="pricing-icon">✦✦✦✦</div>
@@ -313,7 +313,7 @@
                     <p class="pricing-desc">Extended session for deeper work</p>
                     <div class="pricing-amount">$100</div>
                     <div class="pricing-pack">3-Pack: $250</div>
-                    <a href="#contact" class="btn btn-secondary">Book Now</a>
+                    <button class="btn btn-secondary open-booking">Book Now</button>
                 </div>
                 <div class="pricing-card">
                     <div class="pricing-icon">✦✦✦✦✦</div>
@@ -321,7 +321,7 @@
                     <p class="pricing-desc">Deep session for complex needs</p>
                     <div class="pricing-amount">$145</div>
                     <div class="pricing-pack">3-Pack: $375</div>
-                    <a href="#contact" class="btn btn-secondary">Book Now</a>
+                    <button class="btn btn-secondary open-booking">Book Now</button>
                 </div>
                 <div class="pricing-card">
                     <div class="pricing-icon">✦✦✦✦✦✦</div>
@@ -329,7 +329,7 @@
                     <p class="pricing-desc">The deepest, most transformative experience</p>
                     <div class="pricing-amount">$200</div>
                     <div class="pricing-pack">3-Pack: $525</div>
-                    <a href="#contact" class="btn btn-secondary">Book Now</a>
+                    <button class="btn btn-secondary open-booking">Book Now</button>
                 </div>
             </div>
             <div class="pricing-note">
@@ -558,6 +558,304 @@
         </div>
     </footer>
 
+    <!-- Booking Modal -->
+    <div id="booking-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Book Your Session</h2>
+                <button class="modal-close" type="button">&times;</button>
+            </div>
+
+            <!-- Step 1: Select Date & Time -->
+            <div class="booking-step active" data-step="1">
+                <h3>Step 1: Choose Your Date & Time</h3>
+                <p style="margin-bottom: 20px; color: #666;">Select your preferred date and time. Available slots shown below.</p>
+                <div id="available-dates" class="calendar-grid"></div>
+                <h4 style="margin-top: 25px; margin-bottom: 15px;">Available Times</h4>
+                <div id="available-times" class="time-slots"></div>
+            </div>
+
+            <!-- Step 2: Select Duration & Pack -->
+            <div class="booking-step" data-step="2">
+                <h3>Step 2: Choose Session Type</h3>
+                <p style="margin-bottom: 20px; color: #666;">Select how long you'd like your session to be, and whether you want a single session or a 3-pack.</p>
+                
+                <h4 style="margin-bottom: 15px;">Duration</h4>
+                <div class="session-options">
+                    <div class="option-card duration-card" data-duration="15">
+                        <h4>15 min</h4>
+                        <p class="price">$45</p>
+                        <p class="note">Quick tune-up</p>
+                    </div>
+                    <div class="option-card duration-card" data-duration="30">
+                        <h4>30 min</h4>
+                        <p class="price">$60</p>
+                        <p class="note">Focused session</p>
+                    </div>
+                    <div class="option-card duration-card featured" data-duration="45">
+                        <h4>45 min</h4>
+                        <p class="price">$75</p>
+                        <p class="note">Most popular</p>
+                    </div>
+                    <div class="option-card duration-card" data-duration="60">
+                        <h4>60 min</h4>
+                        <p class="price">$100</p>
+                        <p class="note">Extended</p>
+                    </div>
+                    <div class="option-card duration-card" data-duration="90">
+                        <h4>90 min</h4>
+                        <p class="price">$145</p>
+                        <p class="note">Deep work</p>
+                    </div>
+                    <div class="option-card duration-card" data-duration="120">
+                        <h4>120 min</h4>
+                        <p class="price">$200</p>
+                        <p class="note">Transformative</p>
+                    </div>
+                </div>
+
+                <h4 style="margin: 25px 0 15px 0;">Single or 3-Pack?</h4>
+                <div class="session-options">
+                    <div class="option-card pack-option selected" data-pack="false">
+                        <h4>Single Session</h4>
+                        <p style="font-size: 0.9em; margin: 8px 0;">Pay now, one session</p>
+                    </div>
+                    <div class="option-card pack-option" data-pack="true">
+                        <h4>3-Pack</h4>
+                        <p style="font-size: 0.9em; margin: 8px 0;">Save 15% on 3 sessions</p>
+                    </div>
+                </div>
+                <p style="margin-top: 15px; font-size: 0.9em; color: #888;">💡 Travel fee may apply for in-home sessions</p>
+            </div>
+
+            <!-- Step 3: Client Information -->
+            <div class="booking-step" data-step="3">
+                <h3>Step 3: Your Information</h3>
+                <p style="margin-bottom: 20px; color: #666;">We'll use this to confirm your booking and send session details.</p>
+                
+                <div class="form-group">
+                    <label for="client-name">Name *</label>
+                    <input type="text" id="client-name" placeholder="Your full name" required>
+                </div>
+                <div class="form-group">
+                    <label for="client-email">Email *</label>
+                    <input type="email" id="client-email" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="client-phone">Phone *</label>
+                    <input type="tel" id="client-phone" placeholder="(310) 910-1684" required>
+                </div>
+                <div class="form-group">
+                    <label for="session-notes">Notes (optional)</label>
+                    <textarea id="session-notes" placeholder="Any specific intentions or questions?" rows="4"></textarea>
+                </div>
+            </div>
+
+            <!-- Step 4: Review & Pay -->
+            <div class="booking-step" data-step="4">
+                <h3>Step 4: Review & Pay</h3>
+                <p style="margin-bottom: 20px; color: #666;">Review your booking details below, then click "Book & Pay" to proceed to Stripe.</p>
+                
+                <div class="admin-card">
+                    <h4>Booking Summary</h4>
+                    <div class="detail-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
+                        <span>Date:</span>
+                        <strong id="summary-date">–</strong>
+                    </div>
+                    <div class="detail-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
+                        <span>Time:</span>
+                        <strong id="summary-time">–</strong>
+                    </div>
+                    <div class="detail-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
+                        <span>Duration:</span>
+                        <strong id="summary-duration">–</strong>
+                    </div>
+                    <div class="detail-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;">
+                        <span>Type:</span>
+                        <strong id="summary-type">–</strong>
+                    </div>
+                    <div class="detail-row" style="display: flex; justify-content: space-between; padding: 10px 0;">
+                        <span style="font-weight: 600;">Total:</span>
+                        <span class="price-summary amount" style="font-size: 1.3em; color: var(--primary-gold); margin: 0;">$0</span>
+                    </div>
+                </div>
+
+                <p style="margin: 20px 0; font-size: 0.9em; color: #888;">
+                    ✓ Payment is secure through Stripe<br>
+                    ✓ You'll receive a confirmation email<br>
+                    ✓ Christina will reach out within 24 hours if any prep is needed
+                </p>
+            </div>
+
+            <!-- Step Navigation -->
+            <div class="booking-steps-nav">
+                <button class="btn-step prev" type="button" onclick="previousStep()">← Back</button>
+                <button class="btn-step next" type="button" onclick="nextStep()">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="admin-panel" class="admin-panel">
+        <div class="admin-header">
+            <h1>👑 Admin Dashboard</h1>
+            <button class="admin-close" type="button">Close</button>
+        </div>
+
+        <div class="admin-container">
+            <div class="admin-tabs">
+                <button class="admin-tab active" data-tab="admin-bookings">Bookings</button>
+                <button class="admin-tab" data-tab="admin-availability">Availability</button>
+                <button class="admin-tab" data-tab="admin-blocked">Blocked Times</button>
+                <button class="admin-tab" data-tab="admin-clients">Clients</button>
+                <button class="admin-tab" data-tab="admin-dashboard">Dashboard</button>
+            </div>
+
+            <!-- Bookings Tab -->
+            <div id="admin-bookings" class="admin-tab-content active">
+                <div class="admin-card">
+                    <h3>All Bookings</h3>
+                    <table class="calendar-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Client</th>
+                                <th>Session</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-bookings-table">
+                            <tr><td colspan="5" style="text-align: center; padding: 20px;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Availability Tab -->
+            <div id="admin-availability" class="admin-tab-content">
+                <div class="admin-card">
+                    <h3>Weekly Availability</h3>
+                    <p style="margin-bottom: 20px; color: #666;">Set your weekly availability. Times are in Pacific Time (PT).</p>
+                    <div class="availability-grid">
+                        <div class="day-availability">
+                            <label><input type="checkbox" checked> Monday</label>
+                            <input type="time" value="09:00">
+                            <input type="time" value="18:00">
+                        </div>
+                        <div class="day-availability">
+                            <label><input type="checkbox" checked> Tuesday</label>
+                            <input type="time" value="09:00">
+                            <input type="time" value="18:00">
+                        </div>
+                        <div class="day-availability">
+                            <label><input type="checkbox" checked> Wednesday</label>
+                            <input type="time" value="09:00">
+                            <input type="time" value="18:00">
+                        </div>
+                        <div class="day-availability">
+                            <label><input type="checkbox" checked> Thursday</label>
+                            <input type="time" value="09:00">
+                            <input type="time" value="18:00">
+                        </div>
+                        <div class="day-availability">
+                            <label><input type="checkbox" checked> Friday</label>
+                            <input type="time" value="09:00">
+                            <input type="time" value="18:00">
+                        </div>
+                        <div class="day-availability">
+                            <label><input type="checkbox" checked> Saturday</label>
+                            <input type="time" value="10:00">
+                            <input type="time" value="14:00">
+                        </div>
+                        <div class="day-availability">
+                            <label><input type="checkbox"> Sunday</label>
+                            <input type="time" disabled>
+                            <input type="time" disabled>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="margin-top: 20px;">Save Availability</button>
+                </div>
+            </div>
+
+            <!-- Blocked Times Tab -->
+            <div id="admin-blocked" class="admin-tab-content">
+                <div class="admin-card">
+                    <h3>Block Time</h3>
+                    <p style="margin-bottom: 20px; color: #666;">Block specific dates/times when you're unavailable.</p>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date">
+                    </div>
+                    <div class="form-group">
+                        <label>Start Time</label>
+                        <input type="time">
+                    </div>
+                    <div class="form-group">
+                        <label>End Time</label>
+                        <input type="time">
+                    </div>
+                    <div class="form-group">
+                        <label>Reason (optional)</label>
+                        <input type="text" placeholder="e.g., Personal, Retreat, etc.">
+                    </div>
+                    <button class="btn btn-primary">Block Time</button>
+                </div>
+                <div class="admin-card" style="margin-top: 20px;">
+                    <h3>Currently Blocked</h3>
+                    <p style="color: #888;">No blocked times currently</p>
+                </div>
+            </div>
+
+            <!-- Clients Tab -->
+            <div id="admin-clients" class="admin-tab-content">
+                <div class="admin-card">
+                    <h3>All Clients</h3>
+                    <table class="calendar-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Total Bookings</th>
+                                <th>Completed</th>
+                                <th>Packs Remaining</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-clients-table">
+                            <tr><td colspan="5" style="text-align: center; padding: 20px;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div id="admin-dashboard" class="admin-tab-content">
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Revenue</div>
+                        <div class="stat-value">$0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Clients</div>
+                        <div class="stat-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Upcoming Bookings</div>
+                        <div class="stat-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Completed Sessions</div>
+                        <div class="stat-value">0</div>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <h3>Quick Actions</h3>
+                    <p><button class="btn btn-secondary" style="margin: 10px 10px 10px 0;">Export Bookings</button></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scroll to Top Button -->
     <button id="scroll-to-top" class="scroll-to-top" aria-label="Scroll to top">↑</button>
 
@@ -648,6 +946,313 @@
                     alert('Please fill in all required fields.');
                 }
             });
+        }
+
+        // ============================================================================
+        // BOOKING MODAL JAVASCRIPT
+        // ============================================================================
+
+        const bookingModal = document.getElementById('booking-modal');
+        const adminPanel = document.getElementById('admin-panel');
+        const bookingButtons = document.querySelectorAll('.open-booking');
+        const adminButton = document.querySelector('.admin-button');
+        const closeButtons = document.querySelectorAll('.modal-close, .admin-close');
+
+        let bookingState = {
+            currentStep: 1,
+            selectedDate: null,
+            selectedTime: null,
+            selectedDuration: null,
+            isPack: false,
+            name: '',
+            email: '',
+            phone: ''
+        };
+
+        // Open booking modal
+        bookingButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                bookingModal.classList.add('active');
+                bookingState.currentStep = 1;
+                updateBookingStep();
+            });
+        });
+
+        // Close modals
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-close')) {
+                    bookingModal.classList.remove('active');
+                } else if (e.target.classList.contains('admin-close')) {
+                    adminPanel.classList.remove('active');
+                }
+            });
+        });
+
+        // Close when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target === bookingModal) bookingModal.classList.remove('active');
+            if (e.target === adminPanel) adminPanel.classList.remove('active');
+        });
+
+        function updateBookingStep() {
+            document.querySelectorAll('.booking-step').forEach(step => {
+                step.classList.remove('active');
+            });
+            document.querySelector(`.booking-step[data-step="${bookingState.currentStep}"]`).classList.add('active');
+            updateStepIndicators();
+        }
+
+        function updateStepIndicators() {
+            const prevBtn = document.querySelector('.btn-step.prev');
+            const nextBtn = document.querySelector('.btn-step.next');
+            if (prevBtn) prevBtn.disabled = bookingState.currentStep === 1;
+            if (nextBtn) {
+                nextBtn.disabled = !canProceedToNextStep();
+                if (bookingState.currentStep === 4) {
+                    nextBtn.textContent = 'Book & Pay';
+                    nextBtn.onclick = submitBooking;
+                }
+            }
+        }
+
+        function canProceedToNextStep() {
+            if (bookingState.currentStep === 1) return bookingState.selectedDate && bookingState.selectedTime;
+            if (bookingState.currentStep === 2) return bookingState.selectedDuration;
+            if (bookingState.currentStep === 3) return bookingState.name && bookingState.email && bookingState.phone;
+            return true;
+        }
+
+        function previousStep() {
+            if (bookingState.currentStep > 1) {
+                bookingState.currentStep--;
+                updateBookingStep();
+            }
+        }
+
+        function nextStep() {
+            if (canProceedToNextStep()) {
+                bookingState.currentStep++;
+                updateBookingStep();
+                if (bookingState.currentStep === 4) {
+                    updatePriceSummary();
+                }
+            }
+        }
+
+        function updatePriceSummary() {
+            const pricing = {
+                15: { single: 45, pack: 125 },
+                30: { single: 60, pack: 150 },
+                45: { single: 75, pack: 175 },
+                60: { single: 100, pack: 250 },
+                90: { single: 145, pack: 375 },
+                120: { single: 200, pack: 525 }
+            };
+            const price = pricing[bookingState.selectedDuration][bookingState.isPack ? 'pack' : 'single'];
+            document.querySelector('.price-summary .amount').textContent = `$${price}`;
+            document.getElementById('summary-date').textContent = bookingState.selectedDate;
+            document.getElementById('summary-time').textContent = bookingState.selectedTime;
+            document.getElementById('summary-duration').textContent = `${bookingState.selectedDuration} minutes`;
+            document.getElementById('summary-type').textContent = bookingState.isPack ? '3-Pack' : 'Single Session';
+        }
+
+        async function submitBooking() {
+            const pricing = {
+                15: { single: 45, pack: 125 },
+                30: { single: 60, pack: 150 },
+                45: { single: 75, pack: 175 },
+                60: { single: 100, pack: 250 },
+                90: { single: 145, pack: 375 },
+                120: { single: 200, pack: 525 }
+            };
+
+            try {
+                const response = await fetch('/api/booking/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: bookingState.name,
+                        email: bookingState.email,
+                        phone: bookingState.phone,
+                        session_type: `${bookingState.selectedDuration}-Minute Session`,
+                        date: bookingState.selectedDate,
+                        time: bookingState.selectedTime,
+                        duration: bookingState.selectedDuration,
+                        is_pack: bookingState.isPack
+                    })
+                });
+
+                const data = await response.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert('Error creating booking: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Booking error:', error);
+                alert('Error creating booking. Please try again.');
+            }
+        }
+
+        // Load available dates when modal opens
+        async function loadAvailableDates() {
+            const container = document.getElementById('available-dates');
+            const today = new Date();
+            const daysToShow = 60;
+
+            container.innerHTML = '';
+            for (let i = 0; i < daysToShow; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() + i);
+                const dateStr = date.toISOString().split('T')[0];
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+                const dayBtn = document.createElement('button');
+                dayBtn.className = 'calendar-day';
+                dayBtn.textContent = dayName;
+                dayBtn.type = 'button';
+                dayBtn.onclick = (e) => {
+                    e.preventDefault();
+                    document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+                    dayBtn.classList.add('selected');
+                    bookingState.selectedDate = dateStr;
+                    loadAvailableTimes(dateStr);
+                };
+                container.appendChild(dayBtn);
+            }
+        }
+
+        async function loadAvailableTimes(dateStr) {
+            if (!bookingState.selectedDuration) {
+                alert('Please select a session duration first');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/availability?date=${dateStr}&duration=${bookingState.selectedDuration}`);
+                const data = await response.json();
+                const container = document.getElementById('available-times');
+                container.innerHTML = '';
+
+                if (data.slots.length === 0) {
+                    container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 20px; color: #888;">No available times for this date</p>';
+                } else {
+                    data.slots.forEach(time => {
+                        const timeBtn = document.createElement('button');
+                        timeBtn.className = 'time-slot';
+                        timeBtn.textContent = time;
+                        timeBtn.type = 'button';
+                        timeBtn.onclick = (e) => {
+                            e.preventDefault();
+                            document.querySelectorAll('.time-slot').forEach(t => t.classList.remove('selected'));
+                            timeBtn.classList.add('selected');
+                            bookingState.selectedTime = time;
+                        };
+                        container.appendChild(timeBtn);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading times:', error);
+                document.getElementById('available-times').innerHTML = '<p style="color: red;">Error loading times</p>';
+            }
+        }
+
+        // Initialize date picker when modal opens
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAvailableDates();
+        });
+
+        // Duration selection
+        document.querySelectorAll('.duration-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.duration-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                bookingState.selectedDuration = parseInt(card.dataset.duration);
+                if (bookingState.selectedDate) {
+                    loadAvailableTimes(bookingState.selectedDate);
+                }
+            });
+        });
+
+        // Pack selection
+        document.querySelectorAll('.pack-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.pack-option').forEach(o => o.classList.remove('selected'));
+                option.classList.add('selected');
+                bookingState.isPack = option.dataset.pack === 'true';
+                updateStepIndicators();
+            });
+        });
+
+        // Client info form
+        document.getElementById('client-name').addEventListener('change', (e) => {
+            bookingState.name = e.target.value;
+            updateStepIndicators();
+        });
+        document.getElementById('client-email').addEventListener('change', (e) => {
+            bookingState.email = e.target.value;
+            updateStepIndicators();
+        });
+        document.getElementById('client-phone').addEventListener('change', (e) => {
+            bookingState.phone = e.target.value;
+            updateStepIndicators();
+        });
+
+        // Admin panel tabs
+        document.querySelectorAll('.admin-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                const contentId = tab.getAttribute('data-tab');
+                document.getElementById(contentId).classList.add('active');
+            });
+        });
+
+        // Open admin panel (if password is correct)
+        function openAdminPanel() {
+            const password = prompt('Admin password:');
+            if (password === 'luce2026admin') {
+                adminPanel.classList.add('active');
+                loadAdminData();
+            } else {
+                alert('Incorrect password');
+            }
+        }
+
+        async function loadAdminData() {
+            const password = 'luce2026admin';
+            try {
+                const response = await fetch(`/api/admin/bookings?password=${password}`);
+                const bookings = await response.json();
+                updateAdminBookingsTable(bookings);
+            } catch (error) {
+                console.error('Error loading admin data:', error);
+            }
+        }
+
+        function updateAdminBookingsTable(bookings) {
+            const tbody = document.getElementById('admin-bookings-table');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            bookings.forEach(booking => {
+                const row = document.createElement('tr');
+                row.className = 'booking-row';
+                row.innerHTML = `
+                    <td>${booking.date}</td>
+                    <td>${booking.time}</td>
+                    <td>${booking.client_name}</td>
+                    <td>${booking.session_type}</td>
+                    <td><span class="booking-status ${booking.status}">${booking.status}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Check if URL contains #admin
+        if (window.location.hash === '#admin') {
+            openAdminPanel();
         }
     </script>
 </body>

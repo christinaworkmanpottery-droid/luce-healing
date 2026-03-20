@@ -1,0 +1,15 @@
+{
+  "name": "luce-healing",
+  "version": "1.0.0",
+  "description": "Luce Healing - Energy Healing by Christina Workman",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "stripe": "^14.0.0",
+    "better-sqlite3": "^9.4.3",
+    "cors": "^2.8.5"
+  }
+}

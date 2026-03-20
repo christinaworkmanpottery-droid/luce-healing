@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Cancelled | Luce Healing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Lato', sans-serif;
+            background: linear-gradient(135deg, #f5f1ed 0%, #fef9f3 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .cancel-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            padding: 60px 40px;
+            text-align: center;
+        }
+        .cancel-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            opacity: 0.6;
+        }
+        h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5em;
+            color: #2d2d2d;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .message {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .info-box {
+            background: #f9f7f4;
+            border-left: 4px solid #D4A574;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: left;
+            border-radius: 4px;
+        }
+        .info-box h3 {
+            font-family: 'Cormorant Garamond', serif;
+            color: #2d2d2d;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+        .info-box p {
+            color: #666;
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        .contact-info {
+            margin: 30px 0;
+            color: #666;
+            font-size: 0.95em;
+        }
+        .contact-info a {
+            color: #D4A574;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .contact-info a:hover {
+            text-decoration: underline;
+        }
+        .btn-container {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        a.btn {
+            display: inline-block;
+            padding: 12px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        a.btn-primary {
+            background: #D4A574;
+            color: white;
+        }
+        a.btn-primary:hover {
+            background: #c19460;
+        }
+        a.btn-secondary {
+            background: #e8e4e0;
+            color: #2d2d2d;
+        }
+        a.btn-secondary:hover {
+            background: #ddd9d4;
+        }
+    </style>
+</head>
+<body>
+    <div class="cancel-container">
+        <div class="cancel-icon">✗</div>
+        <h1>Booking Cancelled</h1>
+        <p class="message">Your booking has not been completed. No charges have been made to your payment method.</p>
+        
+        <div class="info-box">
+            <h3>No worries!</h3>
+            <p>Sometimes the timing isn't quite right. That's completely okay. You can return to try booking another time, or reach out directly if you'd like to discuss your needs.</p>
+        </div>
+
+        <div class="contact-info">
+            <p>Have questions or want to discuss your session directly?</p>
+            <p><strong>Email:</strong> <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a></p>
+            <p><strong>Phone:</strong> <a href="tel:+1-310-910-1684">310-910-1684</a></p>
+            <p style="margin-top: 15px; font-size: 0.9em; color: #999;">I typically respond within 24 hours.</p>
+        </div>
+
+        <div class="btn-container">
+            <a href="/#pricing" class="btn btn-primary">View Pricing</a>
+            <a href="/#contact" class="btn btn-secondary">Contact Me</a>
+        </div>
+    </div>
+</body>
+</html>
