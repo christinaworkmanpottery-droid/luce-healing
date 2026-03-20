@@ -806,24 +806,25 @@
 
                 <div style="margin-top: 30px; padding: 20px; background-color: #fffaf0; border-radius: 8px; border-left: 4px solid var(--primary-gold);">
                     <h4 style="margin-top: 0; margin-bottom: 15px;">Policies & Disclaimers</h4>
+                    <p style="font-size: 0.85em; color: #888; margin-bottom: 15px;">You must agree to all policies below to proceed with booking.</p>
                     
-                    <div class="form-group" style="margin-bottom: 12px;">
-                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.95em; margin: 0;">
-                            <input type="checkbox" id="policy-cancellation" style="margin-top: 2px; cursor: pointer;">
+                    <div style="margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px;">
+                        <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; font-size: 0.9em; line-height: 1.5; margin: 0;">
+                            <input type="checkbox" id="policy-cancellation" onchange="updatePolicyButtons()" style="min-width: 20px; min-height: 20px; margin-top: 2px; cursor: pointer; accent-color: #D4A574;">
                             <span>I understand and agree that there is a <strong>strict 24-hour cancellation policy</strong>. Cancellations made less than 24 hours before the scheduled session will result in forfeiture of the session. No exceptions.</span>
                         </label>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 12px;">
-                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.95em; margin: 0;">
-                            <input type="checkbox" id="policy-nonrefundable" style="margin-top: 2px; cursor: pointer;">
+                    <div style="margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px;">
+                        <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; font-size: 0.9em; line-height: 1.5; margin: 0;">
+                            <input type="checkbox" id="policy-nonrefundable" onchange="updatePolicyButtons()" style="min-width: 20px; min-height: 20px; margin-top: 2px; cursor: pointer; accent-color: #D4A574;">
                             <span>I understand that <strong>all sessions are non-refundable</strong>.</span>
                         </label>
                     </div>
 
-                    <div class="form-group">
-                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.95em; margin: 0;">
-                            <input type="checkbox" id="policy-disclaimer" style="margin-top: 2px; cursor: pointer;">
+                    <div style="padding: 12px; background: white; border-radius: 6px;">
+                        <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; font-size: 0.9em; line-height: 1.5; margin: 0;">
+                            <input type="checkbox" id="policy-disclaimer" onchange="updatePolicyButtons()" style="min-width: 20px; min-height: 20px; margin-top: 2px; cursor: pointer; accent-color: #D4A574;">
                             <span>I understand that <strong>energy healing is not therapy, medical treatment, or a substitute for licensed medical or mental health care</strong>. Luce Healing services are complementary in nature and are not intended to diagnose, treat, cure, or prevent any disease or condition.</span>
                         </label>
                     </div>
@@ -1345,13 +1346,16 @@
             if (bookingState.currentStep === 3) return bookingState.sessionFormat && (bookingState.sessionFormat === 'in-person' || bookingState.remoteType);
             if (bookingState.currentStep === 4) return bookingState.name && bookingState.email && bookingState.phone && bookingState.dob;
             if (bookingState.currentStep === 5) {
-                // All three policies must be checked
                 return document.getElementById('policy-cancellation')?.checked &&
                        document.getElementById('policy-nonrefundable')?.checked &&
                        document.getElementById('policy-disclaimer')?.checked;
             }
             return true;
         }
+
+        window.updatePolicyButtons = function() {
+            updateStepIndicators();
+        };
 
         function previousStep() {
             if (bookingState.currentStep > 1) {
@@ -1383,7 +1387,7 @@
                 120: { single: 200, pack: 525 }
             };
             const price = pricing[bookingState.selectedDuration][bookingState.isPack ? 'pack' : 'single'];
-            document.querySelector('.price-summary.amount').textContent = `\${price}`;
+            document.querySelector('.price-summary.amount').textContent = '$' + price;
             document.getElementById('summary-date').textContent = bookingState.selectedDate;
             document.getElementById('summary-time').textContent = bookingState.selectedTime;
             document.getElementById('summary-duration').textContent = `${bookingState.selectedDuration} minutes`;
@@ -1658,7 +1662,7 @@
             }
         }
 
-        async function saveAvailability() {
+        window.saveAvailability = async function() {
             const rows = document.querySelectorAll('.day-availability');
             const dayMap = [1, 2, 3, 4, 5, 6, 0]; // Mon=1, Tue=2, ..., Sat=6, Sun=0
             const availability = [];
@@ -1691,7 +1695,7 @@
             }
         }
 
-        async function saveBlockedTime() {
+        window.saveBlockedTime = async function() {
             const dateEl = document.getElementById('block-date');
             const startEl = document.getElementById('block-start');
             const endEl = document.getElementById('block-end');
@@ -1760,7 +1764,7 @@
             }
         }
 
-        async function removeBlock(id) {
+        window.removeBlock = async function(id) {
             if (!confirm('Remove this blocked time?')) return;
             try {
                 await fetch(`/api/admin/block/${id}?password=luce2026admin`, { method: 'DELETE' });
