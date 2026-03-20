@@ -1622,3 +1622,183 @@ section {
     color: rgba(255, 255, 255, 0.9);
 }
 
+
+/* ============================================================================
+   BLOG STYLES
+   ============================================================================ */
+
+.blog {
+    padding: 80px 20px;
+    background: linear-gradient(to bottom, #fefdfb 0%, #ffffff 100%);
+}
+
+.blog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 30px;
+    margin-top: 40px;
+}
+
+.blog-card {
+    background: white;
+    border: 1px solid #e8dcc8;
+    border-radius: 12px;
+    padding: 25px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.blog-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(212, 165, 116, 0.15);
+    border-color: #D4A574;
+}
+
+.blog-card h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.4em;
+}
+
+.blog-card h3 a {
+    color: #333;
+}
+
+.blog-card h3 a:hover {
+    color: #D4A574;
+}
+
+.blog-excerpt {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    font-size: 0.95em;
+}
+
+.blog-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #999;
+    font-size: 0.9em;
+}
+
+/* ============================================================================
+   REVIEWS STYLES
+   ============================================================================ */
+
+.reviews {
+    padding: 80px 20px;
+    background: white;
+}
+
+.reviews-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-top: 40px;
+}
+
+.review-card {
+    background: #fefdfb;
+    border: 1px solid #e8dcc8;
+    border-radius: 12px;
+    padding: 25px;
+    transition: all 0.3s ease;
+}
+
+.review-card:hover {
+    box-shadow: 0 8px 20px rgba(212, 165, 116, 0.15);
+}
+
+.review-card h4 {
+    font-size: 1.1em;
+    margin-bottom: 5px;
+}
+
+.review-card p {
+    color: #555;
+    line-height: 1.7;
+    margin: 12px 0 0 0;
+}
+
+.review-submit-box {
+    max-width: 600px;
+    margin: 0 auto 40px;
+}
+
+#star-rating {
+    cursor: pointer;
+}
+
+#star-rating .star {
+    transition: color 0.2s ease;
+    color: #ddd;
+}
+
+#star-rating .star:hover,
+#star-rating .star.active {
+    color: #D4A574;
+}
+
+/* ============================================================================
+   NEWSLETTER STYLES
+   ============================================================================ */
+
+.newsletter {
+    border-radius: 12px;
+}
+
+#newsletter-form {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+#newsletter-feedback {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================================================
+   ADMIN BLOG TAB STYLES
+   ============================================================================ */
+
+#blog-modal-title {
+    margin: 0;
+}
+
+#blog-editor-form {
+    display: grid;
+    gap: 15px;
+}
+
+#blog-content {
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    .blog-grid, .reviews-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .blog, .reviews {
+        padding: 60px 20px;
+    }
+}

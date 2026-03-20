@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - From the Light: Healing Insights | Luce Healing</title>
+    <meta name="description" content="Read articles about energy healing, personal transformation, and spiritual guidance from Christina Workman, Master Energy Healer.">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23D4A574'>✦</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+    
+    <style>
+        .blog-page-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .blog-list {
+            display: grid;
+            gap: 30px;
+        }
+
+        .blog-list-item {
+            padding: 25px;
+            background: white;
+            border: 1px solid #e8dcc8;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .blog-list-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(212, 165, 116, 0.15);
+            border-color: #D4A574;
+        }
+
+        .blog-post {
+            line-height: 1.8;
+        }
+
+        .blog-post h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .blog-post-meta {
+            color: #999;
+            margin-bottom: 30px;
+            font-size: 0.95em;
+        }
+
+        .blog-post p, .blog-post ul, .blog-post ol {
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .blog-post h2 {
+            font-size: 1.8em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .blog-post h3 {
+            font-size: 1.3em;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .blog-post ul, .blog-post ol {
+            margin-left: 25px;
+        }
+
+        .blog-post li {
+            margin-bottom: 10px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 30px;
+            color: #D4A574;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: #b8934d;
+        }
+
+        .no-posts {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .blog-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e8dcc8;
+        }
+
+        .blog-nav a {
+            color: #D4A574;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .blog-nav a:hover {
+            color: #b8934d;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/"><img src="images/logo.jpg" alt="Luce Healing" class="nav-logo-img"> Luce Healing</a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">Home</a></li>
+                <li><a href="/#about" class="nav-link">About</a></li>
+                <li><a href="/#services" class="nav-link">Services</a></li>
+                <li><a href="/#blog" class="nav-link">Blog</a></li>
+                <li><a href="/#reviews" class="nav-link">Reviews</a></li>
+                <li><a href="/#faq" class="nav-link">FAQ</a></li>
+                <li><a href="/#contact" class="nav-link">Contact</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="blog-page-container">
+        <!-- Single Post View -->
+        <div id="single-post" style="display: none;">
+            <a href="/blog" class="back-link">← Back to All Posts</a>
+            <article class="blog-post" id="post-content">
+                <h1 id="post-title"></h1>
+                <div class="blog-post-meta" id="post-meta"></div>
+                <div id="post-body"></div>
+            </article>
+        </div>
+
+        <!-- Blog List View -->
+        <div id="blog-list-view">
+            <div style="text-align: center; margin-bottom: 40px;">
+                <h1>From the Light: Healing Insights</h1>
+                <p style="color: #666; font-size: 1.05em;">Wisdom, tools, and guidance for your healing journey</p>
+            </div>
+            
+            <div id="blog-list" class="blog-list">
+                <p style="text-align: center; color: #999;">Loading posts...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer" style="margin-top: 60px;">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Luce Healing</h4>
+                    <p>Energy healing, spiritual guidance, and sacred support for life's most tender moments.</p>
+                    <p class="footer-contact">
+                        <a href="tel:+1-949-303-9404">949-303-9404</a> | <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a> | <a href="https://www.instagram.com/lucehealing13" target="_blank">@lucehealing13</a>
+                    </p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/#about">About</a></li>
+                        <li><a href="/#services">Services</a></li>
+                        <li><a href="/#faq">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Christina's Other Work</h4>
+                    <ul>
+                        <li><a href="https://www.christinaworkmanpottery.com" target="_blank">Christina Workman Pottery</a></li>
+                        <li><a href="https://esmeandjade.com" target="_blank">Esme & Jade</a></li>
+                        <li><a href="https://thepottersmudroom.com" target="_blank">The Potter's Mudroom</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Luce Healing. All rights reserved. | <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const currentPath = window.location.pathname;
+        const slugMatch = currentPath.match(/\/blog\/(.+)$/);
+        const slug = slugMatch ? slugMatch[1] : null;
+
+        async function loadBlogList() {
+            try {
+                const response = await fetch('/api/blog');
+                const posts = await response.json();
+                const container = document.getElementById('blog-list');
+                
+                if (!posts.length) {
+                    container.innerHTML = '<div class="no-posts">No blog posts yet. Check back soon!</div>';
+                    return;
+                }
+                
+                let html = '';
+                posts.forEach(post => {
+                    const date = new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                    html += `
+                        <div class="blog-list-item">
+                            <h2><a href="/blog/${post.slug}" style="color: #333; text-decoration: none;">${post.title}</a></h2>
+                            <small style="color: #999;">${date}</small>
+                            <p>${post.excerpt}</p>
+                            <a href="/blog/${post.slug}" style="color: #D4A574; text-decoration: none; font-weight: 500;">Read Full Post →</a>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error loading blog:', e);
+                document.getElementById('blog-list').innerHTML = '<p style="color: #c62828;">Error loading posts</p>';
+            }
+        }
+
+        async function loadBlogPost(slug) {
+            try {
+                const response = await fetch(`/api/blog/${slug}`);
+                if (!response.ok) {
+                    document.getElementById('blog-list-view').innerHTML = '<div class="no-posts">Post not found</div>';
+                    return;
+                }
+                
+                const post = await response.json();
+                const date = new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                
+                document.getElementById('single-post').style.display = 'block';
+                document.getElementById('blog-list-view').style.display = 'none';
+                
+                document.getElementById('post-title').textContent = post.title;
+                document.getElementById('post-meta').textContent = date;
+                document.getElementById('post-body').innerHTML = post.content;
+                
+                document.title = `${post.title} - Luce Healing Blog`;
+            } catch (e) {
+                console.error('Error loading post:', e);
+                document.getElementById('blog-list-view').innerHTML = '<div class="no-posts">Error loading post</div>';
+            }
+        }
+
+        // Load based on current path
+        if (slug) {
+            loadBlogPost(slug);
+        } else {
+            loadBlogList();
+        }
+    </script>
+</body>
+</html>

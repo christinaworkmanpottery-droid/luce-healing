@@ -866,6 +866,220 @@ app.delete('/api/admin/block/:id', checkAdminPassword, (req, res) => {
 });
 
 // ============================================================================
+// BLOG ENDPOINTS
+// ============================================================================
+
+app.get('/api/blog', (req, res) => {
+  try {
+    const posts = dbAll('SELECT id, title, slug, excerpt, created_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
+    res.json(posts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/blog/latest', (req, res) => {
+  try {
+    const posts = dbAll('SELECT id, title, slug, excerpt, created_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC LIMIT 3');
+    res.json(posts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/blog/:slug', (req, res) => {
+  try {
+    const post = dbGet('SELECT * FROM blog_posts WHERE slug = ? AND published = 1', [req.params.slug]);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    res.json(post);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/blog', checkAdminPassword, (req, res) => {
+  try {
+    const { title, slug, content, excerpt, published } = req.body;
+    if (!title || !slug || !content) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    dbRun(
+      'INSERT INTO blog_posts (title, slug, content, excerpt, published, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+      [title, slug, content, excerpt || '', published ? 1 : 0]
+    );
+    const post = dbGet('SELECT * FROM blog_posts WHERE slug = ?', [slug]);
+    res.json(post);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/admin/blog/:id', checkAdminPassword, (req, res) => {
+  try {
+    const { title, slug, content, excerpt, published } = req.body;
+    if (!title || !slug || !content) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    dbRun(
+      'UPDATE blog_posts SET title = ?, slug = ?, content = ?, excerpt = ?, published = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [title, slug, content, excerpt || '', published ? 1 : 0, req.params.id]
+    );
+    const post = dbGet('SELECT * FROM blog_posts WHERE id = ?', [req.params.id]);
+    res.json(post);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/admin/blog/:id', checkAdminPassword, (req, res) => {
+  try {
+    dbRun('DELETE FROM blog_posts WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/blog', checkAdminPassword, (req, res) => {
+  try {
+    const posts = dbAll('SELECT * FROM blog_posts ORDER BY created_at DESC');
+    res.json(posts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// NEWSLETTER ENDPOINTS
+// ============================================================================
+
+app.post('/api/newsletter/subscribe', (req, res) => {
+  try {
+    const { email, name } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email required' });
+    }
+    
+    // Check if already subscribed
+    const existing = dbGet('SELECT id FROM newsletter_subscribers WHERE email = ?', [email]);
+    if (existing) {
+      return res.status(400).json({ error: 'Email already subscribed' });
+    }
+    
+    dbRun(
+      'INSERT INTO newsletter_subscribers (email, name, subscribed_at, active) VALUES (?, ?, CURRENT_TIMESTAMP, 1)',
+      [email, name || '']
+    );
+    res.json({ success: true, message: 'Thank you for subscribing to Healing Insights!' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/newsletter/subscribers', checkAdminPassword, (req, res) => {
+  try {
+    const subscribers = dbAll('SELECT * FROM newsletter_subscribers WHERE active = 1 ORDER BY subscribed_at DESC');
+    res.json(subscribers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/newsletter/export', checkAdminPassword, (req, res) => {
+  try {
+    const subscribers = dbAll('SELECT email, name, subscribed_at FROM newsletter_subscribers WHERE active = 1 ORDER BY subscribed_at DESC');
+    
+    let csv = 'Email,Name,Subscribed Date\n';
+    subscribers.forEach(sub => {
+      const date = new Date(sub.subscribed_at).toISOString().split('T')[0];
+      csv += `"${sub.email}","${sub.name || ''}","${date}"\n`;
+    });
+    
+    res.header('Content-Type', 'text/csv');
+    res.header('Content-Disposition', 'attachment; filename="newsletter-subscribers.csv"');
+    res.send(csv);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/admin/newsletter/:id', checkAdminPassword, (req, res) => {
+  try {
+    dbRun('UPDATE newsletter_subscribers SET active = 0 WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// REVIEWS/TESTIMONIALS ENDPOINTS
+// ============================================================================
+
+app.post('/api/reviews/submit', (req, res) => {
+  try {
+    const { name, rating, review_text, session_type } = req.body;
+    if (!name || !rating || !review_text) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    }
+    
+    dbRun(
+      'INSERT INTO reviews (name, rating, review_text, session_type, approved, created_at) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP)',
+      [name, rating, review_text, session_type || '']
+    );
+    res.json({ success: true, message: 'Thank you for your review! It will appear on our site after approval.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/reviews', (req, res) => {
+  try {
+    const reviews = dbAll('SELECT * FROM reviews WHERE approved = 1 ORDER BY created_at DESC');
+    res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/reviews', checkAdminPassword, (req, res) => {
+  try {
+    const reviews = dbAll('SELECT * FROM reviews ORDER BY created_at DESC');
+    res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/admin/reviews/:id', checkAdminPassword, (req, res) => {
+  try {
+    const { approved } = req.body;
+    if (typeof approved !== 'number' || (approved !== 0 && approved !== 1)) {
+      return res.status(400).json({ error: 'approved must be 0 or 1' });
+    }
+    dbRun('UPDATE reviews SET approved = ? WHERE id = ?', [approved, req.params.id]);
+    const review = dbGet('SELECT * FROM reviews WHERE id = ?', [req.params.id]);
+    res.json(review);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/admin/reviews/:id', checkAdminPassword, (req, res) => {
+  try {
+    dbRun('DELETE FROM reviews WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
 // BOOKING SUCCESS & CANCEL PAGES REDIRECT
 // ============================================================================
 
@@ -876,6 +1090,18 @@ app.get('/booking-success.html', (req, res) => {
 
 app.get('/booking-cancel.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'booking-cancel.html'));
+});
+
+// ============================================================================
+// BLOG PAGES
+// ============================================================================
+
+app.get('/blog', (req, res) => {
+  res.sendFile(path.join(__dirname, 'blog.html'));
+});
+
+app.get('/blog/:slug', (req, res) => {
+  res.sendFile(path.join(__dirname, 'blog.html'));
 });
 
 // ============================================================================

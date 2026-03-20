@@ -116,6 +116,10 @@
                 <li><a href="#services" class="nav-link">Services</a></li>
                 <li><a href="#pricing" class="nav-link">Pricing</a></li>
                 <li><a href="#work-with-me" class="nav-link">Work With Me</a></li>
+                <li><a href="#blog" class="nav-link">Blog</a></li>
+                <li><a href="#reviews" class="nav-link">Reviews</a></li>
+                <li><a href="#blog" class="nav-link">Blog</a></li>
+                <li><a href="#reviews" class="nav-link">Reviews</a></li>
                 <li><a href="#faq" class="nav-link">FAQ</a></li>
                 <li><a href="#contact" class="nav-link">Contact</a></li>
                 <li id="auth-nav-item" style="display: none;">
@@ -408,6 +412,82 @@
         </div>
     </section>
 
+
+    <!-- Blog Section -->
+    <section id="blog" class="blog">
+        <div class="container">
+            <div class="section-header">
+                <h2>From the Light: Healing Insights</h2>
+                <div class="accent-line"></div>
+                <p style="color: #666; margin-top: 10px;">Wisdom, tools, and guidance for your healing journey</p>
+            </div>
+            <div id="blog-container" class="blog-grid">
+                <p style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">Loading posts...</p>
+            </div>
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="/blog" class="btn btn-secondary">View All Posts</a>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Reviews Section -->
+    <section id="reviews" class="reviews">
+        <div class="container">
+            <div class="section-header">
+                <h2>Words from Those I've Worked With</h2>
+                <div class="accent-line"></div>
+                <p style="color: #666; margin-top: 10px;">Real experiences from real people on their healing journeys</p>
+            </div>
+            
+            <!-- Submit Review Form -->
+            <div class="review-submit-box" style="background: linear-gradient(135deg, rgba(212, 165, 116, 0.1) 0%, rgba(255, 249, 240, 0.6) 100%); padding: 30px; border-radius: 12px; margin-bottom: 40px; border: 1px solid rgba(212, 165, 116, 0.3);">
+                <h3 style="margin-top: 0;">Share Your Healing Journey</h3>
+                <p style="color: #666;">How has working with me helped your healing journey? Your story might inspire someone who needs to hear it.</p>
+                <form id="review-form" style="display: grid; gap: 15px;">
+                    <div class="form-group">
+                        <label for="review-name">Your Name *</label>
+                        <input type="text" id="review-name" required placeholder="Your name">
+                    </div>
+                    <div class="form-group">
+                        <label for="review-session-type">Session Type</label>
+                        <select id="review-session-type">
+                            <option value="">Select...</option>
+                            <option value="Personal Energy Healing">Personal Energy Healing</option>
+                            <option value="End-of-Life & Grief Support">End-of-Life & Grief Support</option>
+                            <option value="Space & Land Clearing">Space & Land Clearing</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="review-rating">Rating *</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <div id="star-rating" style="display: flex; gap: 5px; font-size: 1.8em; cursor: pointer;">
+                                <span class="star" data-rating="1">☆</span>
+                                <span class="star" data-rating="2">☆</span>
+                                <span class="star" data-rating="3">☆</span>
+                                <span class="star" data-rating="4">☆</span>
+                                <span class="star" data-rating="5">☆</span>
+                            </div>
+                            <span id="rating-text" style="color: #666; font-size: 0.9em;">Select rating</span>
+                        </div>
+                            <input type="hidden" id="review-rating-value" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="review-text">Your Review *</label>
+                        <textarea id="review-text" required placeholder="Share your experience..." rows="4" style="resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit Review</button>
+                </form>
+                <div id="review-feedback" style="display: none; margin-top: 15px; padding: 12px; border-radius: 6px; text-align: center;"></div>
+            </div>
+
+            <!-- Reviews Display -->
+            <div id="reviews-container" class="reviews-grid">
+                <p style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">Loading reviews...</p>
+            </div>
+        </div>
+    </section>
+
     <!-- FAQ Section -->
     <section id="faq" class="faq">
         <div class="container">
@@ -465,6 +545,32 @@
                     </p>
                 </div>
             </div>
+        </div>
+    </section>
+
+
+    <!-- Newsletter Section -->
+    <section id="newsletter" class="newsletter" style="background: linear-gradient(135deg, rgba(212, 165, 116, 0.1) 0%, rgba(255, 249, 240, 0.8) 100%); padding: 60px 20px; margin: 40px 0;">
+        <div class="container" style="max-width: 600px;">
+            <div style="text-align: center;">
+                <h2 style="margin-top: 0;">Get Free Healing Insights</h2>
+                <p style="color: #666; font-size: 1.05em; margin-bottom: 30px;">
+                    Subscribe to receive free healing insights, tools, and guidance delivered to your inbox. 
+                    <strong>No one can heal you but yourself.</strong> But I can help you remember how. 💛
+                </p>
+            </div>
+            
+            <form id="newsletter-form" style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="form-group">
+                    <input type="text" id="newsletter-name" placeholder="Your name (optional)" style="width: 100%; padding: 12px; border: 1px solid #D4A574; border-radius: 6px; font-size: 1em;">
+                </div>
+                <div class="form-group">
+                    <input type="email" id="newsletter-email" placeholder="your@email.com" required style="width: 100%; padding: 12px; border: 1px solid #D4A574; border-radius: 6px; font-size: 1em;">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;">Get Healing Insights</button>
+                <div id="newsletter-feedback" style="display: none; margin-top: 12px; padding: 12px; border-radius: 6px; text-align: center; background: #e8f5e9; color: #2e7d32; border: 1px solid #4caf50;"></div>
+            </form>
+            <p style="font-size: 0.85em; color: #888; text-align: center; margin-top: 15px;">I respect your privacy. Unsubscribe anytime.</p>
         </div>
     </section>
 
@@ -854,6 +960,12 @@
                 <button class="admin-tab" data-tab="admin-availability">Availability</button>
                 <button class="admin-tab" data-tab="admin-blocked">Blocked Times</button>
                 <button class="admin-tab" data-tab="admin-clients">Clients</button>
+                <button class="admin-tab" data-tab="admin-blog">Blog</button>
+                <button class="admin-tab" data-tab="admin-newsletter">Newsletter</button>
+                <button class="admin-tab" data-tab="admin-reviews">Reviews</button>
+                <button class="admin-tab" data-tab="admin-blog">Blog</button>
+                <button class="admin-tab" data-tab="admin-newsletter">Newsletter</button>
+                <button class="admin-tab" data-tab="admin-reviews">Reviews</button>
                 <button class="admin-tab" data-tab="admin-dashboard">Dashboard</button>
             </div>
 
@@ -1039,6 +1151,73 @@
                             <tr><td colspan="5" style="text-align: center; padding: 20px;">Loading...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+
+            <!-- Blog Tab -->
+            <div id="admin-blog" class="admin-tab-content">
+                <div class="admin-card">
+                    <h3>Manage Blog Posts</h3>
+                    <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="openBlogEditor()">➕ New Post</button>
+                    <div id="admin-blog-list" style="display: grid; gap: 15px;">
+                        <p style="color: #999;">Loading posts...</p>
+                    </div>
+                </div>
+                
+                <!-- Blog Editor Modal -->
+                <div id="blog-editor-modal" class="modal" style="display: none;">
+                    <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+                        <div class="modal-header">
+                            <h2 id="blog-modal-title">New Blog Post</h2>
+                            <button class="modal-close" type="button" onclick="closeBlogEditor()">&times;</button>
+                        </div>
+                        <form id="blog-editor-form" style="padding: 20px;">
+                            <input type="hidden" id="blog-edit-id" value="">
+                            <div class="form-group">
+                                <label for="blog-title">Title *</label>
+                                <input type="text" id="blog-title" required placeholder="Post title">
+                            </div>
+                            <div class="form-group">
+                                <label for="blog-slug">Slug (URL-friendly) *</label>
+                                <input type="text" id="blog-slug" required placeholder="my-post-title">
+                            </div>
+                            <div class="form-group">
+                                <label for="blog-excerpt">Excerpt</label>
+                                <textarea id="blog-excerpt" placeholder="Short summary for preview" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="blog-content">Content (HTML) *</label>
+                                <textarea id="blog-content" required placeholder="Write your blog post here..." rows="10" style="font-family: monospace;"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label><input type="checkbox" id="blog-published" checked> Publish</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: 100%;">Save Post</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Newsletter Tab -->
+            <div id="admin-newsletter" class="admin-tab-content">
+                <div class="admin-card">
+                    <h3>Newsletter Subscribers</h3>
+                    <button class="btn btn-secondary" style="margin-bottom: 20px;" onclick="exportNewsletterCSV()">📥 Export CSV</button>
+                    <div id="admin-newsletter-list" style="display: grid; gap: 10px;">
+                        <p style="color: #999;">Loading subscribers...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reviews Tab -->
+            <div id="admin-reviews" class="admin-tab-content">
+                <div class="admin-card">
+                    <h3>Manage Reviews</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Approve or reject reviews before they appear on your site.</p>
+                    <div id="admin-reviews-list" style="display: grid; gap: 15px;">
+                        <p style="color: #999;">Loading reviews...</p>
+                    </div>
                 </div>
             </div>
 
@@ -1881,6 +2060,419 @@
                 tbody.appendChild(row);
             });
         }
+
+
+        // ============================================================================
+        // BLOG FUNCTIONS
+        // ============================================================================
+
+        async function loadBlogPosts() {
+            try {
+                const response = await fetch('/api/blog/latest');
+                const posts = await response.json();
+                const container = document.getElementById('blog-container');
+                
+                if (!posts.length) {
+                    container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">No posts yet</p>';
+                    return;
+                }
+                
+                let html = '';
+                posts.forEach(post => {
+                    html += `
+                        <article class="blog-card">
+                            <h3><a href="/blog/${post.slug}" style="color: #333; text-decoration: none;">${post.title}</a></h3>
+                            <p class="blog-excerpt">${post.excerpt}</p>
+                            <div class="blog-meta">
+                                <small>${new Date(post.created_at).toLocaleDateString()}</small>
+                                <a href="/blog/${post.slug}" style="color: #D4A574; text-decoration: none; font-weight: 500;">Read More →</a>
+                            </div>
+                        </article>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error loading blog:', e);
+            }
+        }
+
+        function openBlogEditor(id = null) {
+            document.getElementById('blog-editor-modal').style.display = 'flex';
+            if (id) {
+                // Load existing post for editing
+                loadBlogForEdit(id);
+            } else {
+                document.getElementById('blog-modal-title').textContent = 'New Blog Post';
+                document.getElementById('blog-edit-id').value = '';
+                document.getElementById('blog-editor-form').reset();
+            }
+        }
+
+        function closeBlogEditor() {
+            document.getElementById('blog-editor-modal').style.display = 'none';
+        }
+
+        async function loadBlogForEdit(id) {
+            try {
+                const allPosts = await fetch('/api/admin/blog?password=luce2026admin').then(r => r.json());
+                const post = allPosts.find(p => p.id == id);
+                if (post) {
+                    document.getElementById('blog-modal-title').textContent = 'Edit Blog Post';
+                    document.getElementById('blog-edit-id').value = post.id;
+                    document.getElementById('blog-title').value = post.title;
+                    document.getElementById('blog-slug').value = post.slug;
+                    document.getElementById('blog-excerpt').value = post.excerpt || '';
+                    document.getElementById('blog-content').value = post.content;
+                    document.getElementById('blog-published').checked = post.published;
+                }
+            } catch (e) {
+                alert('Error loading post');
+            }
+        }
+
+        document.getElementById('blog-editor-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('blog-edit-id').value;
+            const url = id ? `/api/admin/blog/${id}` : '/api/admin/blog';
+            const method = id ? 'PUT' : 'POST';
+            
+            try {
+                const response = await fetch(url + '?password=luce2026admin', {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: document.getElementById('blog-title').value,
+                        slug: document.getElementById('blog-slug').value,
+                        excerpt: document.getElementById('blog-excerpt').value,
+                        content: document.getElementById('blog-content').value,
+                        published: document.getElementById('blog-published').checked
+                    })
+                });
+                const data = await response.json();
+                alert(id ? '✅ Post updated!' : '✅ Post created!');
+                closeBlogEditor();
+                loadAdminBlog();
+                loadBlogPosts();
+            } catch (e) {
+                alert('Error saving post: ' + e.message);
+            }
+        });
+
+        async function loadAdminBlog() {
+            try {
+                const response = await fetch('/api/admin/blog?password=luce2026admin');
+                const posts = await response.json();
+                const container = document.getElementById('admin-blog-list');
+                
+                if (!posts.length) {
+                    container.innerHTML = '<p style="color: #999;">No posts yet</p>';
+                    return;
+                }
+                
+                let html = '';
+                posts.forEach(post => {
+                    html += `
+                        <div style="padding: 15px; background: #f9f9f9; border-radius: 8px; border-left: 3px solid ${post.published ? '#4caf50' : '#f59e0b'};">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <h4 style="margin: 0 0 5px 0;">${post.title}</h4>
+                                    <small style="color: #666;">/${post.slug}</small>
+                                    <br>
+                                    <small style="color: #999;">${new Date(post.created_at).toLocaleDateString()} | ${post.published ? '✓ Published' : '○ Draft'}</small>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;" onclick="openBlogEditor(${post.id})">Edit</button>
+                                    <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em; background:#e74c3c; color:white;" onclick="deleteBlogPost(${post.id})">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error loading admin blog:', e);
+            }
+        }
+
+        async function deleteBlogPost(id) {
+            if (!confirm('Delete this post permanently?')) return;
+            try {
+                await fetch(`/api/admin/blog/${id}?password=luce2026admin`, { method: 'DELETE' });
+                alert('✅ Post deleted');
+                loadAdminBlog();
+                loadBlogPosts();
+            } catch (e) {
+                alert('Error deleting post');
+            }
+        }
+
+        // ============================================================================
+        // NEWSLETTER FUNCTIONS
+        // ============================================================================
+
+        document.getElementById('newsletter-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('newsletter-email').value;
+            const name = document.getElementById('newsletter-name').value;
+            
+            try {
+                const response = await fetch('/api/newsletter/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, name })
+                });
+                const data = await response.json();
+                
+                const feedback = document.getElementById('newsletter-feedback');
+                feedback.style.display = 'block';
+                if (response.ok) {
+                    feedback.textContent = data.message;
+                    feedback.style.background = '#e8f5e9';
+                    feedback.style.color = '#2e7d32';
+                    feedback.style.border = '1px solid #4caf50';
+                    document.getElementById('newsletter-form').reset();
+                } else {
+                    feedback.textContent = data.error;
+                    feedback.style.background = '#ffebee';
+                    feedback.style.color = '#c62828';
+                    feedback.style.border = '1px solid #f44336';
+                }
+            } catch (e) {
+                alert('Error subscribing: ' + e.message);
+            }
+        });
+
+        async function loadAdminNewsletter() {
+            try {
+                const response = await fetch('/api/admin/newsletter/subscribers?password=luce2026admin');
+                const subscribers = await response.json();
+                const container = document.getElementById('admin-newsletter-list');
+                
+                if (!subscribers.length) {
+                    container.innerHTML = '<p style="color: #999;">No subscribers yet</p>';
+                    return;
+                }
+                
+                let html = '<table class="calendar-table"><thead><tr><th>Email</th><th>Name</th><th>Subscribed</th><th></th></tr></thead><tbody>';
+                subscribers.forEach(sub => {
+                    const date = new Date(sub.subscribed_at).toLocaleDateString();
+                    html += `<tr>
+                        <td>${sub.email}</td>
+                        <td>${sub.name || '—'}</td>
+                        <td>${date}</td>
+                        <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8em;" onclick="removeSubscriber(${sub.id})">Remove</button></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error loading newsletter:', e);
+            }
+        }
+
+        async function removeSubscriber(id) {
+            if (!confirm('Remove subscriber?')) return;
+            try {
+                await fetch(`/api/admin/newsletter/${id}?password=luce2026admin`, { method: 'DELETE' });
+                alert('✅ Removed');
+                loadAdminNewsletter();
+            } catch (e) {
+                alert('Error removing subscriber');
+            }
+        }
+
+        async function exportNewsletterCSV() {
+            try {
+                const response = await fetch('/api/admin/newsletter/export?password=luce2026admin');
+                const csv = await response.text();
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'newsletter-subscribers.csv';
+                a.click();
+            } catch (e) {
+                alert('Error exporting: ' + e.message);
+            }
+        }
+
+        // ============================================================================
+        // REVIEWS FUNCTIONS
+        // ============================================================================
+
+        // Star rating system for review form
+        document.querySelectorAll('#star-rating .star')?.forEach(star => {
+            star.addEventListener('click', () => {
+                const rating = star.dataset.rating;
+                document.getElementById('review-rating-value').value = rating;
+                document.getElementById('rating-text').textContent = `${rating} star${rating > 1 ? 's' : ''}`;
+                
+                // Update star display
+                document.querySelectorAll('#star-rating .star').forEach(s => {
+                    if (s.dataset.rating <= rating) {
+                        s.textContent = '★';
+                        s.style.color = '#D4A574';
+                    } else {
+                        s.textContent = '☆';
+                        s.style.color = '#ddd';
+                    }
+                });
+            });
+        });
+
+        document.getElementById('review-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const rating = parseInt(document.getElementById('review-rating-value').value);
+            
+            if (rating < 1) {
+                alert('Please select a rating');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/reviews/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('review-name').value,
+                        rating: rating,
+                        review_text: document.getElementById('review-text').value,
+                        session_type: document.getElementById('review-session-type').value
+                    })
+                });
+                const data = await response.json();
+                
+                const feedback = document.getElementById('review-feedback');
+                feedback.style.display = 'block';
+                if (response.ok) {
+                    feedback.textContent = data.message;
+                    feedback.style.background = '#e8f5e9';
+                    feedback.style.color = '#2e7d32';
+                    feedback.style.border = '1px solid #4caf50';
+                    document.getElementById('review-form').reset();
+                    document.getElementById('rating-text').textContent = 'Select rating';
+                    document.querySelectorAll('#star-rating .star').forEach(s => {
+                        s.textContent = '☆';
+                        s.style.color = '#ddd';
+                    });
+                } else {
+                    feedback.textContent = data.error;
+                    feedback.style.background = '#ffebee';
+                    feedback.style.color = '#c62828';
+                    feedback.style.border = '1px solid #f44336';
+                }
+            } catch (e) {
+                alert('Error submitting review: ' + e.message);
+            }
+        });
+
+        async function loadPublicReviews() {
+            try {
+                const response = await fetch('/api/reviews');
+                const reviews = await response.json();
+                const container = document.getElementById('reviews-container');
+                
+                if (!reviews.length) {
+                    container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">No reviews yet. Be the first to share!</p>';
+                    return;
+                }
+                
+                let html = '';
+                reviews.forEach(review => {
+                    const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+                    html += `
+                        <div class="review-card">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                <div>
+                                    <h4 style="margin: 0 0 3px 0;">${review.name}</h4>
+                                    <small style="color: #999;">${review.session_type || 'Energy Healing'}</small>
+                                </div>
+                                <div style="font-size: 1.2em; color: #D4A574; letter-spacing: 2px;">${stars}</div>
+                            </div>
+                            <p style="color: #333; line-height: 1.6;">${review.review_text}</p>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error loading reviews:', e);
+            }
+        }
+
+        async function loadAdminReviews() {
+            try {
+                const response = await fetch('/api/admin/reviews?password=luce2026admin');
+                const reviews = await response.json();
+                const container = document.getElementById('admin-reviews-list');
+                
+                if (!reviews.length) {
+                    container.innerHTML = '<p style="color: #999;">No reviews yet</p>';
+                    return;
+                }
+                
+                let html = '';
+                reviews.forEach(review => {
+                    const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+                    html += `
+                        <div style="padding: 15px; background: #f9f9f9; border-radius: 8px; border-left: 3px solid ${review.approved ? '#4caf50' : '#f59e0b'};">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                <div>
+                                    <h4 style="margin: 0 0 3px 0;">${review.name}</h4>
+                                    <small style="color: #999;">${review.session_type || 'Energy Healing'}</small>
+                                    <br>
+                                    <small style="color: #999;">${new Date(review.created_at).toLocaleDateString()}</small>
+                                </div>
+                                <div style="font-size: 1.2em; color: #D4A574; letter-spacing: 2px;">${stars}</div>
+                            </div>
+                            <p style="color: #333; line-height: 1.6; margin: 10px 0;">${review.review_text}</p>
+                            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                                <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em; ${review.approved ? 'background:#999;' : 'background:#4caf50;color:white;'}" onclick="updateReviewStatus(${review.id}, ${review.approved ? 0 : 1})">
+                                    ${review.approved ? '✓ Approved' : 'Approve'}
+                                </button>
+                                <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em; background:#e74c3c; color:white;" onclick="deleteReview(${review.id})">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error loading admin reviews:', e);
+            }
+        }
+
+        async function updateReviewStatus(id, approved) {
+            try {
+                await fetch(`/api/admin/reviews/${id}?password=luce2026admin`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ approved })
+                });
+                alert(approved ? '✅ Review approved!' : '✅ Review unapproved');
+                loadAdminReviews();
+                loadPublicReviews();
+            } catch (e) {
+                alert('Error updating review');
+            }
+        }
+
+        async function deleteReview(id) {
+            if (!confirm('Delete this review permanently?')) return;
+            try {
+                await fetch(`/api/admin/reviews/${id}?password=luce2026admin`, { method: 'DELETE' });
+                alert('✅ Deleted');
+                loadAdminReviews();
+                loadPublicReviews();
+            } catch (e) {
+                alert('Error deleting review');
+            }
+        }
+
+        // ============================================================================
+        // LOAD ON PAGE INIT
+        // ============================================================================
+
+        loadBlogPosts();
+        loadPublicReviews();
 
         // Load auth state on page load
         loadAuthState();
