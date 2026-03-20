@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const initSqlJs = require('sql.js');
 const cors = require('cors');
+const crypto = require('crypto');
 const stripeKey = process.env.STRIPE_SECRET_KEY;
 if (!stripeKey) {
   console.warn('WARNING: STRIPE_SECRET_KEY not set. Payment features will not work.');
@@ -69,21 +70,63 @@ function loadDb() {
 }
 
 // ============================================================================
+// CRYPTO HELPERS
+// ============================================================================
+
+function hashPassword(password) {
+  return crypto.scryptSync(password, 'luce-salt', 64).toString('hex');
+}
+
+function verifyPassword(password, hash) {
+  return crypto.scryptSync(password, 'luce-salt', 64).toString('hex') === hash;
+}
+
+function generateToken(userId) {
+  const data = `${userId}:${Date.now()}`;
+  return Buffer.from(data).toString('base64');
+}
+
+function verifyToken(token) {
+  try {
+    const data = Buffer.from(token, 'base64').toString('utf-8');
+    const [userId] = data.split(':');
+    return parseInt(userId);
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
 // DATABASE INITIALIZATION
 // ============================================================================
 
 function initializeDatabase() {
-  // Bookings table
+  // Users table (NEW)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      phone TEXT NOT NULL,
+      date_of_birth TEXT,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Bookings table (UPDATED with session_format and date_of_birth)
   db.exec(`
     CREATE TABLE IF NOT EXISTS bookings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       client_name TEXT NOT NULL,
       email TEXT NOT NULL,
       phone TEXT NOT NULL,
+      date_of_birth TEXT,
       session_type TEXT NOT NULL,
       duration INTEGER NOT NULL,
       date TEXT NOT NULL,
       time TEXT NOT NULL,
+      session_format TEXT,
       is_pack INTEGER DEFAULT 0,
       status TEXT DEFAULT 'pending',
       stripe_session_id TEXT,
@@ -117,13 +160,14 @@ function initializeDatabase() {
     )
   `);
 
-  // Clients table
+  // Clients table (UPDATED with date_of_birth)
   db.exec(`
     CREATE TABLE IF NOT EXISTS clients (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       phone TEXT NOT NULL,
+      date_of_birth TEXT,
       notes TEXT,
       sessions_remaining INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -163,6 +207,15 @@ function minutesToTime(mins) {
   const hours = Math.floor(mins / 60);
   const minutes = mins % 60;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+// Convert 24-hour time to 12-hour format with AM/PM
+function to12HourFormat(timeStr) {
+  const [hours, mins] = timeStr.split(':').map(Number);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+  const displayMins = String(mins).padStart(2, '0');
+  return `${displayHours}:${displayMins} ${ampm}`;
 }
 
 function dateToJS(dateStr) {
@@ -258,7 +311,9 @@ app.get('/api/availability', (req, res) => {
   }
 
   const slots = getAvailableSlots(date, parseInt(duration));
-  res.json({ date, duration: parseInt(duration), slots });
+  // Convert all slots to 12-hour format
+  const formattedSlots = slots.map(slot => to12HourFormat(slot));
+  res.json({ date, duration: parseInt(duration), slots: formattedSlots });
 });
 
 app.get('/api/availability/week', (req, res) => {
@@ -287,6 +342,93 @@ app.get('/api/availability/week', (req, res) => {
 });
 
 // ============================================================================
+// AUTH ENDPOINTS
+// ============================================================================
+
+app.post('/api/auth/register', (req, res) => {
+  try {
+    const { full_name, email, phone, date_of_birth, password } = req.body;
+
+    if (!full_name || !email || !phone || !password) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Check if user already exists
+    const existing = dbGet('SELECT id FROM users WHERE email = ?', [email]);
+    if (existing) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    const passwordHash = hashPassword(password);
+    dbRun('INSERT INTO users (full_name, email, phone, date_of_birth, password_hash) VALUES (?, ?, ?, ?, ?)',
+      [full_name, email, phone, date_of_birth || null, passwordHash]);
+
+    const user = dbGet('SELECT id, full_name, email, phone, date_of_birth FROM users WHERE email = ?', [email]);
+    const token = generateToken(user.id);
+
+    res.json({ success: true, token, user });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+
+    const user = dbGet('SELECT * FROM users WHERE email = ?', [email]);
+    if (!user || !verifyPassword(password, user.password_hash)) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const token = generateToken(user.id);
+    res.json({ 
+      success: true, 
+      token, 
+      user: {
+        id: user.id,
+        full_name: user.full_name,
+        email: user.email,
+        phone: user.phone,
+        date_of_birth: user.date_of_birth
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/auth/me', (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const userId = verifyToken(token);
+    if (!userId) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const user = dbGet('SELECT id, full_name, email, phone, date_of_birth FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Auth error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
 // BOOKING CHECKOUT ENDPOINT
 // ============================================================================
 
@@ -295,15 +437,18 @@ app.post('/api/booking/checkout', async (req, res) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Payment system not configured' });
     }
-    const { name, email, phone, session_type, date, time, duration, is_pack } = req.body;
+    const { name, email, phone, date_of_birth, session_type, date, time, duration, is_pack, session_format } = req.body;
 
-    if (!name || !email || !phone || !session_type || !date || !time || !duration) {
+    if (!name || !email || !phone || !session_type || !date || !time || !duration || !session_format) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Verify slot is available
+    // Verify slot is available - need to convert time back to 24-hour for comparison
     const slots = getAvailableSlots(date, parseInt(duration));
-    if (!slots.includes(time)) {
+    // The time coming from frontend is in 12-hour format, need to match with returned slots
+    // Actually, let's store both formats or just verify based on date/time logic
+    const slotsFormatted = slots.map(slot => to12HourFormat(slot));
+    if (!slotsFormatted.includes(time)) {
       return res.status(400).json({ error: 'Selected time slot is no longer available' });
     }
 
@@ -323,7 +468,7 @@ app.post('/api/booking/checkout', async (req, res) => {
             currency: 'usd',
             product_data: {
               name: `${durationInt}-Minute Energy Healing Session${packLabel}`,
-              description: `Date: ${date}, Time: ${time} PT`
+              description: `Date: ${date}, Time: ${time} PT, Format: ${session_format}`
             },
             unit_amount: priceAmount
           },
@@ -334,11 +479,13 @@ app.post('/api/booking/checkout', async (req, res) => {
       metadata: {
         client_name: name,
         phone,
+        date_of_birth: date_of_birth || '',
         session_type,
         date,
         time,
         duration: durationInt,
-        is_pack: is_pack ? 'true' : 'false'
+        is_pack: is_pack ? 'true' : 'false',
+        session_format
       },
       success_url: `${process.env.DOMAIN || 'http://localhost:3000'}/booking-success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.DOMAIN || 'http://localhost:3000'}/booking-cancel.html`
@@ -375,10 +522,11 @@ app.post('/api/stripe/webhook', async (req, res) => {
     // Get or create client
     let client = dbGet('SELECT * FROM clients WHERE email = ?', [metadata.email]);
     if (!client) {
-      dbRun('INSERT INTO clients (name, email, phone, sessions_remaining) VALUES (?, ?, ?, ?)', [
+      dbRun('INSERT INTO clients (name, email, phone, date_of_birth, sessions_remaining) VALUES (?, ?, ?, ?, ?)', [
         metadata.client_name,
         metadata.email,
         metadata.phone,
+        metadata.date_of_birth || null,
         metadata.is_pack === 'true' ? 3 : 0
       ]);
       client = dbGet('SELECT * FROM clients WHERE email = ?', [metadata.email]);
@@ -390,16 +538,18 @@ app.post('/api/stripe/webhook', async (req, res) => {
     // Create booking record
     dbRun(`
       INSERT INTO bookings 
-      (client_name, email, phone, session_type, duration, date, time, is_pack, status, stripe_session_id, stripe_payment_status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       metadata.client_name,
       metadata.email,
       metadata.phone,
+      metadata.date_of_birth || null,
       metadata.session_type,
       metadata.duration,
       metadata.date,
       metadata.time,
+      metadata.session_format || 'in-person',
       metadata.is_pack === 'true' ? 1 : 0,
       'completed',
       session.id,

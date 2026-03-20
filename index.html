@@ -118,6 +118,14 @@
                 <li><a href="#work-with-me" class="nav-link">Work With Me</a></li>
                 <li><a href="#faq" class="nav-link">FAQ</a></li>
                 <li><a href="#contact" class="nav-link">Contact</a></li>
+                <li id="auth-nav-item" style="display: none;">
+                    <button class="btn btn-secondary" id="auth-login-btn" onclick="openLoginModal()">Login</button>
+                    <button class="btn btn-primary" id="auth-register-btn" onclick="openRegisterModal()">Sign Up</button>
+                </li>
+                <li id="user-nav-item" style="display: none;">
+                    <span id="user-nav-name" style="color: var(--primary-gold); margin-right: 15px;"></span>
+                    <button class="btn btn-secondary" id="auth-logout-btn" onclick="logout()">Logout</button>
+                </li>
             </ul>
             <div class="hamburger">
                 <span></span>
@@ -391,6 +399,7 @@
                     <p class="contact-note">
                         I typically respond within 24 hours. Thank you for reaching out. 💛
                     </p>
+                    <button class="btn btn-primary open-booking" style="margin-top: 15px; width: 100%;">Book Your Session</button>
                 </div>
             </div>
         </div>
@@ -558,6 +567,66 @@
         </div>
     </footer>
 
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Login</h2>
+                <button class="modal-close" type="button" onclick="closeLoginModal()">&times;</button>
+            </div>
+            <form id="login-form" style="padding: 20px;">
+                <div class="form-group">
+                    <label for="login-email">Email *</label>
+                    <input type="email" id="login-email" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password *</label>
+                    <input type="password" id="login-password" placeholder="Your password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 15px;">Login</button>
+                <p style="text-align: center; font-size: 0.9em; color: #666;">
+                    Don't have an account? <button type="button" class="link-btn" onclick="switchToRegister()">Sign up here</button>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="register-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Create Account</h2>
+                <button class="modal-close" type="button" onclick="closeRegisterModal()">&times;</button>
+            </div>
+            <form id="register-form" style="padding: 20px;">
+                <div class="form-group">
+                    <label for="register-name">Full Name *</label>
+                    <input type="text" id="register-name" placeholder="Your full name" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-dob">Date of Birth *</label>
+                    <input type="date" id="register-dob" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-email">Email *</label>
+                    <input type="email" id="register-email" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-phone">Phone *</label>
+                    <input type="tel" id="register-phone" placeholder="(310) 910-1684" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Password *</label>
+                    <input type="password" id="register-password" placeholder="Create a password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 15px;">Create Account</button>
+                <p style="text-align: center; font-size: 0.9em; color: #666;">
+                    Already have an account? <button type="button" class="link-btn" onclick="switchToLogin()">Login here</button>
+                </p>
+            </form>
+        </div>
+    </div>
+
     <!-- Booking Modal -->
     <div id="booking-modal" class="modal">
         <div class="modal-content">
@@ -628,14 +697,56 @@
                 <div id="available-times" class="time-slots"></div>
             </div>
 
-            <!-- Step 3: Client Information -->
+            <!-- Step 3: Session Format -->
+            <div class="booking-step" data-step="3">
+                <h3>Step 3: Session Format</h3>
+                <p style="margin-bottom: 20px; color: #666;">How would you like to receive your session?</p>
+                
+                <div class="session-options">
+                    <div class="option-card format-option" data-format="in-person">
+                        <h4>In Person</h4>
+                        <p style="font-size: 0.9em; margin: 8px 0;">Face-to-face session in Marina del Rey</p>
+                    </div>
+                    <div class="option-card format-option" data-format="remote">
+                        <h4>Remote</h4>
+                        <p style="font-size: 0.9em; margin: 8px 0;">Video call or phone session</p>
+                    </div>
+                </div>
+
+                <div id="remote-options" style="display: none; margin-top: 25px;">
+                    <h4 style="margin-bottom: 15px;">Remote Session Type</h4>
+                    <div class="session-options">
+                        <div class="option-card remote-type-option" data-remote-type="zoom">
+                            <h4>Video Call (Zoom)</h4>
+                            <p style="font-size: 0.9em; margin: 8px 0;">Screen-shared healing work</p>
+                        </div>
+                        <div class="option-card remote-type-option" data-remote-type="phone">
+                            <h4>Phone Call</h4>
+                            <p style="font-size: 0.9em; margin: 8px 0;">Audio-only session</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="in-person-note" style="margin-top: 25px; padding: 15px; background-color: #fffaf0; border-left: 4px solid var(--primary-gold); display: none;">
+                    <p style="margin: 0; font-size: 0.95em; color: #333;">
+                        ✦ Sessions held in Marina del Rey, CA<br>
+                        ✓ Travel fee may apply for in-home sessions
+                    </p>
+                </div>
+            </div>
+
+            <!-- Step 4: Client Information -->
             <div class="booking-step" data-step="3">
                 <h3>Step 3: Your Information</h3>
                 <p style="margin-bottom: 20px; color: #666;">We'll use this to confirm your booking and send session details.</p>
                 
                 <div class="form-group">
-                    <label for="client-name">Name *</label>
+                    <label for="client-name">Full Name *</label>
                     <input type="text" id="client-name" placeholder="Your full name" required>
+                </div>
+                <div class="form-group">
+                    <label for="client-dob">Date of Birth *</label>
+                    <input type="date" id="client-dob" required>
                 </div>
                 <div class="form-group">
                     <label for="client-email">Email *</label>
@@ -651,7 +762,7 @@
                 </div>
             </div>
 
-            <!-- Step 4: Review & Pay -->
+            <!-- Step 5: Review & Pay -->
             <div class="booking-step" data-step="4">
                 <h3>Step 4: Review & Pay</h3>
                 <p style="margin-bottom: 20px; color: #666;">Review your booking details below, then click "Book & Pay" to proceed to Stripe.</p>
@@ -949,13 +1060,173 @@
         }
 
         // ============================================================================
+        // AUTH SYSTEM
+        // ============================================================================
+
+        function loadAuthState() {
+            const token = localStorage.getItem('luce-auth-token');
+            if (token) {
+                fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                .then(r => r.json())
+                .then(user => {
+                    if (user.id) {
+                        setUserLoggedIn(user);
+                    } else {
+                        clearAuthState();
+                    }
+                })
+                .catch(() => clearAuthState());
+            }
+        }
+
+        function setUserLoggedIn(user) {
+            localStorage.setItem('luce-auth-token', localStorage.getItem('luce-auth-token'));
+            localStorage.setItem('luce-user', JSON.stringify(user));
+            
+            document.getElementById('auth-nav-item').style.display = 'none';
+            document.getElementById('user-nav-item').style.display = 'block';
+            document.getElementById('user-nav-name').textContent = `Welcome, ${user.full_name}!`;
+
+            // Auto-fill booking form if logged in
+            if (bookingState && user) {
+                bookingState.name = user.full_name;
+                bookingState.email = user.email;
+                bookingState.phone = user.phone;
+                bookingState.dob = user.date_of_birth;
+                document.getElementById('client-name').value = user.full_name;
+                document.getElementById('client-email').value = user.email;
+                document.getElementById('client-phone').value = user.phone;
+                if (user.date_of_birth) {
+                    document.getElementById('client-dob').value = user.date_of_birth;
+                }
+            }
+        }
+
+        function clearAuthState() {
+            localStorage.removeItem('luce-auth-token');
+            localStorage.removeItem('luce-user');
+            document.getElementById('auth-nav-item').style.display = 'block';
+            document.getElementById('user-nav-item').style.display = 'none';
+        }
+
+        function openLoginModal() {
+            closeRegisterModal();
+            document.getElementById('login-modal').classList.add('active');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('login-modal').classList.remove('active');
+        }
+
+        function openRegisterModal() {
+            closeLoginModal();
+            document.getElementById('register-modal').classList.add('active');
+        }
+
+        function closeRegisterModal() {
+            document.getElementById('register-modal').classList.remove('active');
+        }
+
+        function switchToLogin() {
+            closeRegisterModal();
+            openLoginModal();
+        }
+
+        function switchToRegister() {
+            closeLoginModal();
+            openRegisterModal();
+        }
+
+        function logout() {
+            clearAuthState();
+            bookingState.name = '';
+            bookingState.email = '';
+            bookingState.phone = '';
+            bookingState.dob = '';
+            document.getElementById('client-name').value = '';
+            document.getElementById('client-email').value = '';
+            document.getElementById('client-phone').value = '';
+            document.getElementById('client-dob').value = '';
+            alert('Logged out successfully');
+        }
+
+        // Login form handler
+        document.getElementById('login-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                if (data.token && data.user) {
+                    localStorage.setItem('luce-auth-token', data.token);
+                    setUserLoggedIn(data.user);
+                    closeLoginModal();
+                    alert('Login successful!');
+                } else {
+                    alert('Login failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login error. Please try again.');
+            }
+        });
+
+        // Register form handler
+        document.getElementById('register-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const full_name = document.getElementById('register-name').value;
+            const date_of_birth = document.getElementById('register-dob').value;
+            const email = document.getElementById('register-email').value;
+            const phone = document.getElementById('register-phone').value;
+            const password = document.getElementById('register-password').value;
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ full_name, date_of_birth, email, phone, password })
+                });
+
+                const data = await response.json();
+                if (data.token && data.user) {
+                    localStorage.setItem('luce-auth-token', data.token);
+                    setUserLoggedIn(data.user);
+                    closeRegisterModal();
+                    alert('Account created successfully!');
+                } else {
+                    alert('Registration failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('Registration error. Please try again.');
+            }
+        });
+
+        // Close auth modals on outside click
+        document.getElementById('login-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'login-modal') closeLoginModal();
+        });
+
+        document.getElementById('register-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'register-modal') closeRegisterModal();
+        });
+
+        // ============================================================================
         // BOOKING MODAL JAVASCRIPT
         // ============================================================================
 
         const bookingModal = document.getElementById('booking-modal');
         const adminPanel = document.getElementById('admin-panel');
         const bookingButtons = document.querySelectorAll('.open-booking');
-        const adminButton = document.querySelector('.admin-button');
         const closeButtons = document.querySelectorAll('.modal-close, .admin-close');
 
         let bookingState = {
@@ -964,14 +1235,23 @@
             selectedTime: null,
             selectedDuration: null,
             isPack: false,
+            sessionFormat: null,
+            remoteType: null,
             name: '',
             email: '',
-            phone: ''
+            phone: '',
+            dob: ''
         };
 
-        // Open booking modal
+        // Open booking modal with auth check
         bookingButtons.forEach(btn => {
             btn.addEventListener('click', () => {
+                const token = localStorage.getItem('luce-auth-token');
+                if (!token) {
+                    alert('Please log in or create an account to book a session.');
+                    openRegisterModal();
+                    return;
+                }
                 bookingModal.classList.add('active');
                 bookingState.currentStep = 1;
                 updateBookingStep();
@@ -982,7 +1262,13 @@
         closeButtons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 if (e.target.classList.contains('modal-close')) {
-                    bookingModal.classList.remove('active');
+                    if (e.target.closest('#login-modal')) {
+                        closeLoginModal();
+                    } else if (e.target.closest('#register-modal')) {
+                        closeRegisterModal();
+                    } else if (e.target.closest('#booking-modal')) {
+                        bookingModal.classList.remove('active');
+                    }
                 } else if (e.target.classList.contains('admin-close')) {
                     adminPanel.classList.remove('active');
                 }
@@ -1009,9 +1295,12 @@
             if (prevBtn) prevBtn.disabled = bookingState.currentStep === 1;
             if (nextBtn) {
                 nextBtn.disabled = !canProceedToNextStep();
-                if (bookingState.currentStep === 4) {
+                if (bookingState.currentStep === 5) {
                     nextBtn.textContent = 'Book & Pay';
                     nextBtn.onclick = submitBooking;
+                } else {
+                    nextBtn.textContent = 'Next →';
+                    nextBtn.onclick = nextStep;
                 }
             }
         }
@@ -1019,7 +1308,8 @@
         function canProceedToNextStep() {
             if (bookingState.currentStep === 1) return bookingState.selectedDuration;
             if (bookingState.currentStep === 2) return bookingState.selectedDate && bookingState.selectedTime;
-            if (bookingState.currentStep === 3) return bookingState.name && bookingState.email && bookingState.phone;
+            if (bookingState.currentStep === 3) return bookingState.sessionFormat && (bookingState.sessionFormat === 'in-person' || bookingState.remoteType);
+            if (bookingState.currentStep === 4) return bookingState.name && bookingState.email && bookingState.phone && bookingState.dob;
             return true;
         }
 
@@ -1037,7 +1327,7 @@
                 if (bookingState.currentStep === 2) {
                     loadAvailableDates();
                 }
-                if (bookingState.currentStep === 4) {
+                if (bookingState.currentStep === 5) {
                     updatePriceSummary();
                 }
             }
@@ -1053,11 +1343,15 @@
                 120: { single: 200, pack: 525 }
             };
             const price = pricing[bookingState.selectedDuration][bookingState.isPack ? 'pack' : 'single'];
-            document.querySelector('.price-summary .amount').textContent = `$${price}`;
+            document.querySelector('.price-summary .amount').textContent = `\$${price}`;
             document.getElementById('summary-date').textContent = bookingState.selectedDate;
             document.getElementById('summary-time').textContent = bookingState.selectedTime;
             document.getElementById('summary-duration').textContent = `${bookingState.selectedDuration} minutes`;
             document.getElementById('summary-type').textContent = bookingState.isPack ? '3-Pack' : 'Single Session';
+            
+            const formatLabel = bookingState.sessionFormat === 'in-person' ? 'In Person' : 
+                               (bookingState.remoteType === 'zoom' ? 'Remote - Zoom' : 'Remote - Phone');
+            document.getElementById('summary-format').textContent = formatLabel;
         }
 
         async function submitBooking() {
@@ -1070,6 +1364,17 @@
                 120: { single: 200, pack: 525 }
             };
 
+            // Map session format
+            const sessionFormatMap = {
+                'in-person': 'in-person',
+                'remote-zoom': 'remote-zoom',
+                'remote-phone': 'remote-phone'
+            };
+
+            const bookingFormat = bookingState.sessionFormat === 'in-person' ? 
+                'in-person' : 
+                ('remote-' + bookingState.remoteType);
+
             try {
                 const response = await fetch('/api/booking/checkout', {
                     method: 'POST',
@@ -1078,11 +1383,13 @@
                         name: bookingState.name,
                         email: bookingState.email,
                         phone: bookingState.phone,
+                        date_of_birth: bookingState.dob,
                         session_type: `${bookingState.selectedDuration}-Minute Session`,
                         date: bookingState.selectedDate,
                         time: bookingState.selectedTime,
                         duration: bookingState.selectedDuration,
-                        is_pack: bookingState.isPack
+                        is_pack: bookingState.isPack,
+                        session_format: bookingFormat
                     })
                 });
 
@@ -1159,7 +1466,7 @@
             }
         }
 
-        // Duration selection - handled in step 1 now
+        // Duration selection
         document.querySelectorAll('.duration-card').forEach(card => {
             card.addEventListener('click', () => {
                 document.querySelectorAll('.duration-card').forEach(c => c.classList.remove('selected'));
@@ -1182,9 +1489,46 @@
             });
         });
 
+        // Session format selection
+        document.querySelectorAll('.format-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.format-option').forEach(o => o.classList.remove('selected'));
+                option.classList.add('selected');
+                bookingState.sessionFormat = option.dataset.format;
+                
+                const remoteOptions = document.getElementById('remote-options');
+                const inPersonNote = document.getElementById('in-person-note');
+                
+                if (bookingState.sessionFormat === 'remote') {
+                    remoteOptions.style.display = 'block';
+                    inPersonNote.style.display = 'none';
+                    bookingState.remoteType = null;
+                } else {
+                    remoteOptions.style.display = 'none';
+                    inPersonNote.style.display = 'block';
+                    bookingState.remoteType = null;
+                }
+                updateStepIndicators();
+            });
+        });
+
+        // Remote type selection
+        document.querySelectorAll('.remote-type-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.remote-type-option').forEach(o => o.classList.remove('selected'));
+                option.classList.add('selected');
+                bookingState.remoteType = option.dataset.remoteType;
+                updateStepIndicators();
+            });
+        });
+
         // Client info form
         document.getElementById('client-name').addEventListener('change', (e) => {
             bookingState.name = e.target.value;
+            updateStepIndicators();
+        });
+        document.getElementById('client-dob').addEventListener('change', (e) => {
+            bookingState.dob = e.target.value;
             updateStepIndicators();
         });
         document.getElementById('client-email').addEventListener('change', (e) => {
@@ -1247,7 +1591,10 @@
             });
         }
 
-        // Check if URL contains #admin
+        // Load auth state on page load
+        loadAuthState();
+
+                // Check if URL contains #admin
         if (window.location.hash === '#admin') {
             openAdminPanel();
         }

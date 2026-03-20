@@ -1571,3 +1571,54 @@ section {
         padding: 15px;
     }
 }
+
+/* Auth Styles */
+#auth-nav-item, #user-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#user-nav-name {
+    font-size: 0.95em;
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    color: var(--primary-gold);
+    cursor: pointer;
+    text-decoration: underline;
+    font-weight: 600;
+    padding: 0;
+    font-size: inherit;
+}
+
+.link-btn:hover {
+    color: var(--secondary-gold);
+}
+
+/* Format option cards */
+.format-option, .remote-type-option {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.format-option:hover, .remote-type-option:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.format-option.selected, .remote-type-option.selected {
+    background-color: var(--primary-gold);
+    color: white;
+}
+
+.format-option.selected h4, .remote-type-option.selected h4 {
+    color: white;
+}
+
+.format-option.selected p, .remote-type-option.selected p {
+    color: rgba(255, 255, 255, 0.9);
+}
+
