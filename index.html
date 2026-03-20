@@ -913,11 +913,11 @@
                         </div>
                         <div class="day-availability">
                             <label><input type="checkbox"> Sunday</label>
-                            <input type="time" disabled>
-                            <input type="time" disabled>
+                            <input type="time" value="10:00">
+                            <input type="time" value="14:00">
                         </div>
                     </div>
-                    <button class="btn btn-primary" style="margin-top: 20px;">Save Availability</button>
+                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="saveAvailability()">Save Availability</button>
                 </div>
             </div>
 
@@ -928,25 +928,27 @@
                     <p style="margin-bottom: 20px; color: #666;">Block specific dates/times when you're unavailable.</p>
                     <div class="form-group">
                         <label>Date</label>
-                        <input type="date">
+                        <input type="date" id="block-date">
                     </div>
                     <div class="form-group">
                         <label>Start Time</label>
-                        <input type="time">
+                        <input type="time" id="block-start">
                     </div>
                     <div class="form-group">
                         <label>End Time</label>
-                        <input type="time">
+                        <input type="time" id="block-end">
                     </div>
                     <div class="form-group">
                         <label>Reason (optional)</label>
-                        <input type="text" placeholder="e.g., Personal, Retreat, etc.">
+                        <input type="text" id="block-reason" placeholder="e.g., Personal, Retreat, etc.">
                     </div>
-                    <button class="btn btn-primary">Block Time</button>
+                    <button class="btn btn-primary" onclick="saveBlockedTime()">Block Time</button>
                 </div>
                 <div class="admin-card" style="margin-top: 20px;">
                     <h3>Currently Blocked</h3>
-                    <p style="color: #888;">No blocked times currently</p>
+                    <div id="blocked-times-list">
+                        <p style="color: #888;">No blocked times currently</p>
+                    </div>
                 </div>
             </div>
 
@@ -1621,8 +1623,142 @@
                 const response = await fetch(`/api/admin/bookings?password=${password}`);
                 const bookings = await response.json();
                 updateAdminBookingsTable(bookings);
+                loadAdminAvailability();
+                loadBlockedTimes();
             } catch (error) {
                 console.error('Error loading admin data:', error);
+            }
+        }
+
+        // Availability: toggle time inputs when checkbox changes
+        document.querySelectorAll('.day-availability').forEach(row => {
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            const timeInputs = row.querySelectorAll('input[type="time"]');
+            checkbox.addEventListener('change', () => {
+                timeInputs.forEach(input => {
+                    input.disabled = !checkbox.checked;
+                });
+            });
+            // Set initial state
+            if (!checkbox.checked) {
+                timeInputs.forEach(input => input.disabled = true);
+            }
+        });
+
+        async function loadAdminAvailability() {
+            try {
+                const response = await fetch(`/api/admin/bookings?password=luce2026admin`);
+                // Load current availability from server
+                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const rows = document.querySelectorAll('.day-availability');
+                // Map: row 0=Monday(1), row 1=Tuesday(2), ..., row 5=Saturday(6), row 6=Sunday(0)
+                const dayMap = [1, 2, 3, 4, 5, 6, 0]; // order of rows in HTML
+            } catch (e) {
+                console.error('Error loading availability:', e);
+            }
+        }
+
+        async function saveAvailability() {
+            const rows = document.querySelectorAll('.day-availability');
+            const dayMap = [1, 2, 3, 4, 5, 6, 0]; // Mon=1, Tue=2, ..., Sat=6, Sun=0
+            const availability = [];
+            
+            rows.forEach((row, index) => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                const timeInputs = row.querySelectorAll('input[type="time"]');
+                availability.push({
+                    day_of_week: dayMap[index],
+                    start_time: timeInputs[0].value || '09:00',
+                    end_time: timeInputs[1].value || '17:00',
+                    is_available: checkbox.checked
+                });
+            });
+
+            try {
+                const response = await fetch('/api/admin/availability?password=luce2026admin', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ availability })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('✅ Availability saved!');
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error saving availability: ' + error.message);
+            }
+        }
+
+        async function saveBlockedTime() {
+            const date = document.getElementById('block-date').value;
+            const start_time = document.getElementById('block-start').value;
+            const end_time = document.getElementById('block-end').value;
+            const reason = document.getElementById('block-reason').value;
+
+            if (!date || !start_time || !end_time) {
+                alert('Please fill in date, start time, and end time');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/block?password=luce2026admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, start_time, end_time, reason })
+                });
+                const data = await response.json();
+                if (data.success || data.id) {
+                    alert('✅ Time blocked!');
+                    document.getElementById('block-date').value = '';
+                    document.getElementById('block-start').value = '';
+                    document.getElementById('block-end').value = '';
+                    document.getElementById('block-reason').value = '';
+                    loadBlockedTimes();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error blocking time: ' + error.message);
+            }
+        }
+
+        async function loadBlockedTimes() {
+            try {
+                const response = await fetch('/api/admin/blocks?password=luce2026admin');
+                const blocks = await response.json();
+                const container = document.getElementById('blocked-times-list');
+                
+                if (!blocks.length) {
+                    container.innerHTML = '<p style="color: #888;">No blocked times currently</p>';
+                    return;
+                }
+                
+                let html = '<table class="calendar-table"><thead><tr><th>Date</th><th>Start</th><th>End</th><th>Reason</th><th></th></tr></thead><tbody>';
+                blocks.forEach(block => {
+                    html += `<tr>
+                        <td>${block.date}</td>
+                        <td>${block.start_time}</td>
+                        <td>${block.end_time}</td>
+                        <td>${block.reason || '—'}</td>
+                        <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8em;" onclick="removeBlock(${block.id})">Remove</button></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error loading blocked times:', e);
+            }
+        }
+
+        async function removeBlock(id) {
+            if (!confirm('Remove this blocked time?')) return;
+            try {
+                await fetch(`/api/admin/block/${id}?password=luce2026admin`, { method: 'DELETE' });
+                loadBlockedTimes();
+            } catch (e) {
+                alert('Error removing block');
             }
         }
 

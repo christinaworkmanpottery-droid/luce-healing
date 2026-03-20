@@ -662,6 +662,15 @@ app.put('/api/admin/availability', checkAdminPassword, (req, res) => {
   }
 });
 
+app.get('/api/admin/blocks', checkAdminPassword, (req, res) => {
+  try {
+    const blocks = dbAll('SELECT * FROM blocked_times ORDER BY date, start_time');
+    res.json(blocks);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/admin/block', checkAdminPassword, (req, res) => {
   const { date, start_time, end_time, reason } = req.body;
   
