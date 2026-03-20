@@ -2,7 +2,11 @@ const express = require('express');
 const path = require('path');
 const Database = require('better-sqlite3');
 const cors = require('cors');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripeKey = process.env.STRIPE_SECRET_KEY;
+if (!stripeKey) {
+  console.warn('WARNING: STRIPE_SECRET_KEY not set. Payment features will not work.');
+}
+const stripe = stripeKey ? require('stripe')(stripeKey) : null;
 
 const app = express();
 const dbPath = path.join(__dirname, 'luce-healing.db');
@@ -244,6 +248,9 @@ app.get('/api/availability/week', (req, res) => {
 
 app.post('/api/booking/checkout', async (req, res) => {
   try {
+    if (!stripe) {
+      return res.status(500).json({ error: 'Payment system not configured' });
+    }
     const { name, email, phone, session_type, date, time, duration, is_pack } = req.body;
 
     if (!name || !email || !phone || !session_type || !date || !time || !duration) {
@@ -304,7 +311,7 @@ app.post('/api/booking/checkout', async (req, res) => {
 // STRIPE WEBHOOK ENDPOINT
 // ============================================================================
 
-app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/api/stripe/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_secret';
 
@@ -433,13 +440,13 @@ app.get('/api/admin/dashboard', checkAdminPassword, (req, res) => {
 
   // Upcoming bookings
   const today = new Date().toISOString().split('T')[0];
-  stats.upcoming_bookings = db.prepare('SELECT COUNT(*) as count FROM bookings WHERE date >= ? AND status = ?', [today, 'completed']).get().count;
+  stats.upcoming_bookings = db.prepare('SELECT COUNT(*) as count FROM bookings WHERE date >= ? AND status = ?').get(today, 'completed').count;
 
   // Total clients
   stats.total_clients = db.prepare('SELECT COUNT(*) as count FROM clients').get().count;
 
   // Completed bookings
-  stats.completed_bookings = db.prepare('SELECT COUNT(*) as count FROM bookings WHERE status = ?', ['completed']).get().count;
+  stats.completed_bookings = db.prepare('SELECT COUNT(*) as count FROM bookings WHERE status = ?').get('completed').count;
 
   res.json(stats);
 });
