@@ -457,6 +457,109 @@ section {
 }
 
 /* ============================================
+   /* ============================================
+   PRICING SECTION
+   ============================================ */
+
+.pricing {
+    padding: 100px 0;
+    background: linear-gradient(135deg, #faf8f5 0%, #f5f0eb 100%);
+}
+
+.section-subtitle {
+    font-family: 'Lato', sans-serif;
+    font-size: 1.1rem;
+    color: #8a7968;
+    margin-top: 10px;
+}
+
+.pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-top: 50px;
+}
+
+.pricing-card {
+    background: white;
+    border-radius: 16px;
+    padding: 40px 30px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.pricing-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+
+.pricing-card.featured {
+    border-color: #D4A574;
+    transform: scale(1.05);
+    box-shadow: 0 8px 30px rgba(212, 165, 116, 0.2);
+}
+
+.pricing-card.featured:hover {
+    transform: scale(1.05) translateY(-5px);
+}
+
+.pricing-icon {
+    font-size: 1.5rem;
+    color: #D4A574;
+    margin-bottom: 15px;
+    letter-spacing: 5px;
+}
+
+.pricing-card h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem;
+    color: #2c2c2c;
+    margin-bottom: 10px;
+}
+
+.pricing-desc {
+    font-family: 'Lato', sans-serif;
+    font-size: 0.95rem;
+    color: #8a7968;
+    margin-bottom: 20px;
+}
+
+.pricing-amount {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #D4A574;
+    margin-bottom: 25px;
+    padding: 10px 0;
+    border-top: 1px solid #f0ebe5;
+    border-bottom: 1px solid #f0ebe5;
+}
+
+.pricing-note {
+    text-align: center;
+    margin-top: 40px;
+    font-family: 'Lato', sans-serif;
+    font-size: 0.95rem;
+    color: #8a7968;
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .pricing-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .pricing-card.featured {
+        transform: none;
+    }
+    .pricing-card.featured:hover {
+        transform: translateY(-5px);
+    }
+}
+
+/* ============================================
    WORK WITH ME SECTION
    ============================================ */
 
