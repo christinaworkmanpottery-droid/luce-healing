@@ -2000,7 +2000,8 @@
             
             rows.forEach((row, index) => {
                 const checkbox = row.querySelector('input[type="checkbox"]');
-                const selects = row.querySelectorAll('select');
+                const selects = row.querySelectorAll('select.avail-time');
+                if (selects.length < 2) return;
                 availability.push({
                     day_of_week: dayMap[index],
                     start_time: selects[0].value || '09:00',
@@ -2017,7 +2018,12 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    alert('✅ Availability saved!');
+                    const btn = document.querySelector('[onclick="saveAvailability()"]');
+                    const origText = btn.textContent;
+                    btn.textContent = '✅ Saved!';
+                    btn.style.background = '#4CAF50';
+                    btn.style.color = 'white';
+                    setTimeout(() => { btn.textContent = origText; btn.style.background = ''; btn.style.color = ''; }, 2000);
                 } else {
                     alert('Error: ' + (data.error || 'Unknown error'));
                 }
@@ -2037,13 +2043,14 @@
             const end_time = endEl ? endEl.value : '';
             const reason = reasonEl ? reasonEl.value : '';
 
-            console.log('Block time values:', { date, start_time, end_time, reason });
-            console.log('Elements found:', { dateEl: !!dateEl, startEl: !!startEl, endEl: !!endEl });
-
             if (!date || !start_time || !end_time) {
                 alert('Please fill in date, start time, and end time.');
                 return;
             }
+
+            const btn = document.querySelector('[onclick="saveBlockedTime()"]');
+            btn.textContent = 'Saving...';
+            btn.disabled = true;
 
             try {
                 const response = await fetch('/api/admin/block?password=luce13', {
@@ -2053,7 +2060,12 @@
                 });
                 const data = await response.json();
                 if (data.success || data.id) {
-                    alert('✅ Time blocked!');
+                    const btn = document.querySelector('[onclick="saveBlockedTime()"]');
+                    const origText = btn.textContent;
+                    btn.textContent = '✅ Blocked!';
+                    btn.style.background = '#4CAF50';
+                    btn.style.color = 'white';
+                    setTimeout(() => { btn.textContent = origText; btn.style.background = ''; btn.style.color = ''; }, 2000);
                     document.getElementById('block-date').value = '';
                     document.getElementById('block-start').value = '';
                     document.getElementById('block-end').value = '';
@@ -2064,6 +2076,8 @@
                 }
             } catch (error) {
                 alert('Error blocking time: ' + error.message);
+                btn.textContent = 'Block Time';
+                btn.disabled = false;
             }
         }
 

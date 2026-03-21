@@ -114,7 +114,7 @@ function initializeDatabase() {
     )
   `);
 
-  // Bookings table (UPDATED with session_format and date_of_birth)
+  // Bookings table (UPDATED with session_format, date_of_birth, and appointment tracking)
   db.exec(`
     CREATE TABLE IF NOT EXISTS bookings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,6 +132,9 @@ function initializeDatabase() {
       stripe_session_id TEXT,
       stripe_payment_status TEXT,
       notes TEXT,
+      original_booking_id INTEGER,
+      cancelled INTEGER DEFAULT 0,
+      cancelled_at TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -220,6 +223,15 @@ function initializeDatabase() {
       user_agent TEXT,
       ip TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Admin settings table (NEW)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS admin_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL UNIQUE,
+      value TEXT NOT NULL
     )
   `);
   saveDb();
@@ -368,6 +380,13 @@ function initializeDatabase() {
         [post.title, post.slug, post.content, post.excerpt]
       );
     });
+  }
+
+  // Initialize default admin password if not set
+  const adminPasswordSet = dbGet('SELECT value FROM admin_settings WHERE key = ?', ['admin_password']);
+  if (!adminPasswordSet) {
+    const defaultPasswordHash = hashPassword('luce13');
+    dbRun('INSERT INTO admin_settings (key, value) VALUES (?, ?)', ['admin_password', defaultPasswordHash]);
   }
 }
 
@@ -745,7 +764,13 @@ app.post('/api/stripe/webhook', async (req, res) => {
 
 function checkAdminPassword(req, res, next) {
   const password = req.query.password || req.body.password;
-  if (password !== 'luce13') {
+  const adminPasswordRecord = dbGet('SELECT value FROM admin_settings WHERE key = ?', ['admin_password']);
+  
+  if (!adminPasswordRecord) {
+    return res.status(500).json({ error: 'Admin password not initialized' });
+  }
+  
+  if (!verifyPassword(password, adminPasswordRecord.value)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
