@@ -145,10 +145,9 @@
                 <li><a href="#work-with-me" class="nav-link">Work With Me</a></li>
                 <li><a href="#blog" class="nav-link">Blog</a></li>
                 <li><a href="#reviews" class="nav-link">Reviews</a></li>
-                <li><a href="#blog" class="nav-link">Blog</a></li>
-                <li><a href="#reviews" class="nav-link">Reviews</a></li>
                 <li><a href="#faq" class="nav-link">FAQ</a></li>
                 <li><a href="#contact" class="nav-link">Contact</a></li>
+                <li><a href="#" class="nav-link" onclick="openAdminPanel(); return false;" style="font-size:0.8em;opacity:0.5;">👑</a></li>
                 <li id="auth-nav-item" style="display: none;">
                     <button class="btn btn-secondary" id="auth-login-btn" onclick="openLoginModal()">Login</button>
                     <button class="btn btn-primary" id="auth-register-btn" onclick="openRegisterModal()">Sign Up</button>
@@ -994,6 +993,7 @@
                 <button class="admin-tab" data-tab="admin-newsletter">Newsletter</button>
                 <button class="admin-tab" data-tab="admin-reviews">Reviews</button>
                 <button class="admin-tab" data-tab="admin-dashboard">Dashboard</button>
+                <button class="admin-tab" data-tab="admin-traffic">📊 Traffic</button>
             </div>
 
             <!-- Bookings Tab -->
@@ -1271,6 +1271,40 @@
                 <div class="admin-card">
                     <h3>Quick Actions</h3>
                     <p><button class="btn btn-secondary" style="margin: 10px 10px 10px 0;">Export Bookings</button></p>
+                </div>
+            </div>
+
+            <!-- Traffic Tab -->
+            <div id="admin-traffic" class="admin-tab-content">
+                <div class="dashboard-stats" id="traffic-stats">
+                    <div class="stat-card">
+                        <div class="stat-label">Today</div>
+                        <div class="stat-value" id="traffic-today">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">This Week</div>
+                        <div class="stat-value" id="traffic-week">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">This Month</div>
+                        <div class="stat-value" id="traffic-month">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">All Time</div>
+                        <div class="stat-value" id="traffic-total">0</div>
+                    </div>
+                </div>
+                <div class="admin-card" style="margin-top:20px;">
+                    <h3>📈 Daily Views (Last 30 Days)</h3>
+                    <div id="traffic-daily" style="max-height:300px;overflow-y:auto;"></div>
+                </div>
+                <div class="admin-card" style="margin-top:20px;">
+                    <h3>🔥 Top Pages</h3>
+                    <div id="traffic-pages"></div>
+                </div>
+                <div class="admin-card" style="margin-top:20px;">
+                    <h3>🔗 Top Referrers (Where Traffic Comes From)</h3>
+                    <div id="traffic-referrers"></div>
                 </div>
             </div>
         </div>
@@ -1887,7 +1921,7 @@
         // Open admin panel (if password is correct)
         function openAdminPanel() {
             const password = prompt('Admin password:');
-            if (password === 'luce2026admin') {
+            if (password === 'luce13') {
                 adminPanel.classList.add('active');
                 loadAdminData();
             } else {
@@ -1896,13 +1930,14 @@
         }
 
         async function loadAdminData() {
-            const password = 'luce2026admin';
+            const password = 'luce13';
             try {
                 const response = await fetch(`/api/admin/bookings?password=${password}`);
                 const bookings = await response.json();
                 updateAdminBookingsTable(bookings);
                 loadAdminAvailability();
                 loadBlockedTimes();
+                loadAdminTraffic();
             } catch (error) {
                 console.error('Error loading admin data:', error);
             }
@@ -1947,7 +1982,7 @@
 
         async function loadAdminAvailability() {
             try {
-                const response = await fetch(`/api/admin/bookings?password=luce2026admin`);
+                const response = await fetch(`/api/admin/bookings?password=luce13`);
                 // Load current availability from server
                 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 const rows = document.querySelectorAll('.day-availability');
@@ -1975,7 +2010,7 @@
             });
 
             try {
-                const response = await fetch('/api/admin/availability?password=luce2026admin', {
+                const response = await fetch('/api/admin/availability?password=luce13', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ availability })
@@ -2011,7 +2046,7 @@
             }
 
             try {
-                const response = await fetch('/api/admin/block?password=luce2026admin', {
+                const response = await fetch('/api/admin/block?password=luce13', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ date, start_time, end_time, reason })
@@ -2034,7 +2069,7 @@
 
         async function loadBlockedTimes() {
             try {
-                const response = await fetch('/api/admin/blocks?password=luce2026admin');
+                const response = await fetch('/api/admin/blocks?password=luce13');
                 const blocks = await response.json();
                 const container = document.getElementById('blocked-times-list');
                 
@@ -2063,10 +2098,64 @@
         window.removeBlock = async function(id) {
             if (!confirm('Remove this blocked time?')) return;
             try {
-                await fetch(`/api/admin/block/${id}?password=luce2026admin`, { method: 'DELETE' });
+                await fetch(`/api/admin/block/${id}?password=luce13`, { method: 'DELETE' });
                 loadBlockedTimes();
             } catch (e) {
                 alert('Error removing block');
+            }
+        }
+
+        async function loadAdminTraffic() {
+            try {
+                const response = await fetch('/api/admin/traffic?password=luce13');
+                const data = await response.json();
+                
+                document.getElementById('traffic-today').textContent = data.today || 0;
+                document.getElementById('traffic-week').textContent = data.week || 0;
+                document.getElementById('traffic-month').textContent = data.month || 0;
+                document.getElementById('traffic-total').textContent = data.total || 0;
+                
+                // Daily views table
+                const dailyEl = document.getElementById('traffic-daily');
+                if (data.dailyViews && data.dailyViews.length) {
+                    let html = '<table class="calendar-table"><thead><tr><th>Date</th><th>Views</th></tr></thead><tbody>';
+                    data.dailyViews.forEach(d => {
+                        html += '<tr><td>' + d.date + '</td><td><strong>' + d.views + '</strong></td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    dailyEl.innerHTML = html;
+                } else {
+                    dailyEl.innerHTML = '<p style="color:#888;">No traffic data yet. Views will appear as people visit your site.</p>';
+                }
+                
+                // Top pages
+                const pagesEl = document.getElementById('traffic-pages');
+                if (data.topPages && data.topPages.length) {
+                    let html = '<table class="calendar-table"><thead><tr><th>Page</th><th>Views</th></tr></thead><tbody>';
+                    data.topPages.forEach(p => {
+                        html += '<tr><td>' + p.path + '</td><td><strong>' + p.views + '</strong></td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    pagesEl.innerHTML = html;
+                } else {
+                    pagesEl.innerHTML = '<p style="color:#888;">No data yet</p>';
+                }
+                
+                // Top referrers
+                const refEl = document.getElementById('traffic-referrers');
+                if (data.topReferrers && data.topReferrers.length) {
+                    let html = '<table class="calendar-table"><thead><tr><th>Source</th><th>Views</th></tr></thead><tbody>';
+                    data.topReferrers.forEach(r => {
+                        const source = r.referrer.length > 60 ? r.referrer.substring(0, 60) + '...' : r.referrer;
+                        html += '<tr><td>' + source + '</td><td><strong>' + r.views + '</strong></td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    refEl.innerHTML = html;
+                } else {
+                    refEl.innerHTML = '<p style="color:#888;">No referrer data yet. This shows where your visitors come from (Google, Instagram, etc.)</p>';
+                }
+            } catch (e) {
+                console.error('Error loading traffic:', e);
             }
         }
 
@@ -2141,7 +2230,7 @@
 
         async function loadBlogForEdit(id) {
             try {
-                const allPosts = await fetch('/api/admin/blog?password=luce2026admin').then(r => r.json());
+                const allPosts = await fetch('/api/admin/blog?password=luce13').then(r => r.json());
                 const post = allPosts.find(p => p.id == id);
                 if (post) {
                     document.getElementById('blog-modal-title').textContent = 'Edit Blog Post';
@@ -2164,7 +2253,7 @@
             const method = id ? 'PUT' : 'POST';
             
             try {
-                const response = await fetch(url + '?password=luce2026admin', {
+                const response = await fetch(url + '?password=luce13', {
                     method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2187,7 +2276,7 @@
 
         async function loadAdminBlog() {
             try {
-                const response = await fetch('/api/admin/blog?password=luce2026admin');
+                const response = await fetch('/api/admin/blog?password=luce13');
                 const posts = await response.json();
                 const container = document.getElementById('admin-blog-list');
                 
@@ -2224,7 +2313,7 @@
         async function deleteBlogPost(id) {
             if (!confirm('Delete this post permanently?')) return;
             try {
-                await fetch(`/api/admin/blog/${id}?password=luce2026admin`, { method: 'DELETE' });
+                await fetch(`/api/admin/blog/${id}?password=luce13`, { method: 'DELETE' });
                 alert('✅ Post deleted');
                 loadAdminBlog();
                 loadBlogPosts();
@@ -2271,7 +2360,7 @@
 
         async function loadAdminNewsletter() {
             try {
-                const response = await fetch('/api/admin/newsletter/subscribers?password=luce2026admin');
+                const response = await fetch('/api/admin/newsletter/subscribers?password=luce13');
                 const subscribers = await response.json();
                 const container = document.getElementById('admin-newsletter-list');
                 
@@ -2300,7 +2389,7 @@
         async function removeSubscriber(id) {
             if (!confirm('Remove subscriber?')) return;
             try {
-                await fetch(`/api/admin/newsletter/${id}?password=luce2026admin`, { method: 'DELETE' });
+                await fetch(`/api/admin/newsletter/${id}?password=luce13`, { method: 'DELETE' });
                 alert('✅ Removed');
                 loadAdminNewsletter();
             } catch (e) {
@@ -2310,7 +2399,7 @@
 
         async function exportNewsletterCSV() {
             try {
-                const response = await fetch('/api/admin/newsletter/export?password=luce2026admin');
+                const response = await fetch('/api/admin/newsletter/export?password=luce13');
                 const csv = await response.text();
                 const blob = new Blob([csv], { type: 'text/csv' });
                 const url = window.URL.createObjectURL(blob);
@@ -2428,7 +2517,7 @@
 
         async function loadAdminReviews() {
             try {
-                const response = await fetch('/api/admin/reviews?password=luce2026admin');
+                const response = await fetch('/api/admin/reviews?password=luce13');
                 const reviews = await response.json();
                 const container = document.getElementById('admin-reviews-list');
                 
@@ -2469,7 +2558,7 @@
 
         async function updateReviewStatus(id, approved) {
             try {
-                await fetch(`/api/admin/reviews/${id}?password=luce2026admin`, {
+                await fetch(`/api/admin/reviews/${id}?password=luce13`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ approved })
@@ -2485,7 +2574,7 @@
         async function deleteReview(id) {
             if (!confirm('Delete this review permanently?')) return;
             try {
-                await fetch(`/api/admin/reviews/${id}?password=luce2026admin`, { method: 'DELETE' });
+                await fetch(`/api/admin/reviews/${id}?password=luce13`, { method: 'DELETE' });
                 alert('✅ Deleted');
                 loadAdminReviews();
                 loadPublicReviews();
@@ -2508,6 +2597,14 @@
         if (window.location.hash === '#admin') {
             openAdminPanel();
         }
+    </script>
+    <script>
+    // Track page view
+    fetch('/api/track', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ path: window.location.pathname + window.location.hash })
+    }).catch(() => {});
     </script>
 </body>
 </html>

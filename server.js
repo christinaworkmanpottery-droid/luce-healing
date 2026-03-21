@@ -212,6 +212,18 @@ function initializeDatabase() {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS page_views (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT NOT NULL,
+      referrer TEXT,
+      user_agent TEXT,
+      ip TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  saveDb();
+
   // Initialize default availability if empty
   const availabilityCount = dbGet('SELECT COUNT(*) as count FROM availability');
   if (availabilityCount.count === 0) {
@@ -733,7 +745,7 @@ app.post('/api/stripe/webhook', async (req, res) => {
 
 function checkAdminPassword(req, res, next) {
   const password = req.query.password || req.body.password;
-  if (password !== 'luce2026admin') {
+  if (password !== 'luce13') {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
@@ -1076,6 +1088,56 @@ app.delete('/api/admin/reviews/:id', checkAdminPassword, (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TRAFFIC TRACKING
+// ============================================================================
+
+app.post('/api/track', (req, res) => {
+  const { path } = req.body;
+  const referrer = req.headers.referer || req.headers.referrer || '';
+  const userAgent = req.headers['user-agent'] || '';
+  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || '';
+  
+  try {
+    dbRun('INSERT INTO page_views (path, referrer, user_agent, ip) VALUES (?, ?, ?, ?)',
+      [path || '/', referrer, userAgent, ip]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: true }); // fail silently
+  }
+});
+
+app.get('/api/admin/traffic', checkAdminPassword, (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0];
+    const monthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+
+    const todayViews = dbGet("SELECT COUNT(*) as count FROM page_views WHERE date(created_at) = ?", [today]);
+    const weekViews = dbGet("SELECT COUNT(*) as count FROM page_views WHERE date(created_at) >= ?", [weekAgo]);
+    const monthViews = dbGet("SELECT COUNT(*) as count FROM page_views WHERE date(created_at) >= ?", [monthAgo]);
+    const totalViews = dbGet("SELECT COUNT(*) as count FROM page_views");
+    
+    const topPages = dbAll("SELECT path, COUNT(*) as views FROM page_views GROUP BY path ORDER BY views DESC LIMIT 10");
+    
+    const dailyViews = dbAll("SELECT date(created_at) as date, COUNT(*) as views FROM page_views WHERE date(created_at) >= ? GROUP BY date(created_at) ORDER BY date DESC", [monthAgo]);
+    
+    const topReferrers = dbAll("SELECT referrer, COUNT(*) as views FROM page_views WHERE referrer != '' GROUP BY referrer ORDER BY views DESC LIMIT 10");
+
+    res.json({
+      today: todayViews.count,
+      week: weekViews.count,
+      month: monthViews.count,
+      total: totalViews.count,
+      topPages,
+      dailyViews,
+      topReferrers
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
