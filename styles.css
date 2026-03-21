@@ -1484,6 +1484,105 @@ section {
     color: #9a6b1a;
 }
 
+/* ============================================================================
+   WEEKLY CALENDAR GRID
+   ============================================================================ */
+
+.week-cal-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 0.85em;
+}
+
+.week-cal-table th,
+.week-cal-table td {
+    border: 1px solid #e8e0d8;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.week-cal-time-col {
+    width: 60px;
+    background: var(--warm-white);
+}
+
+.week-cal-day-header {
+    padding: 10px 4px;
+    background: var(--warm-white);
+    font-weight: 600;
+    color: var(--dark-text);
+    font-size: 0.95em;
+}
+
+.week-cal-day-header.week-cal-today {
+    background: linear-gradient(135deg, #D4A574, #c49060);
+    color: white;
+}
+
+.week-cal-time-label {
+    padding: 6px 8px;
+    font-weight: 500;
+    color: var(--light-text);
+    background: var(--warm-white);
+    font-size: 0.85em;
+    white-space: nowrap;
+    width: 60px;
+}
+
+.week-cal-cell {
+    height: 36px;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.week-cal-cell:hover {
+    opacity: 0.85;
+    box-shadow: inset 0 0 0 2px rgba(212, 165, 116, 0.4);
+}
+
+.week-cal-available {
+    background: #e8f5e9;
+}
+
+.week-cal-booked {
+    background: #e3f2fd;
+    cursor: pointer !important;
+}
+
+.week-cal-booked:hover {
+    background: #bbdefb;
+}
+
+.week-cal-blocked {
+    background: #fce4ec;
+}
+
+.week-cal-closed {
+    background: #f5f5f5;
+}
+
+.week-cal-booking-dot {
+    color: #1565c0;
+    font-size: 1.1em;
+}
+
+/* Schedule time select styling */
+.schedule-time-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95em;
+}
+
+/* Block forms side-by-side responsive */
+@media (max-width: 768px) {
+    #admin-schedule > div:last-child {
+        grid-template-columns: 1fr !important;
+    }
+}
+
 .availability-grid {
     display: grid;
     gap: 20px;

@@ -801,6 +801,44 @@ function checkAdminPassword(req, res, next) {
   next();
 }
 
+// Calendar endpoint — returns everything needed to render one week
+app.get('/api/admin/calendar', checkAdminPassword, (req, res) => {
+  try {
+    const { week_start } = req.query;
+    if (!week_start) {
+      return res.status(400).json({ error: 'week_start required (YYYY-MM-DD)' });
+    }
+
+    const startDate = dateToJS(week_start);
+    const endDate = new Date(startDate);
+    endDate.setUTCDate(endDate.getUTCDate() + 6);
+    const endStr = endDate.toISOString().split('T')[0];
+
+    // Weekly availability settings
+    const availability = dbAll('SELECT * FROM availability ORDER BY day_of_week');
+
+    // Bookings for this week (non-cancelled only)
+    const bookings = dbAll(
+      'SELECT * FROM bookings WHERE date >= ? AND date <= ? AND cancelled = 0 ORDER BY date, time',
+      [week_start, endStr]
+    );
+
+    // One-off blocks for this week
+    const blocked_times = dbAll(
+      'SELECT * FROM blocked_times WHERE date >= ? AND date <= ? ORDER BY date, start_time',
+      [week_start, endStr]
+    );
+
+    // All recurring blocks
+    const recurring_blocks = dbAll('SELECT * FROM recurring_blocks ORDER BY day_of_week, start_time');
+
+    res.json({ availability, bookings, blocked_times, recurring_blocks });
+  } catch (error) {
+    console.error('Calendar endpoint error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/admin/bookings', checkAdminPassword, (req, res) => {
   const { date } = req.query;
   let query = 'SELECT * FROM bookings';

@@ -983,9 +983,7 @@
 
         <div class="admin-container">
             <div class="admin-tabs">
-                <button class="admin-tab active" data-tab="admin-bookings">Bookings</button>
-                <button class="admin-tab" data-tab="admin-availability">Availability</button>
-                <button class="admin-tab" data-tab="admin-blocked">Blocked Times</button>
+                <button class="admin-tab active" data-tab="admin-schedule">📅 Schedule</button>
                 <button class="admin-tab" data-tab="admin-clients">Clients</button>
                 <button class="admin-tab" data-tab="admin-blog">Blog</button>
                 <button class="admin-tab" data-tab="admin-newsletter">Newsletter</button>
@@ -995,32 +993,49 @@
                 <button class="admin-tab" data-tab="admin-settings">⚙️ Settings</button>
             </div>
 
-            <!-- Bookings Tab -->
-            <div id="admin-bookings" class="admin-tab-content active">
-                <div class="admin-card">
-                    <h3>All Bookings</h3>
-                    <table class="calendar-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Client</th>
-                                <th>Session</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-bookings-table">
-                            <tr><td colspan="5" style="text-align: center; padding: 20px;">Loading...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <!-- Unified Schedule Tab -->
+            <div id="admin-schedule" class="admin-tab-content active">
 
-            <!-- Availability Tab -->
-            <div id="admin-availability" class="admin-tab-content">
+                <!-- Section 1: Visual Week Calendar -->
                 <div class="admin-card">
-                    <h3>Weekly Availability</h3>
-                    <p style="margin-bottom: 20px; color: #666;">Set your weekly availability. Times are in Pacific Time (PT).</p>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+                        <h3 style="margin:0;">📅 Weekly Schedule</h3>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <button class="btn btn-secondary" style="padding:6px 14px;" onclick="calendarPrevWeek()">◀</button>
+                            <span id="calendar-week-label" style="font-weight:600; min-width:200px; text-align:center;"></span>
+                            <button class="btn btn-secondary" style="padding:6px 14px;" onclick="calendarNextWeek()">▶</button>
+                            <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.85em;" onclick="calendarToday()">Today</button>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:15px; font-size:0.85em;">
+                        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#e8f5e9;border:1px solid #c8e6c9;vertical-align:middle;margin-right:4px;"></span> Available</span>
+                        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#e3f2fd;border:1px solid #90caf9;vertical-align:middle;margin-right:4px;"></span> Booked</span>
+                        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#fce4ec;border:1px solid #f48fb1;vertical-align:middle;margin-right:4px;"></span> Blocked</span>
+                        <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#f5f5f5;border:1px solid #e0e0e0;vertical-align:middle;margin-right:4px;"></span> Closed</span>
+                    </div>
+                    <div id="week-calendar-grid" style="overflow-x:auto;">
+                        <p style="text-align:center; padding:40px; color:#999;">Loading calendar...</p>
+                    </div>
+                </div>
+
+                <!-- Booking Detail Tooltip (hidden by default) -->
+                <div id="booking-detail-tooltip" style="display:none; position:fixed; z-index:3000; background:white; border:2px solid #D4A574; border-radius:10px; padding:16px 20px; box-shadow:0 8px 30px rgba(0,0,0,0.15); max-width:300px; font-size:0.9em;">
+                    <div id="booking-detail-content"></div>
+                    <button onclick="document.getElementById('booking-detail-tooltip').style.display='none'" style="margin-top:8px; padding:4px 12px; border:1px solid #ddd; border-radius:4px; background:#f9f9f9; cursor:pointer; font-size:0.85em;">Close</button>
+                </div>
+
+                <!-- Section 4: Upcoming Bookings -->
+                <div class="admin-card">
+                    <h3>📋 Upcoming Bookings</h3>
+                    <div id="upcoming-bookings-list">
+                        <p style="text-align:center; padding:20px; color:#999;">Loading...</p>
+                    </div>
+                </div>
+
+                <!-- Section 2: Weekly Availability -->
+                <div class="admin-card">
+                    <h3>⏰ Weekly Availability</h3>
+                    <p style="margin-bottom:20px; color:#666;">Set your weekly hours. Times are in Pacific Time (PT).</p>
                     <div class="availability-grid">
                         <div class="day-availability">
                             <label><input type="checkbox" checked> Monday</label>
@@ -1058,205 +1073,73 @@
                             <select class="avail-time" data-default="14:00"></select>
                         </div>
                     </div>
-                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="saveAvailability()">Save Availability</button>
-                </div>
-            </div>
-
-            <!-- Blocked Times Tab -->
-            <div id="admin-blocked" class="admin-tab-content">
-                <div class="admin-card">
-                    <h3>Block Time</h3>
-                    <p style="margin-bottom: 20px; color: #666;">Block specific dates/times when you're unavailable.</p>
-                    <div class="form-group">
-                        <label>Date</label>
-                        <input type="date" id="block-date">
-                    </div>
-                    <div class="form-group">
-                        <label>Start Time (e.g. 9:00 AM)</label>
-                        <select id="block-start" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
-                            <option value="">Select time...</option>
-                            <option value="06:00">6:00 AM</option>
-                            <option value="06:30">6:30 AM</option>
-                            <option value="07:00">7:00 AM</option>
-                            <option value="07:30">7:30 AM</option>
-                            <option value="08:00">8:00 AM</option>
-                            <option value="08:30">8:30 AM</option>
-                            <option value="09:00">9:00 AM</option>
-                            <option value="09:30">9:30 AM</option>
-                            <option value="10:00">10:00 AM</option>
-                            <option value="10:30">10:30 AM</option>
-                            <option value="11:00">11:00 AM</option>
-                            <option value="11:30">11:30 AM</option>
-                            <option value="12:00">12:00 PM</option>
-                            <option value="12:30">12:30 PM</option>
-                            <option value="13:00">1:00 PM</option>
-                            <option value="13:30">1:30 PM</option>
-                            <option value="14:00">2:00 PM</option>
-                            <option value="14:30">2:30 PM</option>
-                            <option value="15:00">3:00 PM</option>
-                            <option value="15:30">3:30 PM</option>
-                            <option value="16:00">4:00 PM</option>
-                            <option value="16:30">4:30 PM</option>
-                            <option value="17:00">5:00 PM</option>
-                            <option value="17:30">5:30 PM</option>
-                            <option value="18:00">6:00 PM</option>
-                            <option value="18:30">6:30 PM</option>
-                            <option value="19:00">7:00 PM</option>
-                            <option value="19:30">7:30 PM</option>
-                            <option value="20:00">8:00 PM</option>
-                            <option value="20:30">8:30 PM</option>
-                            <option value="21:00">9:00 PM</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>End Time</label>
-                        <select id="block-end" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
-                            <option value="">Select time...</option>
-                            <option value="06:00">6:00 AM</option>
-                            <option value="06:30">6:30 AM</option>
-                            <option value="07:00">7:00 AM</option>
-                            <option value="07:30">7:30 AM</option>
-                            <option value="08:00">8:00 AM</option>
-                            <option value="08:30">8:30 AM</option>
-                            <option value="09:00">9:00 AM</option>
-                            <option value="09:30">9:30 AM</option>
-                            <option value="10:00">10:00 AM</option>
-                            <option value="10:30">10:30 AM</option>
-                            <option value="11:00">11:00 AM</option>
-                            <option value="11:30">11:30 AM</option>
-                            <option value="12:00">12:00 PM</option>
-                            <option value="12:30">12:30 PM</option>
-                            <option value="13:00">1:00 PM</option>
-                            <option value="13:30">1:30 PM</option>
-                            <option value="14:00">2:00 PM</option>
-                            <option value="14:30">2:30 PM</option>
-                            <option value="15:00">3:00 PM</option>
-                            <option value="15:30">3:30 PM</option>
-                            <option value="16:00">4:00 PM</option>
-                            <option value="16:30">4:30 PM</option>
-                            <option value="17:00">5:00 PM</option>
-                            <option value="17:30">5:30 PM</option>
-                            <option value="18:00">6:00 PM</option>
-                            <option value="18:30">6:30 PM</option>
-                            <option value="19:00">7:00 PM</option>
-                            <option value="19:30">7:30 PM</option>
-                            <option value="20:00">8:00 PM</option>
-                            <option value="20:30">8:30 PM</option>
-                            <option value="21:00">9:00 PM</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Reason (optional)</label>
-                        <input type="text" id="block-reason" placeholder="e.g., Personal, Retreat, etc.">
-                    </div>
-                    <button class="btn btn-primary" onclick="saveBlockedTime()">Block Time</button>
-                </div>
-                <div class="admin-card" style="margin-top: 20px;">
-                    <h3>Currently Blocked (One-Time)</h3>
-                    <div id="blocked-times-list">
-                        <p style="color: #888;">No blocked times currently</p>
-                    </div>
+                    <button class="btn btn-primary" style="margin-top:20px;" onclick="saveAvailability()">Save Availability</button>
                 </div>
 
-                <div class="admin-card" style="margin-top: 30px;">
-                    <h3>🔁 Recurring Weekly Blocks</h3>
-                    <p style="margin-bottom: 20px; color: #666;">Block the same time every week (e.g., "Class every Monday 1-2 PM").</p>
-                    <div class="form-group">
-                        <label>Day of Week</label>
-                        <select id="recurring-block-day" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
-                            <option value="0">Monday</option>
-                            <option value="1">Tuesday</option>
-                            <option value="2">Wednesday</option>
-                            <option value="3">Thursday</option>
-                            <option value="4">Friday</option>
-                            <option value="5">Saturday</option>
-                            <option value="6">Sunday</option>
-                        </select>
+                <!-- Section 3: Block Times -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                    <!-- Recurring Weekly Blocks -->
+                    <div class="admin-card" style="margin-bottom:0;">
+                        <h3>🔁 Recurring Weekly Blocks</h3>
+                        <p style="margin-bottom:15px; color:#666; font-size:0.9em;">Block the same time every week.</p>
+                        <div class="form-group">
+                            <label>Day</label>
+                            <select id="recurring-block-day" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
+                                <option value="0">Monday</option>
+                                <option value="1">Tuesday</option>
+                                <option value="2">Wednesday</option>
+                                <option value="3">Thursday</option>
+                                <option value="4">Friday</option>
+                                <option value="5">Saturday</option>
+                                <option value="6">Sunday</option>
+                            </select>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div class="form-group">
+                                <label>Start</label>
+                                <select id="recurring-block-start" class="schedule-time-select"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>End</label>
+                                <select id="recurring-block-end" class="schedule-time-select"></select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Reason (optional)</label>
+                            <input type="text" id="recurring-block-reason" placeholder="e.g., Class, Personal..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
+                        </div>
+                        <button class="btn btn-primary" onclick="saveRecurringBlock()" style="width:100%;">Add Recurring Block</button>
+                        <div id="recurring-blocks-list" style="margin-top:15px;">
+                            <p style="color:#888;">No recurring blocks set</p>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Start Time</label>
-                        <select id="recurring-block-start" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
-                            <option value="">Select time...</option>
-                            <option value="06:00">6:00 AM</option>
-                            <option value="06:30">6:30 AM</option>
-                            <option value="07:00">7:00 AM</option>
-                            <option value="07:30">7:30 AM</option>
-                            <option value="08:00">8:00 AM</option>
-                            <option value="08:30">8:30 AM</option>
-                            <option value="09:00">9:00 AM</option>
-                            <option value="09:30">9:30 AM</option>
-                            <option value="10:00">10:00 AM</option>
-                            <option value="10:30">10:30 AM</option>
-                            <option value="11:00">11:00 AM</option>
-                            <option value="11:30">11:30 AM</option>
-                            <option value="12:00">12:00 PM</option>
-                            <option value="12:30">12:30 PM</option>
-                            <option value="13:00">1:00 PM</option>
-                            <option value="13:30">1:30 PM</option>
-                            <option value="14:00">2:00 PM</option>
-                            <option value="14:30">2:30 PM</option>
-                            <option value="15:00">3:00 PM</option>
-                            <option value="15:30">3:30 PM</option>
-                            <option value="16:00">4:00 PM</option>
-                            <option value="16:30">4:30 PM</option>
-                            <option value="17:00">5:00 PM</option>
-                            <option value="17:30">5:30 PM</option>
-                            <option value="18:00">6:00 PM</option>
-                            <option value="18:30">6:30 PM</option>
-                            <option value="19:00">7:00 PM</option>
-                            <option value="19:30">7:30 PM</option>
-                            <option value="20:00">8:00 PM</option>
-                            <option value="20:30">8:30 PM</option>
-                            <option value="21:00">9:00 PM</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>End Time</label>
-                        <select id="recurring-block-end" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
-                            <option value="">Select time...</option>
-                            <option value="06:00">6:00 AM</option>
-                            <option value="06:30">6:30 AM</option>
-                            <option value="07:00">7:00 AM</option>
-                            <option value="07:30">7:30 AM</option>
-                            <option value="08:00">8:00 AM</option>
-                            <option value="08:30">8:30 AM</option>
-                            <option value="09:00">9:00 AM</option>
-                            <option value="09:30">9:30 AM</option>
-                            <option value="10:00">10:00 AM</option>
-                            <option value="10:30">10:30 AM</option>
-                            <option value="11:00">11:00 AM</option>
-                            <option value="11:30">11:30 AM</option>
-                            <option value="12:00">12:00 PM</option>
-                            <option value="12:30">12:30 PM</option>
-                            <option value="13:00">1:00 PM</option>
-                            <option value="13:30">1:30 PM</option>
-                            <option value="14:00">2:00 PM</option>
-                            <option value="14:30">2:30 PM</option>
-                            <option value="15:00">3:00 PM</option>
-                            <option value="15:30">3:30 PM</option>
-                            <option value="16:00">4:00 PM</option>
-                            <option value="16:30">4:30 PM</option>
-                            <option value="17:00">5:00 PM</option>
-                            <option value="17:30">5:30 PM</option>
-                            <option value="18:00">6:00 PM</option>
-                            <option value="18:30">6:30 PM</option>
-                            <option value="19:00">7:00 PM</option>
-                            <option value="19:30">7:30 PM</option>
-                            <option value="20:00">8:00 PM</option>
-                            <option value="20:30">8:30 PM</option>
-                            <option value="21:00">9:00 PM</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Reason (optional)</label>
-                        <input type="text" id="recurring-block-reason" placeholder="e.g., Class, Personal, etc.">
-                    </div>
-                    <button class="btn btn-primary" onclick="saveRecurringBlock()">Add Recurring Block</button>
-                </div>
-                <div class="admin-card" style="margin-top: 20px;">
-                    <h3>Active Recurring Blocks</h3>
-                    <div id="recurring-blocks-list">
-                        <p style="color: #888;">No recurring blocks set</p>
+
+                    <!-- One-Off Blocks -->
+                    <div class="admin-card" style="margin-bottom:0;">
+                        <h3>📌 One-Off Blocks</h3>
+                        <p style="margin-bottom:15px; color:#666; font-size:0.9em;">Block a specific date/time.</p>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="block-date" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div class="form-group">
+                                <label>Start</label>
+                                <select id="block-start" class="schedule-time-select"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>End</label>
+                                <select id="block-end" class="schedule-time-select"></select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Reason (optional)</label>
+                            <input type="text" id="block-reason" placeholder="e.g., Personal, Retreat..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
+                        </div>
+                        <button class="btn btn-primary" onclick="saveBlockedTime()" style="width:100%;">Block Date</button>
+                        <div id="blocked-times-list" style="margin-top:15px;">
+                            <p style="color:#888;">No blocked times currently</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2282,12 +2165,11 @@
 
         async function loadAdminData() {
             try {
-                const response = await fetch(`/api/admin/bookings?password=${encodeURIComponent(adminPassword)}`);
-                const bookings = await response.json();
-                updateAdminBookingsTable(bookings);
                 loadAdminAvailability();
                 loadBlockedTimes();
                 loadRecurringBlocks();
+                loadWeekCalendar();
+                loadUpcomingBookings();
                 loadAdminTraffic();
             } catch (error) {
                 console.error('Error loading admin data:', error);
@@ -2395,6 +2277,7 @@
                     btn.style.background = '#4CAF50';
                     btn.style.color = 'white';
                     setTimeout(() => { btn.textContent = origText; btn.style.background = ''; btn.style.color = ''; }, 2000);
+                    loadWeekCalendar();
                 } else {
                     alert('Error: ' + (data.error || 'Unknown error'));
                 }
@@ -2442,6 +2325,7 @@
                     document.getElementById('block-end').value = '';
                     document.getElementById('block-reason').value = '';
                     loadBlockedTimes();
+                    loadWeekCalendar();
                 } else {
                     alert('Error: ' + (data.error || 'Unknown error'));
                 }
@@ -2485,6 +2369,7 @@
             try {
                 await fetch(`/api/admin/block/${id}?password=${encodeURIComponent(adminPassword)}`, { method: 'DELETE' });
                 loadBlockedTimes();
+                loadWeekCalendar();
             } catch (e) {
                 alert('Error removing block');
             }
@@ -2539,6 +2424,7 @@
                     endEl.value = '';
                     reasonEl.value = '';
                     loadRecurringBlocks();
+                    loadWeekCalendar();
                 } else {
                     alert('Error: ' + (data.error || 'Unknown error'));
                     btn.textContent = 'Add Recurring Block';
@@ -2584,10 +2470,313 @@
             try {
                 await fetch(`/api/admin/recurring-blocks/${id}?password=${encodeURIComponent(adminPassword)}`, { method: 'DELETE' });
                 loadRecurringBlocks();
+                loadWeekCalendar();
             } catch (e) {
                 alert('Error removing recurring block');
             }
         }
+
+        // ============================================================================
+        // WEEKLY CALENDAR VIEW
+        // ============================================================================
+
+        let calendarWeekStart = null; // Date object for Monday of current view week
+
+        function getMonday(d) {
+            const date = new Date(d);
+            const day = date.getUTCDay();
+            const diff = (day === 0 ? -6 : 1) - day;
+            date.setUTCDate(date.getUTCDate() + diff);
+            date.setUTCHours(0, 0, 0, 0);
+            return date;
+        }
+
+        function formatDateStr(d) {
+            return d.toISOString().split('T')[0];
+        }
+
+        function formatDateShort(d) {
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return months[d.getUTCMonth()] + ' ' + d.getUTCDate();
+        }
+
+        function calendarToday() {
+            calendarWeekStart = getMonday(new Date());
+            loadWeekCalendar();
+        }
+
+        function calendarPrevWeek() {
+            calendarWeekStart.setUTCDate(calendarWeekStart.getUTCDate() - 7);
+            loadWeekCalendar();
+        }
+
+        function calendarNextWeek() {
+            calendarWeekStart.setUTCDate(calendarWeekStart.getUTCDate() + 7);
+            loadWeekCalendar();
+        }
+
+        function timeToMins(t) {
+            const [h, m] = t.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function fmt12(t) {
+            const [h, m] = t.split(':').map(Number);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const dh = h % 12 === 0 ? 12 : h % 12;
+            return dh + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+        }
+
+        async function loadWeekCalendar() {
+            if (!calendarWeekStart) calendarWeekStart = getMonday(new Date());
+
+            const weekStartStr = formatDateStr(calendarWeekStart);
+            const endDate = new Date(calendarWeekStart);
+            endDate.setUTCDate(endDate.getUTCDate() + 6);
+
+            // Update label
+            const label = document.getElementById('calendar-week-label');
+            if (label) label.textContent = formatDateShort(calendarWeekStart) + ' — ' + formatDateShort(endDate) + ', ' + endDate.getUTCFullYear();
+
+            try {
+                const response = await fetch(`/api/admin/calendar?week_start=${weekStartStr}&password=${encodeURIComponent(adminPassword)}`);
+                const data = await response.json();
+                renderWeekCalendar(data);
+            } catch (e) {
+                console.error('Error loading calendar:', e);
+                document.getElementById('week-calendar-grid').innerHTML = '<p style="color:red;text-align:center;">Error loading calendar data</p>';
+            }
+        }
+
+        function renderWeekCalendar(data) {
+            const container = document.getElementById('week-calendar-grid');
+            const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+            const START_HOUR = 6;
+            const END_HOUR = 21; // 9 PM
+
+            // Build date strings for each day of the week
+            const dates = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(calendarWeekStart);
+                d.setUTCDate(d.getUTCDate() + i);
+                dates.push(formatDateStr(d));
+            }
+
+            // Build lookup maps
+            const availMap = {};
+            (data.availability || []).forEach(a => { availMap[a.day_of_week] = a; });
+
+            // Bookings indexed by date
+            const bookingMap = {};
+            (data.bookings || []).forEach(b => {
+                if (!bookingMap[b.date]) bookingMap[b.date] = [];
+                bookingMap[b.date].push(b);
+            });
+
+            // Blocked times indexed by date
+            const blockedMap = {};
+            (data.blocked_times || []).forEach(bt => {
+                if (!blockedMap[bt.date]) blockedMap[bt.date] = [];
+                blockedMap[bt.date].push(bt);
+            });
+
+            // Recurring blocks indexed by day_of_week
+            const recurringMap = {};
+            (data.recurring_blocks || []).forEach(rb => {
+                if (!recurringMap[rb.day_of_week]) recurringMap[rb.day_of_week] = [];
+                recurringMap[rb.day_of_week].push(rb);
+            });
+
+            // Build HTML table
+            let html = '<table class="week-cal-table"><thead><tr><th class="week-cal-time-col"></th>';
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(calendarWeekStart);
+                d.setUTCDate(d.getUTCDate() + i);
+                const today = formatDateStr(new Date()) === dates[i] ? ' week-cal-today' : '';
+                html += `<th class="week-cal-day-header${today}">${dayNames[i]}<br><span style="font-weight:400;font-size:0.85em;">${d.getUTCMonth()+1}/${d.getUTCDate()}</span></th>`;
+            }
+            html += '</tr></thead><tbody>';
+
+            for (let hour = START_HOUR; hour < END_HOUR; hour++) {
+                const timeLabel = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 ? 'am' : 'pm');
+                html += `<tr><td class="week-cal-time-label">${timeLabel}</td>`;
+
+                for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+                    const dateStr = dates[dayIdx];
+                    const dayOfWeek = dayIdx; // Mon=0, Tue=1, ..., Sun=6
+                    const avail = availMap[dayOfWeek];
+
+                    const hourStart = hour * 60;
+                    const hourEnd = (hour + 1) * 60;
+
+                    // Determine cell status
+                    let status = 'closed'; // default: gray
+                    let tooltip = '';
+                    let bookingData = null;
+
+                    // Check if this hour is within availability
+                    if (avail && avail.is_available) {
+                        const availStart = timeToMins(avail.start_time);
+                        const availEnd = timeToMins(avail.end_time);
+                        if (hourStart >= availStart && hourEnd <= availEnd) {
+                            status = 'available';
+                        }
+                    }
+
+                    // Check for bookings overlapping this hour
+                    if (bookingMap[dateStr]) {
+                        for (const b of bookingMap[dateStr]) {
+                            // Convert booking time (may be 12-hour format) to minutes
+                            let bookMins;
+                            if (b.time.includes('AM') || b.time.includes('PM')) {
+                                const parts = b.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                                if (parts) {
+                                    let bh = parseInt(parts[1]);
+                                    const bm = parseInt(parts[2]);
+                                    const ap = parts[3].toUpperCase();
+                                    if (ap === 'PM' && bh !== 12) bh += 12;
+                                    if (ap === 'AM' && bh === 12) bh = 0;
+                                    bookMins = bh * 60 + bm;
+                                }
+                            } else {
+                                bookMins = timeToMins(b.time);
+                            }
+                            if (bookMins !== undefined) {
+                                const bookEnd = bookMins + (b.duration || 60);
+                                if (hourStart < bookEnd && hourEnd > bookMins) {
+                                    status = 'booked';
+                                    bookingData = b;
+                                    tooltip = `${b.client_name} — ${b.duration}min ${b.session_format || ''}`;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Check for one-off blocked times overlapping this hour
+                    if (status !== 'booked' && blockedMap[dateStr]) {
+                        for (const bt of blockedMap[dateStr]) {
+                            const btStart = timeToMins(bt.start_time);
+                            const btEnd = timeToMins(bt.end_time);
+                            if (hourStart < btEnd && hourEnd > btStart) {
+                                status = 'blocked';
+                                tooltip = bt.reason || 'Blocked';
+                                break;
+                            }
+                        }
+                    }
+
+                    // Check for recurring blocks overlapping this hour
+                    if (status !== 'booked' && status !== 'blocked' && recurringMap[dayOfWeek]) {
+                        for (const rb of recurringMap[dayOfWeek]) {
+                            const rbStart = timeToMins(rb.start_time);
+                            const rbEnd = timeToMins(rb.end_time);
+                            if (hourStart < rbEnd && hourEnd > rbStart) {
+                                status = 'blocked';
+                                tooltip = rb.reason ? `🔁 ${rb.reason}` : '🔁 Recurring block';
+                                break;
+                            }
+                        }
+                    }
+
+                    const clickAttr = bookingData ? ` onclick="showBookingDetail(event, ${bookingData.id}, '${(bookingData.client_name||'').replace(/'/g,"\\'")}', '${bookingData.date}', '${bookingData.time}', ${bookingData.duration}, '${(bookingData.session_format||'').replace(/'/g,"\\'")}', '${(bookingData.session_type||'').replace(/'/g,"\\'")}', '${bookingData.status}')" style="cursor:pointer;"` : '';
+                    const titleAttr = tooltip ? ` title="${tooltip.replace(/"/g, '&quot;')}"` : '';
+
+                    html += `<td class="week-cal-cell week-cal-${status}"${titleAttr}${clickAttr}>${status === 'booked' ? '<span class="week-cal-booking-dot">●</span>' : ''}</td>`;
+                }
+                html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        window.showBookingDetail = function(event, id, name, date, time, duration, format, type, status) {
+            const tooltip = document.getElementById('booking-detail-tooltip');
+            const content = document.getElementById('booking-detail-content');
+            content.innerHTML = `
+                <div style="font-weight:700;font-size:1.05em;margin-bottom:8px;color:#D4A574;">📋 Booking Details</div>
+                <div><strong>Client:</strong> ${name}</div>
+                <div><strong>Date:</strong> ${date}</div>
+                <div><strong>Time:</strong> ${time}</div>
+                <div><strong>Duration:</strong> ${duration} min</div>
+                <div><strong>Format:</strong> ${format || 'N/A'}</div>
+                <div><strong>Type:</strong> ${type || 'Energy Healing'}</div>
+                <div><strong>Status:</strong> <span style="color:${status==='completed'?'#2d6a3d':'#9a6b1a'}">${status}</span></div>
+            `;
+            tooltip.style.display = 'block';
+            // Position near click
+            const rect = event.target.getBoundingClientRect();
+            tooltip.style.left = Math.min(rect.left + 20, window.innerWidth - 320) + 'px';
+            tooltip.style.top = Math.min(rect.bottom + 5, window.innerHeight - 250) + 'px';
+        }
+
+        // Load upcoming bookings list
+        async function loadUpcomingBookings() {
+            try {
+                const response = await fetch(`/api/admin/bookings?password=${encodeURIComponent(adminPassword)}`);
+                const bookings = await response.json();
+                const container = document.getElementById('upcoming-bookings-list');
+                if (!container) return;
+
+                const today = new Date().toISOString().split('T')[0];
+                const upcoming = bookings.filter(b => b.date >= today && !b.cancelled).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+                if (!upcoming.length) {
+                    container.innerHTML = '<p style="text-align:center;padding:20px;color:#999;">No upcoming bookings</p>';
+                    return;
+                }
+
+                let html = '<table class="calendar-table"><thead><tr><th>Date</th><th>Time</th><th>Client</th><th>Duration</th><th>Format</th><th>Status</th></tr></thead><tbody>';
+                upcoming.forEach(b => {
+                    html += `<tr class="booking-row">
+                        <td>${b.date}</td>
+                        <td>${b.time}</td>
+                        <td>${b.client_name}</td>
+                        <td>${b.duration} min</td>
+                        <td>${b.session_format || 'N/A'}</td>
+                        <td><span class="booking-status ${b.status}">${b.status}</span></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error loading upcoming bookings:', e);
+            }
+        }
+
+        // Populate the schedule time select dropdowns (block forms)
+        function populateScheduleTimeSelects() {
+            const times = [];
+            for (let h = 6; h <= 21; h++) {
+                for (let m = 0; m < 60; m += 30) {
+                    const val = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+                    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                    const ampm = h < 12 ? 'AM' : 'PM';
+                    const label = hour12 + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+                    times.push({ val, label });
+                }
+            }
+            document.querySelectorAll('select.schedule-time-select').forEach(sel => {
+                sel.innerHTML = '<option value="">Select time...</option>';
+                sel.style.cssText = 'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;';
+                times.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.val;
+                    opt.textContent = t.label;
+                    sel.appendChild(opt);
+                });
+            });
+        }
+        populateScheduleTimeSelects();
+
+        // Close booking tooltip when clicking outside
+        document.addEventListener('click', function(e) {
+            const tooltip = document.getElementById('booking-detail-tooltip');
+            if (tooltip && tooltip.style.display === 'block' && !tooltip.contains(e.target) && !e.target.classList.contains('week-cal-booked')) {
+                tooltip.style.display = 'none';
+            }
+        });
 
         async function loadAdminTraffic() {
             try {
@@ -2643,23 +2832,6 @@
             }
         }
 
-        function updateAdminBookingsTable(bookings) {
-            const tbody = document.getElementById('admin-bookings-table');
-            if (!tbody) return;
-            tbody.innerHTML = '';
-            bookings.forEach(booking => {
-                const row = document.createElement('tr');
-                row.className = 'booking-row';
-                row.innerHTML = `
-                    <td>${booking.date}</td>
-                    <td>${booking.time}</td>
-                    <td>${booking.client_name}</td>
-                    <td>${booking.session_type}</td>
-                    <td><span class="booking-status ${booking.status}">${booking.status}</span></td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
 
 
         // ============================================================================
