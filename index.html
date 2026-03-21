@@ -154,6 +154,7 @@
                 </li>
                 <li id="user-nav-item" style="display: none;">
                     <span id="user-nav-name" style="color: var(--primary-gold); margin-right: 15px;"></span>
+                    <button class="btn btn-secondary" id="appointments-btn" onclick="openClientPortal()" style="margin-right: 10px;">My Appointments</button>
                     <button class="btn btn-secondary" id="auth-logout-btn" onclick="logout()">Logout</button>
                 </li>
             </ul>
@@ -989,11 +990,9 @@
                 <button class="admin-tab" data-tab="admin-blog">Blog</button>
                 <button class="admin-tab" data-tab="admin-newsletter">Newsletter</button>
                 <button class="admin-tab" data-tab="admin-reviews">Reviews</button>
-                <button class="admin-tab" data-tab="admin-blog">Blog</button>
-                <button class="admin-tab" data-tab="admin-newsletter">Newsletter</button>
-                <button class="admin-tab" data-tab="admin-reviews">Reviews</button>
                 <button class="admin-tab" data-tab="admin-dashboard">Dashboard</button>
                 <button class="admin-tab" data-tab="admin-traffic">📊 Traffic</button>
+                <button class="admin-tab" data-tab="admin-settings">⚙️ Settings</button>
             </div>
 
             <!-- Bookings Tab -->
@@ -1307,6 +1306,44 @@
                     <div id="traffic-referrers"></div>
                 </div>
             </div>
+
+            <!-- Settings Tab -->
+            <div id="admin-settings" class="admin-tab-content">
+                <div class="admin-card">
+                    <h3>Change Admin Password</h3>
+                    <form id="admin-password-form" style="display: grid; gap: 15px; max-width: 400px;">
+                        <div>
+                            <label for="admin-current-password">Current Password:</label>
+                            <input type="password" id="admin-current-password" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label for="admin-new-password">New Password:</label>
+                            <input type="password" id="admin-new-password" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label for="admin-confirm-password">Confirm New Password:</label>
+                            <input type="password" id="admin-confirm-password" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client Portal Modal -->
+    <div id="client-portal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>My Appointments</h2>
+                <button class="modal-close" type="button" onclick="closeClientPortal()">&times;</button>
+            </div>
+            
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <div id="appointments-container">
+                    <p style="text-align: center; color: var(--text-gray);">Loading appointments...</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1561,6 +1598,204 @@
 
         document.getElementById('register-modal')?.addEventListener('click', (e) => {
             if (e.target.id === 'register-modal') closeRegisterModal();
+        });
+
+        document.getElementById('client-portal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'client-portal') closeClientPortal();
+        });
+
+        // ============================================================================
+        // CLIENT PORTAL (APPOINTMENTS)
+        // ============================================================================
+
+        const clientPortal = document.getElementById('client-portal');
+
+        function openClientPortal() {
+            clientPortal.style.display = 'flex';
+            loadClientAppointments();
+        }
+
+        function closeClientPortal() {
+            clientPortal.style.display = 'none';
+        }
+
+        async function loadClientAppointments() {
+            const token = localStorage.getItem('luce-auth-token');
+            if (!token) {
+                alert('Not authenticated');
+                closeClientPortal();
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/client/appointments', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch appointments');
+                }
+
+                const bookings = await response.json();
+                displayClientAppointments(bookings);
+            } catch (error) {
+                console.error('Error loading appointments:', error);
+                document.getElementById('appointments-container').innerHTML = 
+                    '<p style="color: #d32f2f; text-align: center;">Error loading appointments. Please try again.</p>';
+            }
+        }
+
+        function displayClientAppointments(bookings) {
+            const container = document.getElementById('appointments-container');
+            if (bookings.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--text-gray);">You have no appointments yet.</p>';
+                return;
+            }
+
+            const now = new Date();
+            const upcomingBookings = bookings.filter(b => new Date(b.date) >= now && !b.cancelled);
+            const pastBookings = bookings.filter(b => new Date(b.date) < now || b.cancelled);
+
+            let html = '';
+
+            if (upcomingBookings.length > 0) {
+                html += '<h3 style="color: var(--primary-gold); margin-bottom: 15px;">📅 Upcoming Appointments</h3>';
+                upcomingBookings.forEach(booking => {
+                    const appointmentDate = new Date(booking.date);
+                    const appointmentTime = new Date(`${booking.date}T${booking.time}`);
+                    const hoursUntil = (appointmentTime - now) / (1000 * 60 * 60);
+                    const canModify = hoursUntil >= 24;
+
+                    html += `
+                        <div style="border: 1px solid var(--primary-gold); border-radius: 8px; padding: 15px; margin-bottom: 15px; background: rgba(218, 165, 32, 0.05);">
+                            <div style="display: grid; gap: 8px;">
+                                <div><strong>Date:</strong> ${appointmentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                                <div><strong>Time:</strong> ${booking.time}</div>
+                                <div><strong>Duration:</strong> ${booking.duration} minutes</div>
+                                <div><strong>Format:</strong> ${booking.session_format || 'Not specified'}</div>
+                                <div><strong>Status:</strong> ${booking.status || 'Pending'}</div>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 12px;">
+                                <button class="btn btn-secondary" onclick="openRescheduleModal(${booking.id}, '${booking.date}', '${booking.time}', ${booking.duration})" ${canModify ? '' : 'disabled'} title="${canModify ? '' : 'Cannot modify within 24 hours of appointment'}">Reschedule</button>
+                                <button class="btn btn-secondary" onclick="cancelAppointment(${booking.id})" ${canModify ? '' : 'disabled'} title="${canModify ? '' : 'Cannot modify within 24 hours of appointment'}">Cancel</button>
+                            </div>
+                            ${!canModify ? '<p style="font-size: 0.9em; color: var(--text-gray); margin-top: 8px;"><em>Cannot modify within 24 hours of appointment</em></p>' : ''}
+                        </div>
+                    `;
+                });
+            }
+
+            if (pastBookings.length > 0) {
+                html += '<h3 style="color: var(--primary-gold); margin-top: 25px; margin-bottom: 15px;">📋 Past Appointments</h3>';
+                pastBookings.forEach(booking => {
+                    const appointmentDate = new Date(booking.date);
+                    const statusText = booking.cancelled ? 'Cancelled' : 'Completed';
+                    const statusColor = booking.cancelled ? '#d32f2f' : '#388e3c';
+
+                    html += `
+                        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #f5f5f5;">
+                            <div style="display: grid; gap: 8px;">
+                                <div><strong>Date:</strong> ${appointmentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                                <div><strong>Time:</strong> ${booking.time}</div>
+                                <div><strong>Duration:</strong> ${booking.duration} minutes</div>
+                                <div><strong>Format:</strong> ${booking.session_format || 'Not specified'}</div>
+                                <div><strong>Status:</strong> <span style="color: ${statusColor};">${statusText}</span></div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            container.innerHTML = html;
+        }
+
+        function openRescheduleModal(bookingId, currentDate, currentTime, duration) {
+            const token = localStorage.getItem('luce-auth-token');
+            if (!token) {
+                alert('Please log in first');
+                return;
+            }
+
+            // For now, show a simple prompt. In a full implementation, this would open a date/time picker
+            alert('Reschedule feature: Please select a new date and time. (Full date picker implementation would go here)');
+        }
+
+        async function cancelAppointment(bookingId) {
+            const token = localStorage.getItem('luce-auth-token');
+            if (!token) {
+                alert('Please log in first');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to cancel this appointment? Sessions are non-refundable.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/client/appointments/${bookingId}/cancel`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'Could not cancel appointment'));
+                    return;
+                }
+
+                alert('Your session has been cancelled. As per our policy, sessions are non-refundable. You may rebook at any time using your existing session credit.');
+                loadClientAppointments(); // Reload the appointments
+            } catch (error) {
+                console.error('Error cancelling appointment:', error);
+                alert('Error cancelling appointment');
+            }
+        }
+
+        // ============================================================================
+        // ADMIN PASSWORD CHANGE
+        // ============================================================================
+
+        document.getElementById('admin-password-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById('admin-current-password').value;
+            const newPassword = document.getElementById('admin-new-password').value;
+            const confirmPassword = document.getElementById('admin-confirm-password').value;
+
+            if (newPassword !== confirmPassword) {
+                alert('New passwords do not match');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                alert('New password must be at least 6 characters');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/password?password=' + encodeURIComponent(currentPassword), {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_password: newPassword })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert('Password changed successfully! Please log in again with your new password.');
+                    adminPassword = ''; // Clear stored password
+                    adminPanel.classList.remove('active');
+                    document.getElementById('admin-password-form').reset();
+                } else {
+                    alert('Error: ' + (data.error || 'Could not change password'));
+                }
+            } catch (error) {
+                console.error('Password change error:', error);
+                alert('Error changing password');
+            }
         });
 
         // ============================================================================
@@ -1919,20 +2154,33 @@
         });
 
         // Open admin panel (if password is correct)
+        // Store admin password when authenticated (in memory during session)
+        let adminPassword = '';
+
         function openAdminPanel() {
             const password = prompt('Admin password:');
-            if (password === 'luce13') {
-                adminPanel.classList.add('active');
-                loadAdminData();
-            } else {
-                alert('Incorrect password');
-            }
+            if (!password) return;
+            
+            // Try to authenticate with the password by making an API call
+            fetch(`/api/admin/bookings?password=${encodeURIComponent(password)}`)
+                .then(response => {
+                    if (response.ok) {
+                        adminPassword = password; // Store for this session
+                        adminPanel.classList.add('active');
+                        loadAdminData();
+                    } else {
+                        alert('Incorrect password');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error verifying password');
+                });
         }
 
         async function loadAdminData() {
-            const password = 'luce13';
             try {
-                const response = await fetch(`/api/admin/bookings?password=${password}`);
+                const response = await fetch(`/api/admin/bookings?password=${encodeURIComponent(adminPassword)}`);
                 const bookings = await response.json();
                 updateAdminBookingsTable(bookings);
                 loadAdminAvailability();
@@ -1982,7 +2230,7 @@
 
         async function loadAdminAvailability() {
             try {
-                const response = await fetch(`/api/admin/bookings?password=luce13`);
+                const response = await fetch(`/api/admin/bookings?password=${encodeURIComponent(adminPassword)}`);
                 // Load current availability from server
                 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 const rows = document.querySelectorAll('.day-availability');
@@ -2011,7 +2259,7 @@
             });
 
             try {
-                const response = await fetch('/api/admin/availability?password=luce13', {
+                const response = await fetch('/api/admin/availability?password=${encodeURIComponent(adminPassword)}', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ availability })
@@ -2053,7 +2301,7 @@
             btn.disabled = true;
 
             try {
-                const response = await fetch('/api/admin/block?password=luce13', {
+                const response = await fetch('/api/admin/block?password=${encodeURIComponent(adminPassword)}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ date, start_time, end_time, reason })
@@ -2083,7 +2331,7 @@
 
         async function loadBlockedTimes() {
             try {
-                const response = await fetch('/api/admin/blocks?password=luce13');
+                const response = await fetch('/api/admin/blocks?password=${encodeURIComponent(adminPassword)}');
                 const blocks = await response.json();
                 const container = document.getElementById('blocked-times-list');
                 
@@ -2112,7 +2360,7 @@
         window.removeBlock = async function(id) {
             if (!confirm('Remove this blocked time?')) return;
             try {
-                await fetch(`/api/admin/block/${id}?password=luce13`, { method: 'DELETE' });
+                await fetch(`/api/admin/block/${id}?password=${encodeURIComponent(adminPassword)}`, { method: 'DELETE' });
                 loadBlockedTimes();
             } catch (e) {
                 alert('Error removing block');
@@ -2121,7 +2369,7 @@
 
         async function loadAdminTraffic() {
             try {
-                const response = await fetch('/api/admin/traffic?password=luce13');
+                const response = await fetch('/api/admin/traffic?password=${encodeURIComponent(adminPassword)}');
                 const data = await response.json();
                 
                 document.getElementById('traffic-today').textContent = data.today || 0;
@@ -2244,7 +2492,7 @@
 
         async function loadBlogForEdit(id) {
             try {
-                const allPosts = await fetch('/api/admin/blog?password=luce13').then(r => r.json());
+                const allPosts = await fetch('/api/admin/blog?password=${encodeURIComponent(adminPassword)}').then(r => r.json());
                 const post = allPosts.find(p => p.id == id);
                 if (post) {
                     document.getElementById('blog-modal-title').textContent = 'Edit Blog Post';
@@ -2267,7 +2515,7 @@
             const method = id ? 'PUT' : 'POST';
             
             try {
-                const response = await fetch(url + '?password=luce13', {
+                const response = await fetch(url + '?password=${encodeURIComponent(adminPassword)}', {
                     method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2290,7 +2538,7 @@
 
         async function loadAdminBlog() {
             try {
-                const response = await fetch('/api/admin/blog?password=luce13');
+                const response = await fetch('/api/admin/blog?password=${encodeURIComponent(adminPassword)}');
                 const posts = await response.json();
                 const container = document.getElementById('admin-blog-list');
                 
@@ -2327,7 +2575,7 @@
         async function deleteBlogPost(id) {
             if (!confirm('Delete this post permanently?')) return;
             try {
-                await fetch(`/api/admin/blog/${id}?password=luce13`, { method: 'DELETE' });
+                await fetch(`/api/admin/blog/${id}?password=${encodeURIComponent(adminPassword)}`, { method: 'DELETE' });
                 alert('✅ Post deleted');
                 loadAdminBlog();
                 loadBlogPosts();
@@ -2374,7 +2622,7 @@
 
         async function loadAdminNewsletter() {
             try {
-                const response = await fetch('/api/admin/newsletter/subscribers?password=luce13');
+                const response = await fetch('/api/admin/newsletter/subscribers?password=${encodeURIComponent(adminPassword)}');
                 const subscribers = await response.json();
                 const container = document.getElementById('admin-newsletter-list');
                 
@@ -2403,7 +2651,7 @@
         async function removeSubscriber(id) {
             if (!confirm('Remove subscriber?')) return;
             try {
-                await fetch(`/api/admin/newsletter/${id}?password=luce13`, { method: 'DELETE' });
+                await fetch(`/api/admin/newsletter/${id}?password=${encodeURIComponent(adminPassword)}`, { method: 'DELETE' });
                 alert('✅ Removed');
                 loadAdminNewsletter();
             } catch (e) {
@@ -2413,7 +2661,7 @@
 
         async function exportNewsletterCSV() {
             try {
-                const response = await fetch('/api/admin/newsletter/export?password=luce13');
+                const response = await fetch('/api/admin/newsletter/export?password=${encodeURIComponent(adminPassword)}');
                 const csv = await response.text();
                 const blob = new Blob([csv], { type: 'text/csv' });
                 const url = window.URL.createObjectURL(blob);
@@ -2531,7 +2779,7 @@
 
         async function loadAdminReviews() {
             try {
-                const response = await fetch('/api/admin/reviews?password=luce13');
+                const response = await fetch('/api/admin/reviews?password=${encodeURIComponent(adminPassword)}');
                 const reviews = await response.json();
                 const container = document.getElementById('admin-reviews-list');
                 
@@ -2572,7 +2820,7 @@
 
         async function updateReviewStatus(id, approved) {
             try {
-                await fetch(`/api/admin/reviews/${id}?password=luce13`, {
+                await fetch(`/api/admin/reviews/${id}?password=${encodeURIComponent(adminPassword)}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ approved })
@@ -2588,7 +2836,7 @@
         async function deleteReview(id) {
             if (!confirm('Delete this review permanently?')) return;
             try {
-                await fetch(`/api/admin/reviews/${id}?password=luce13`, { method: 'DELETE' });
+                await fetch(`/api/admin/reviews/${id}?password=${encodeURIComponent(adminPassword)}`, { method: 'DELETE' });
                 alert('✅ Deleted');
                 loadAdminReviews();
                 loadPublicReviews();

@@ -455,8 +455,8 @@ function getAvailableSlots(dateStr, duration) {
     end: timeToMinutes(b.end_time)
   }));
 
-  // Get booked times for this date (with 15 min buffer)
-  const bookings = dbAll('SELECT time, duration FROM bookings WHERE date = ? AND status = ?', [dateStr, 'completed']);
+  // Get booked times for this date (with 15 min buffer), excluding cancelled bookings
+  const bookings = dbAll('SELECT time, duration FROM bookings WHERE date = ? AND status = ? AND cancelled = 0', [dateStr, 'completed']);
   const bookedRanges = bookings.map(b => {
     const bookStart = timeToMinutes(b.time);
     const bookEnd = bookStart + b.duration + 15; // 15 min buffer
@@ -1163,6 +1163,181 @@ app.get('/api/admin/traffic', checkAdminPassword, (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================================================================
+// ADMIN PASSWORD MANAGEMENT
+// ============================================================================
+
+app.put('/api/admin/password', checkAdminPassword, (req, res) => {
+  try {
+    const { new_password } = req.body;
+    
+    if (!new_password || new_password.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+    
+    const newPasswordHash = hashPassword(new_password);
+    dbRun('UPDATE admin_settings SET value = ? WHERE key = ?', [newPasswordHash, 'admin_password']);
+    
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Password change error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// CLIENT APPOINTMENT ENDPOINTS (AUTHENTICATED)
+// ============================================================================
+
+// Middleware to verify auth token
+function verifyAuthToken(req, res, next) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  const userId = verifyToken(token);
+  if (!userId) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  req.userId = userId;
+  next();
+}
+
+// Get client's appointments
+app.get('/api/client/appointments', verifyAuthToken, (req, res) => {
+  try {
+    const user = dbGet('SELECT email FROM users WHERE id = ?', [req.userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const bookings = dbAll(`
+      SELECT id, client_name, date, time, duration, session_format, status, cancelled, cancelled_at, original_booking_id
+      FROM bookings 
+      WHERE email = ?
+      ORDER BY date DESC, time DESC
+    `, [user.email]);
+    
+    res.json(bookings);
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reschedule an appointment
+app.put('/api/client/appointments/:id/reschedule', verifyAuthToken, (req, res) => {
+  try {
+    const { new_date, new_time } = req.body;
+    
+    if (!new_date || !new_time) {
+      return res.status(400).json({ error: 'New date and time required' });
+    }
+    
+    const user = dbGet('SELECT email FROM users WHERE id = ?', [req.userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get original booking
+    const booking = dbGet('SELECT * FROM bookings WHERE id = ? AND email = ?', [req.params.id, user.email]);
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Check if appointment is more than 24 hours away
+    const appointmentDate = new Date(booking.date + 'T' + booking.time);
+    const now = new Date();
+    const hoursUntilAppointment = (appointmentDate - now) / (1000 * 60 * 60);
+    
+    if (hoursUntilAppointment < 24) {
+      return res.status(400).json({ error: 'Cannot reschedule within 24 hours of appointment' });
+    }
+    
+    // Verify new slot is available
+    const slots = getAvailableSlots(new_date, booking.duration);
+    const slotsFormatted = slots.map(slot => to12HourFormat(slot));
+    if (!slotsFormatted.includes(new_time)) {
+      return res.status(400).json({ error: 'Selected time slot is not available' });
+    }
+    
+    // Mark old booking as rescheduled
+    dbRun('UPDATE bookings SET status = ? WHERE id = ?', ['rescheduled', booking.id]);
+    
+    // Create new booking with same payment info
+    dbRun(`
+      INSERT INTO bookings 
+      (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status, original_booking_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      booking.client_name,
+      booking.email,
+      booking.phone,
+      booking.date_of_birth,
+      booking.session_type,
+      booking.duration,
+      new_date,
+      new_time,
+      booking.session_format,
+      booking.is_pack,
+      'completed',
+      booking.stripe_session_id,
+      booking.stripe_payment_status,
+      booking.id
+    ]);
+    
+    const newBooking = dbGet('SELECT * FROM bookings WHERE email = ? AND date = ? AND time = ?', 
+      [user.email, new_date, new_time]);
+    
+    res.json({ success: true, booking: newBooking });
+  } catch (error) {
+    console.error('Error rescheduling appointment:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cancel an appointment
+app.put('/api/client/appointments/:id/cancel', verifyAuthToken, (req, res) => {
+  try {
+    const user = dbGet('SELECT email FROM users WHERE id = ?', [req.userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get booking
+    const booking = dbGet('SELECT * FROM bookings WHERE id = ? AND email = ?', [req.params.id, user.email]);
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    if (booking.cancelled) {
+      return res.status(400).json({ error: 'Appointment is already cancelled' });
+    }
+    
+    // Check if appointment is more than 24 hours away
+    const appointmentDate = new Date(booking.date + 'T' + booking.time);
+    const now = new Date();
+    const hoursUntilAppointment = (appointmentDate - now) / (1000 * 60 * 60);
+    
+    if (hoursUntilAppointment < 24) {
+      return res.status(400).json({ error: 'Cannot cancel within 24 hours of appointment' });
+    }
+    
+    // Mark as cancelled
+    dbRun('UPDATE bookings SET cancelled = 1, cancelled_at = CURRENT_TIMESTAMP WHERE id = ?', [booking.id]);
+    
+    res.json({ 
+      success: true, 
+      message: 'Your session has been cancelled. As per our policy, sessions are non-refundable. You may rebook at any time using your existing session credit.' 
+    });
+  } catch (error) {
+    console.error('Error cancelling appointment:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
