@@ -1152,9 +1152,111 @@
                     <button class="btn btn-primary" onclick="saveBlockedTime()">Block Time</button>
                 </div>
                 <div class="admin-card" style="margin-top: 20px;">
-                    <h3>Currently Blocked</h3>
+                    <h3>Currently Blocked (One-Time)</h3>
                     <div id="blocked-times-list">
                         <p style="color: #888;">No blocked times currently</p>
+                    </div>
+                </div>
+
+                <div class="admin-card" style="margin-top: 30px;">
+                    <h3>🔁 Recurring Weekly Blocks</h3>
+                    <p style="margin-bottom: 20px; color: #666;">Block the same time every week (e.g., "Class every Monday 1-2 PM").</p>
+                    <div class="form-group">
+                        <label>Day of Week</label>
+                        <select id="recurring-block-day" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
+                            <option value="0">Monday</option>
+                            <option value="1">Tuesday</option>
+                            <option value="2">Wednesday</option>
+                            <option value="3">Thursday</option>
+                            <option value="4">Friday</option>
+                            <option value="5">Saturday</option>
+                            <option value="6">Sunday</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Start Time</label>
+                        <select id="recurring-block-start" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
+                            <option value="">Select time...</option>
+                            <option value="06:00">6:00 AM</option>
+                            <option value="06:30">6:30 AM</option>
+                            <option value="07:00">7:00 AM</option>
+                            <option value="07:30">7:30 AM</option>
+                            <option value="08:00">8:00 AM</option>
+                            <option value="08:30">8:30 AM</option>
+                            <option value="09:00">9:00 AM</option>
+                            <option value="09:30">9:30 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="10:30">10:30 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="11:30">11:30 AM</option>
+                            <option value="12:00">12:00 PM</option>
+                            <option value="12:30">12:30 PM</option>
+                            <option value="13:00">1:00 PM</option>
+                            <option value="13:30">1:30 PM</option>
+                            <option value="14:00">2:00 PM</option>
+                            <option value="14:30">2:30 PM</option>
+                            <option value="15:00">3:00 PM</option>
+                            <option value="15:30">3:30 PM</option>
+                            <option value="16:00">4:00 PM</option>
+                            <option value="16:30">4:30 PM</option>
+                            <option value="17:00">5:00 PM</option>
+                            <option value="17:30">5:30 PM</option>
+                            <option value="18:00">6:00 PM</option>
+                            <option value="18:30">6:30 PM</option>
+                            <option value="19:00">7:00 PM</option>
+                            <option value="19:30">7:30 PM</option>
+                            <option value="20:00">8:00 PM</option>
+                            <option value="20:30">8:30 PM</option>
+                            <option value="21:00">9:00 PM</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>End Time</label>
+                        <select id="recurring-block-end" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
+                            <option value="">Select time...</option>
+                            <option value="06:00">6:00 AM</option>
+                            <option value="06:30">6:30 AM</option>
+                            <option value="07:00">7:00 AM</option>
+                            <option value="07:30">7:30 AM</option>
+                            <option value="08:00">8:00 AM</option>
+                            <option value="08:30">8:30 AM</option>
+                            <option value="09:00">9:00 AM</option>
+                            <option value="09:30">9:30 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="10:30">10:30 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="11:30">11:30 AM</option>
+                            <option value="12:00">12:00 PM</option>
+                            <option value="12:30">12:30 PM</option>
+                            <option value="13:00">1:00 PM</option>
+                            <option value="13:30">1:30 PM</option>
+                            <option value="14:00">2:00 PM</option>
+                            <option value="14:30">2:30 PM</option>
+                            <option value="15:00">3:00 PM</option>
+                            <option value="15:30">3:30 PM</option>
+                            <option value="16:00">4:00 PM</option>
+                            <option value="16:30">4:30 PM</option>
+                            <option value="17:00">5:00 PM</option>
+                            <option value="17:30">5:30 PM</option>
+                            <option value="18:00">6:00 PM</option>
+                            <option value="18:30">6:30 PM</option>
+                            <option value="19:00">7:00 PM</option>
+                            <option value="19:30">7:30 PM</option>
+                            <option value="20:00">8:00 PM</option>
+                            <option value="20:30">8:30 PM</option>
+                            <option value="21:00">9:00 PM</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Reason (optional)</label>
+                        <input type="text" id="recurring-block-reason" placeholder="e.g., Class, Personal, etc.">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveRecurringBlock()">Add Recurring Block</button>
+                </div>
+                <div class="admin-card" style="margin-top: 20px;">
+                    <h3>Active Recurring Blocks</h3>
+                    <div id="recurring-blocks-list">
+                        <p style="color: #888;">No recurring blocks set</p>
                     </div>
                 </div>
             </div>
@@ -2185,6 +2287,7 @@
                 updateAdminBookingsTable(bookings);
                 loadAdminAvailability();
                 loadBlockedTimes();
+                loadRecurringBlocks();
                 loadAdminTraffic();
             } catch (error) {
                 console.error('Error loading admin data:', error);
@@ -2230,12 +2333,32 @@
 
         async function loadAdminAvailability() {
             try {
-                const response = await fetch(`/api/admin/bookings?password=${encodeURIComponent(adminPassword)}`);
+                const response = await fetch(`/api/admin/availability?password=${encodeURIComponent(adminPassword)}`);
+                const availability = await response.json();
                 // Load current availability from server
-                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 const rows = document.querySelectorAll('.day-availability');
-                // Map: row 0=Monday(1), row 1=Tuesday(2), ..., row 5=Saturday(6), row 6=Sunday(0)
-                const dayMap = [1, 2, 3, 4, 5, 6, 0]; // order of rows in HTML
+                // Map: row 0=Monday(0), row 1=Tuesday(1), ..., row 5=Saturday(5), row 6=Sunday(6)
+                const dayMap = [0, 1, 2, 3, 4, 5, 6]; // Mon=0, Tue=1, ..., Sat=5, Sun=6
+
+                rows.forEach((row, index) => {
+                    const dayNum = dayMap[index];
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    const selects = row.querySelectorAll('select.avail-time');
+                    if (selects.length < 2) return;
+
+                    // Find this day's availability in the response
+                    const dayData = availability.find(a => a.day_of_week === dayNum);
+                    if (dayData) {
+                        checkbox.checked = !!dayData.is_available;
+                        selects[0].value = dayData.start_time;
+                        selects[1].value = dayData.end_time;
+                    } else {
+                        // No entry means unavailable
+                        checkbox.checked = false;
+                    }
+                    // Enable/disable selects based on checkbox
+                    selects.forEach(s => { s.disabled = !checkbox.checked; });
+                });
             } catch (e) {
                 console.error('Error loading availability:', e);
             }
@@ -2243,7 +2366,7 @@
 
         window.saveAvailability = async function() {
             const rows = document.querySelectorAll('.day-availability');
-            const dayMap = [1, 2, 3, 4, 5, 6, 0]; // Mon=1, Tue=2, ..., Sat=6, Sun=0
+            const dayMap = [0, 1, 2, 3, 4, 5, 6]; // Mon=0, Tue=1, ..., Sat=5, Sun=6
             const availability = [];
             
             rows.forEach((row, index) => {
@@ -2364,6 +2487,105 @@
                 loadBlockedTimes();
             } catch (e) {
                 alert('Error removing block');
+            }
+        }
+
+        // ============================================================================
+        // RECURRING BLOCKS
+        // ============================================================================
+
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+        function formatTime12(timeStr) {
+            const [hours, mins] = timeStr.split(':').map(Number);
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+            return displayHours + ':' + String(mins).padStart(2, '0') + ' ' + ampm;
+        }
+
+        window.saveRecurringBlock = async function() {
+            const dayEl = document.getElementById('recurring-block-day');
+            const startEl = document.getElementById('recurring-block-start');
+            const endEl = document.getElementById('recurring-block-end');
+            const reasonEl = document.getElementById('recurring-block-reason');
+
+            const day_of_week = parseInt(dayEl.value);
+            const start_time = startEl.value;
+            const end_time = endEl.value;
+            const reason = reasonEl.value;
+
+            if (!start_time || !end_time) {
+                alert('Please select start and end times.');
+                return;
+            }
+
+            const btn = document.querySelector('[onclick="saveRecurringBlock()"]');
+            btn.textContent = 'Saving...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/admin/recurring-blocks?password=${encodeURIComponent(adminPassword)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ day_of_week, start_time, end_time, reason })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    btn.textContent = '✅ Added!';
+                    btn.style.background = '#4CAF50';
+                    btn.style.color = 'white';
+                    setTimeout(() => { btn.textContent = 'Add Recurring Block'; btn.style.background = ''; btn.style.color = ''; btn.disabled = false; }, 2000);
+                    startEl.value = '';
+                    endEl.value = '';
+                    reasonEl.value = '';
+                    loadRecurringBlocks();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                    btn.textContent = 'Add Recurring Block';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                alert('Error saving recurring block: ' + error.message);
+                btn.textContent = 'Add Recurring Block';
+                btn.disabled = false;
+            }
+        }
+
+        async function loadRecurringBlocks() {
+            try {
+                const response = await fetch(`/api/admin/recurring-blocks?password=${encodeURIComponent(adminPassword)}`);
+                const blocks = await response.json();
+                const container = document.getElementById('recurring-blocks-list');
+
+                if (!blocks.length) {
+                    container.innerHTML = '<p style="color: #888;">No recurring blocks set</p>';
+                    return;
+                }
+
+                let html = '<table class="calendar-table"><thead><tr><th>Day</th><th>Start</th><th>End</th><th>Reason</th><th></th></tr></thead><tbody>';
+                blocks.forEach(block => {
+                    html += `<tr>
+                        <td>${dayNames[block.day_of_week] || 'Unknown'}</td>
+                        <td>${formatTime12(block.start_time)}</td>
+                        <td>${formatTime12(block.end_time)}</td>
+                        <td>${block.reason || '—'}</td>
+                        <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8em;" onclick="removeRecurringBlock(${block.id})">Remove</button></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error loading recurring blocks:', e);
+            }
+        }
+
+        window.removeRecurringBlock = async function(id) {
+            if (!confirm('Remove this recurring block?')) return;
+            try {
+                await fetch(`/api/admin/recurring-blocks/${id}?password=${encodeURIComponent(adminPassword)}`, { method: 'DELETE' });
+                loadRecurringBlocks();
+            } catch (e) {
+                alert('Error removing recurring block');
             }
         }
 

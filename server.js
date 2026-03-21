@@ -226,6 +226,18 @@ function initializeDatabase() {
     )
   `);
 
+  // Recurring blocks table (weekly recurring blocks)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS recurring_blocks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      day_of_week INTEGER NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      reason TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Admin settings table (NEW)
   db.exec(`
     CREATE TABLE IF NOT EXISTS admin_settings (
@@ -420,7 +432,9 @@ function dateToJS(dateStr) {
 
 function getDayOfWeek(dateStr) {
   const date = dateToJS(dateStr);
-  return (date.getUTCDay() + 1) % 7; // Convert to Monday=0, Sunday=6
+  // getUTCDay: Sun=0, Mon=1, ..., Sat=6
+  // We want: Mon=0, Tue=1, ..., Sat=5, Sun=6
+  return (date.getUTCDay() + 6) % 7;
 }
 
 function isDatePassed(dateStr) {
@@ -455,6 +469,16 @@ function getAvailableSlots(dateStr, duration) {
     end: timeToMinutes(b.end_time)
   }));
 
+  // Get recurring blocks for this day of the week
+  const recurringBlocks = dbAll('SELECT * FROM recurring_blocks WHERE day_of_week = ?', [dayOfWeek]);
+  const recurringBlockedRanges = recurringBlocks.map(b => ({
+    start: timeToMinutes(b.start_time),
+    end: timeToMinutes(b.end_time)
+  }));
+
+  // Combine one-off and recurring blocked ranges
+  const allBlockedRanges = blockedRanges.concat(recurringBlockedRanges);
+
   // Get booked times for this date (with 15 min buffer), excluding cancelled bookings
   const bookings = dbAll('SELECT time, duration FROM bookings WHERE date = ? AND status = ? AND cancelled = 0', [dateStr, 'completed']);
   const bookedRanges = bookings.map(b => {
@@ -467,8 +491,8 @@ function getAvailableSlots(dateStr, duration) {
   for (let slotStart = startMins; slotStart + duration <= endMins; slotStart += duration) {
     const slotEnd = slotStart + duration;
 
-    // Check if slot overlaps with blocked times
-    const isBlocked = blockedRanges.some(range => 
+    // Check if slot overlaps with blocked times (one-off + recurring)
+    const isBlocked = allBlockedRanges.some(range => 
       slotStart < range.end && slotEnd > range.start
     );
 
@@ -526,7 +550,8 @@ app.get('/api/availability/week', (req, res) => {
     date.setUTCDate(date.getUTCDate() + i);
     const dateStr = date.toISOString().split('T')[0];
     
-    const dayAvail = dbGet('SELECT * FROM availability WHERE day_of_week = ?', [(i + 1) % 7]);
+    const dayOfWeek = getDayOfWeek(dateStr);
+    const dayAvail = dbGet('SELECT * FROM availability WHERE day_of_week = ?', [dayOfWeek]);
     weekData[dateStr] = dayAvail ? {
       available: dayAvail.is_available,
       start: dayAvail.start_time,
@@ -858,6 +883,61 @@ app.put('/api/admin/availability', checkAdminPassword, (req, res) => {
         [slot.day_of_week, slot.start_time, slot.end_time, slot.is_available ? 1 : 0]);
     });
 
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/availability', checkAdminPassword, (req, res) => {
+  try {
+    const availability = dbAll('SELECT * FROM availability ORDER BY day_of_week');
+    res.json(availability);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// RECURRING BLOCKS ENDPOINTS
+// ============================================================================
+
+app.get('/api/admin/recurring-blocks', checkAdminPassword, (req, res) => {
+  try {
+    const blocks = dbAll('SELECT * FROM recurring_blocks ORDER BY day_of_week, start_time');
+    res.json(blocks);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/recurring-blocks', checkAdminPassword, (req, res) => {
+  const { day_of_week, start_time, end_time, reason } = req.body;
+  
+  if (day_of_week === undefined || day_of_week === null || !start_time || !end_time) {
+    return res.status(400).json({ error: 'day_of_week, start_time, and end_time required' });
+  }
+
+  if (day_of_week < 0 || day_of_week > 6) {
+    return res.status(400).json({ error: 'day_of_week must be 0-6 (Monday=0, Sunday=6)' });
+  }
+
+  try {
+    dbRun('INSERT INTO recurring_blocks (day_of_week, start_time, end_time, reason) VALUES (?, ?, ?, ?)', [
+      day_of_week,
+      start_time,
+      end_time,
+      reason || ''
+    ]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/admin/recurring-blocks/:id', checkAdminPassword, (req, res) => {
+  try {
+    dbRun('DELETE FROM recurring_blocks WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
