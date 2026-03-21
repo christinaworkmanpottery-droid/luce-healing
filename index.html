@@ -2259,7 +2259,7 @@
             });
 
             try {
-                const response = await fetch('/api/admin/availability?password=${encodeURIComponent(adminPassword)}', {
+                const response = await fetch(`/api/admin/availability?password=${encodeURIComponent(adminPassword)}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ availability })
@@ -2301,7 +2301,7 @@
             btn.disabled = true;
 
             try {
-                const response = await fetch('/api/admin/block?password=${encodeURIComponent(adminPassword)}', {
+                const response = await fetch(`/api/admin/block?password=${encodeURIComponent(adminPassword)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ date, start_time, end_time, reason })
@@ -2331,7 +2331,7 @@
 
         async function loadBlockedTimes() {
             try {
-                const response = await fetch('/api/admin/blocks?password=${encodeURIComponent(adminPassword)}');
+                const response = await fetch(`/api/admin/blocks?password=${encodeURIComponent(adminPassword)}`);
                 const blocks = await response.json();
                 const container = document.getElementById('blocked-times-list');
                 
@@ -2369,7 +2369,7 @@
 
         async function loadAdminTraffic() {
             try {
-                const response = await fetch('/api/admin/traffic?password=${encodeURIComponent(adminPassword)}');
+                const response = await fetch(`/api/admin/traffic?password=${encodeURIComponent(adminPassword)}`);
                 const data = await response.json();
                 
                 document.getElementById('traffic-today').textContent = data.today || 0;
@@ -2492,7 +2492,7 @@
 
         async function loadBlogForEdit(id) {
             try {
-                const allPosts = await fetch('/api/admin/blog?password=${encodeURIComponent(adminPassword)}').then(r => r.json());
+                const allPosts = await fetch(`/api/admin/blog?password=${encodeURIComponent(adminPassword)}`).then(r => r.json());
                 const post = allPosts.find(p => p.id == id);
                 if (post) {
                     document.getElementById('blog-modal-title').textContent = 'Edit Blog Post';
@@ -2515,7 +2515,7 @@
             const method = id ? 'PUT' : 'POST';
             
             try {
-                const response = await fetch(url + '?password=${encodeURIComponent(adminPassword)}', {
+                const response = await fetch(url + `?password=${encodeURIComponent(adminPassword)}`, {
                     method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2538,7 +2538,7 @@
 
         async function loadAdminBlog() {
             try {
-                const response = await fetch('/api/admin/blog?password=${encodeURIComponent(adminPassword)}');
+                const response = await fetch(`/api/admin/blog?password=${encodeURIComponent(adminPassword)}`);
                 const posts = await response.json();
                 const container = document.getElementById('admin-blog-list');
                 
@@ -2622,7 +2622,7 @@
 
         async function loadAdminNewsletter() {
             try {
-                const response = await fetch('/api/admin/newsletter/subscribers?password=${encodeURIComponent(adminPassword)}');
+                const response = await fetch(`/api/admin/newsletter/subscribers?password=${encodeURIComponent(adminPassword)}`);
                 const subscribers = await response.json();
                 const container = document.getElementById('admin-newsletter-list');
                 
@@ -2661,7 +2661,7 @@
 
         async function exportNewsletterCSV() {
             try {
-                const response = await fetch('/api/admin/newsletter/export?password=${encodeURIComponent(adminPassword)}');
+                const response = await fetch(`/api/admin/newsletter/export?password=${encodeURIComponent(adminPassword)}`);
                 const csv = await response.text();
                 const blob = new Blob([csv], { type: 'text/csv' });
                 const url = window.URL.createObjectURL(blob);
@@ -2779,7 +2779,7 @@
 
         async function loadAdminReviews() {
             try {
-                const response = await fetch('/api/admin/reviews?password=${encodeURIComponent(adminPassword)}');
+                const response = await fetch(`/api/admin/reviews?password=${encodeURIComponent(adminPassword)}`);
                 const reviews = await response.json();
                 const container = document.getElementById('admin-reviews-list');
                 
