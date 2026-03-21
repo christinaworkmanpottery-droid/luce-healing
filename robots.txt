@@ -1,16 +1,32 @@
-# Luce Healing - robots.txt
-# https://www.lucehealing.com
-
-# Allow all bots
 User-agent: *
 Allow: /
 
-# Disallow admin or private areas (none for this static site)
-# Disallow: /admin/
-# Disallow: /private/
+User-agent: Googlebot
+Allow: /
 
-# Sitemap
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Yandexbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: Pinterest
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+Sitemap: https://lucehealing.com/sitemap.xml
 Sitemap: https://www.lucehealing.com/sitemap.xml
-
-# Specific crawl delays (optional)
-Crawl-delay: 1
