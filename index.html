@@ -150,8 +150,7 @@
                 <li><a href="#contact" class="nav-link">Contact</a></li>
                 <li><a href="#" class="nav-link" onclick="openAdminPanel(); return false;" style="font-size:0.8em;opacity:0.5;">👑</a></li>
                 <li id="auth-nav-item" style="display: none;">
-                    <button class="btn btn-secondary" id="auth-login-btn" onclick="openLoginModal()">Login</button>
-                    <button class="btn btn-primary" id="auth-register-btn" onclick="openRegisterModal()">Sign Up</button>
+                    <button class="btn btn-secondary" id="auth-login-btn" onclick="openLoginModal()">My Appointments</button>
                 </li>
                 <li id="user-nav-item" style="display: none;">
                     <span id="user-nav-name" style="color: var(--primary-gold); margin-right: 15px;"></span>
@@ -758,13 +757,14 @@
         </div>
     </footer>
 
-    <!-- Login Modal -->
+    <!-- Login Modal (for My Appointments portal only) -->
     <div id="login-modal" class="modal">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
-                <h2>Login</h2>
+                <h2>My Appointments</h2>
                 <button class="modal-close" type="button" onclick="closeLoginModal()">&times;</button>
             </div>
+            <p style="padding: 0 20px; color: #666; font-size: 0.95em;">Log in to view your past and upcoming appointments.</p>
             <form id="login-form" style="padding: 20px;">
                 <div class="form-group">
                     <label for="login-email">Email *</label>
@@ -776,19 +776,20 @@
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 15px;">Login</button>
                 <p style="text-align: center; font-size: 0.9em; color: #666;">
-                    Don't have an account? <button type="button" class="link-btn" onclick="switchToRegister()">Sign up here</button>
+                    Don't have a portal account? <button type="button" class="link-btn" onclick="switchToRegister()">Create one here</button>
                 </p>
             </form>
         </div>
     </div>
 
-    <!-- Register Modal -->
+    <!-- Register Modal (for My Appointments portal only) -->
     <div id="register-modal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
-                <h2>Create Account</h2>
+                <h2>Create Portal Account</h2>
                 <button class="modal-close" type="button" onclick="closeRegisterModal()">&times;</button>
             </div>
+            <p style="padding: 0 20px; color: #666; font-size: 0.95em;">Create an account to view and manage your appointments. <strong>No account is needed to book a session.</strong></p>
             <form id="register-form" style="padding: 20px;">
                 <div class="form-group">
                     <label for="register-name">Full Name *</label>
@@ -931,8 +932,8 @@
             </div>
 
             <!-- Step 4: Client Information -->
-            <div class="booking-step" data-step="3">
-                <h3>Step 3: Your Information</h3>
+            <div class="booking-step" data-step="4">
+                <h3>Step 4: Your Information</h3>
                 <p style="margin-bottom: 20px; color: #666;">We'll use this to confirm your booking and send session details.</p>
                 
                 <div class="form-group">
@@ -955,6 +956,7 @@
                     <label for="session-notes">Notes (optional)</label>
                     <textarea id="session-notes" placeholder="Any specific intentions or questions?" rows="4"></textarea>
                 </div>
+                <div id="client-info-errors" style="display: none; margin-top: 15px; padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 6px; color: #c62828; font-size: 0.9em;"></div>
             </div>
 
             <!-- Step 5: Review & Pay -->
@@ -1591,6 +1593,9 @@
             localStorage.removeItem('luce-user');
             document.getElementById('auth-nav-item').style.display = 'block';
             document.getElementById('user-nav-item').style.display = 'none';
+            // Update the button text since it's now just "My Appointments"
+            const loginBtn = document.getElementById('auth-login-btn');
+            if (loginBtn) loginBtn.textContent = 'My Appointments';
         }
 
         function openLoginModal() {
@@ -1924,20 +1929,22 @@
             dob: '',
             promoCode: null,
             promoDiscount: 0,
-            promoDescription: ''
+            promoDescription: '',
+            isChartReading: false,
+            chartType: null,
+            chartName: null,
+            chartDuration: null
         };
 
-        // Open booking modal with auth check
+        // Open booking modal — no auth required
         bookingButtons.forEach(btn => {
             btn.addEventListener('click', () => {
-                const token = localStorage.getItem('luce-auth-token');
-                if (!token) {
-                    alert('Please log in or create an account to book a session.');
-                    openRegisterModal();
-                    return;
-                }
                 bookingModal.classList.add('active');
                 bookingState.currentStep = 1;
+                bookingState.isChartReading = false;
+                bookingState.chartType = null;
+                bookingState.chartName = null;
+                bookingState.chartDuration = null;
                 bookingState.promoCode = null;
                 bookingState.promoDiscount = 0;
                 bookingState.promoDescription = '';
@@ -1946,6 +1953,17 @@
                 if (promoInput) { promoInput.value = ''; promoInput.disabled = false; promoInput.style.background = ''; }
                 const promoFeedback = document.getElementById('promo-feedback');
                 if (promoFeedback) promoFeedback.style.display = 'none';
+                // Reset client info errors
+                const errDiv = document.getElementById('client-info-errors');
+                if (errDiv) errDiv.style.display = 'none';
+                // Pre-fill from logged-in user if available
+                const user = JSON.parse(localStorage.getItem('luce-user') || 'null');
+                if (user) {
+                    if (user.full_name) { document.getElementById('client-name').value = user.full_name; bookingState.name = user.full_name; }
+                    if (user.email) { document.getElementById('client-email').value = user.email; bookingState.email = user.email; }
+                    if (user.phone) { document.getElementById('client-phone').value = user.phone; bookingState.phone = user.phone; }
+                    if (user.date_of_birth) { document.getElementById('client-dob').value = user.date_of_birth; bookingState.dob = user.date_of_birth; }
+                }
                 updateBookingStep();
             });
         });
@@ -1984,7 +2002,9 @@
         function updateStepIndicators() {
             const prevBtn = document.querySelector('.btn-step.prev');
             const nextBtn = document.querySelector('.btn-step.next');
-            if (prevBtn) prevBtn.disabled = bookingState.currentStep === 1;
+            if (prevBtn) {
+                prevBtn.disabled = bookingState.currentStep === 1 || (bookingState.isChartReading && bookingState.currentStep === 4);
+            }
             if (nextBtn) {
                 nextBtn.disabled = !canProceedToNextStep();
                 if (bookingState.currentStep === 5) {
@@ -2001,7 +2021,13 @@
             if (bookingState.currentStep === 1) return bookingState.selectedDuration;
             if (bookingState.currentStep === 2) return bookingState.selectedDate && bookingState.selectedTime;
             if (bookingState.currentStep === 3) return bookingState.sessionFormat && (bookingState.sessionFormat === 'in-person' || bookingState.remoteType);
-            if (bookingState.currentStep === 4) return bookingState.name && bookingState.email && bookingState.phone && bookingState.dob;
+            if (bookingState.currentStep === 4) {
+                const name = document.getElementById('client-name').value.trim();
+                const email = document.getElementById('client-email').value.trim();
+                const phone = document.getElementById('client-phone').value.trim();
+                const dob = document.getElementById('client-dob').value;
+                return name && email && phone && dob;
+            }
             if (bookingState.currentStep === 5) {
                 return document.getElementById('policy-cancellation')?.checked &&
                        document.getElementById('policy-nonrefundable')?.checked &&
@@ -2015,6 +2041,12 @@
         };
 
         function previousStep() {
+            if (bookingState.isChartReading && bookingState.currentStep <= 4) {
+                // For chart readings, close the modal if going back from step 4
+                bookingModal.classList.remove('active');
+                bookingState.isChartReading = false;
+                return;
+            }
             if (bookingState.currentStep > 1) {
                 bookingState.currentStep--;
                 updateBookingStep();
@@ -2022,6 +2054,30 @@
         }
 
         function nextStep() {
+            // Validate step 4 client info before proceeding
+            if (bookingState.currentStep === 4) {
+                const name = document.getElementById('client-name').value.trim();
+                const email = document.getElementById('client-email').value.trim();
+                const phone = document.getElementById('client-phone').value.trim();
+                const dob = document.getElementById('client-dob').value;
+                const errDiv = document.getElementById('client-info-errors');
+                const errors = [];
+                if (!name) errors.push('Full name is required.');
+                if (!email) errors.push('Email address is required.');
+                else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Please enter a valid email address.');
+                if (!phone) errors.push('Phone number is required.');
+                if (!dob) errors.push('Date of birth is required.');
+                if (errors.length > 0) {
+                    errDiv.innerHTML = errors.join('<br>');
+                    errDiv.style.display = 'block';
+                    return;
+                }
+                errDiv.style.display = 'none';
+                bookingState.name = name;
+                bookingState.email = email;
+                bookingState.phone = phone;
+                bookingState.dob = dob;
+            }
             if (canProceedToNextStep()) {
                 bookingState.currentStep++;
                 updateBookingStep();
@@ -2043,12 +2099,27 @@
                 90: { single: 145, pack: 375, inPersonSingle: 175, inPersonPack: 450 },
                 120: { single: 200, pack: 525, inPersonSingle: 240, inPersonPack: 630 }
             };
-            const isInPerson = bookingState.sessionFormat === 'in-person';
+            const chartPricing = {
+                'chart-written': 75,
+                'chart-30min': 125,
+                'chart-60min': 175
+            };
+            const chartLabels = {
+                'chart-written': 'Written Birth Chart Report',
+                'chart-30min': 'Birth Chart + 30-Min Personal Reading',
+                'chart-60min': 'Birth Chart + 60-Min Deep Dive Reading'
+            };
+
             let originalPrice;
-            if (isInPerson) {
-                originalPrice = pricing[bookingState.selectedDuration][bookingState.isPack ? 'inPersonPack' : 'inPersonSingle'];
+            if (bookingState.isChartReading) {
+                originalPrice = chartPricing[bookingState.chartType] || 75;
             } else {
-                originalPrice = pricing[bookingState.selectedDuration][bookingState.isPack ? 'pack' : 'single'];
+                const isInPerson = bookingState.sessionFormat === 'in-person';
+                if (isInPerson) {
+                    originalPrice = pricing[bookingState.selectedDuration][bookingState.isPack ? 'inPersonPack' : 'inPersonSingle'];
+                } else {
+                    originalPrice = pricing[bookingState.selectedDuration][bookingState.isPack ? 'pack' : 'single'];
+                }
             }
             
             // Apply promo discount
@@ -2066,14 +2137,22 @@
             }
             
             document.querySelector('.price-summary.amount').textContent = '$' + finalPrice;
-            document.getElementById('summary-date').textContent = bookingState.selectedDate;
-            document.getElementById('summary-time').textContent = bookingState.selectedTime;
-            document.getElementById('summary-duration').textContent = `${bookingState.selectedDuration} minutes`;
-            document.getElementById('summary-type').textContent = bookingState.isPack ? '3-Pack' : 'Single Session';
             
-            const formatLabel = bookingState.sessionFormat === 'in-person' ? 'In Person' : 
-                               (bookingState.remoteType === 'zoom' ? 'Remote - Zoom' : 'Remote - Phone');
-            document.getElementById('summary-format').textContent = formatLabel;
+            if (bookingState.isChartReading) {
+                document.getElementById('summary-date').textContent = 'N/A (Chart Reading)';
+                document.getElementById('summary-time').textContent = 'N/A';
+                document.getElementById('summary-duration').textContent = chartLabels[bookingState.chartType] || 'Chart Reading';
+                document.getElementById('summary-type').textContent = 'Astrology Reading';
+                document.getElementById('summary-format').textContent = 'Distance';
+            } else {
+                document.getElementById('summary-date').textContent = bookingState.selectedDate;
+                document.getElementById('summary-time').textContent = bookingState.selectedTime;
+                document.getElementById('summary-duration').textContent = `${bookingState.selectedDuration} minutes`;
+                document.getElementById('summary-type').textContent = bookingState.isPack ? '3-Pack' : 'Single Session';
+                const formatLabel = bookingState.sessionFormat === 'in-person' ? 'In Person' : 
+                                   (bookingState.remoteType === 'zoom' ? 'Remote - Zoom' : 'Remote - Phone');
+                document.getElementById('summary-format').textContent = formatLabel;
+            }
         }
 
         async function submitBooking() {
@@ -2085,6 +2164,39 @@
                 90: { single: 145, pack: 375, inPersonSingle: 175, inPersonPack: 450 },
                 120: { single: 200, pack: 525, inPersonSingle: 240, inPersonPack: 630 }
             };
+
+            // Handle chart reading submissions
+            if (bookingState.isChartReading) {
+                try {
+                    const response = await fetch('/api/booking/checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: bookingState.name,
+                            email: bookingState.email,
+                            phone: bookingState.phone,
+                            date_of_birth: bookingState.dob || '',
+                            session_type: bookingState.chartType,
+                            date: bookingState.selectedDate,
+                            time: bookingState.selectedTime,
+                            duration: bookingState.chartDuration,
+                            is_pack: false,
+                            session_format: 'distance',
+                            promo_code: bookingState.promoCode || ''
+                        })
+                    });
+                    const data = await response.json();
+                    if (data.url) {
+                        window.location.href = data.url;
+                    } else {
+                        alert('Error creating booking: ' + (data.error || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Chart booking error:', error);
+                    alert('Error creating booking. Please try again.');
+                }
+                return;
+            }
 
             // Map session format
             const sessionFormatMap = {
@@ -3588,13 +3700,6 @@
 
         document.querySelectorAll('.book-chart-reading').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const token = localStorage.getItem('luce-auth-token');
-                if (!token) {
-                    alert('Please log in or create an account to book a reading.');
-                    openRegisterModal();
-                    return;
-                }
-
                 const chartType = btn.dataset.chartType;
                 const chartNames = {
                     'chart-written': 'Written Birth Chart Report ($75)',
@@ -3607,48 +3712,46 @@
                     'chart-60min': 60
                 };
 
-                if (!confirm(`Book: ${chartNames[chartType]}?\n\nYou'll be taken to Stripe to complete payment.`)) return;
+                // Open booking modal with chart reading mode
+                bookingModal.classList.add('active');
+                bookingState.currentStep = 1;
+                bookingState.isChartReading = true;
+                bookingState.chartType = chartType;
+                bookingState.chartName = chartNames[chartType];
+                bookingState.chartDuration = chartDurations[chartType];
+                bookingState.promoCode = null;
+                bookingState.promoDiscount = 0;
+                bookingState.promoDescription = '';
 
-                // Get user info from stored auth
-                const user = JSON.parse(localStorage.getItem('luce-user') || '{}');
-                if (!user.full_name || !user.email || !user.phone) {
-                    alert('Please complete your profile first. Go to the booking flow to enter your info.');
-                    return;
+                // Reset promo input
+                const promoInput = document.getElementById('promo-code-booking');
+                if (promoInput) { promoInput.value = ''; promoInput.disabled = false; promoInput.style.background = ''; }
+                const promoFeedback = document.getElementById('promo-feedback');
+                if (promoFeedback) promoFeedback.style.display = 'none';
+                const errDiv = document.getElementById('client-info-errors');
+                if (errDiv) errDiv.style.display = 'none';
+
+                // Pre-fill from logged-in user if available
+                const user = JSON.parse(localStorage.getItem('luce-user') || 'null');
+                if (user) {
+                    if (user.full_name) { document.getElementById('client-name').value = user.full_name; bookingState.name = user.full_name; }
+                    if (user.email) { document.getElementById('client-email').value = user.email; bookingState.email = user.email; }
+                    if (user.phone) { document.getElementById('client-phone').value = user.phone; bookingState.phone = user.phone; }
+                    if (user.date_of_birth) { document.getElementById('client-dob').value = user.date_of_birth; bookingState.dob = user.date_of_birth; }
                 }
 
-                // Pick a placeholder date/time — chart readings don't need a specific time slot
-                // but the checkout endpoint requires them. Use tomorrow at 12:00 PM as placeholder.
+                // For chart readings, skip to step 4 (client info) directly
+                // Step 1 is auto-set (chart type selected), step 2 (date/time) skipped, step 3 (format) skipped
+                bookingState.selectedDuration = chartDurations[chartType];
+                bookingState.sessionFormat = 'distance';
+                // Set placeholder date/time for chart readings
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
-                const dateStr = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth()+1).padStart(2,'0') + '-' + String(tomorrow.getDate()).padStart(2,'0');
+                bookingState.selectedDate = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth()+1).padStart(2,'0') + '-' + String(tomorrow.getDate()).padStart(2,'0');
+                bookingState.selectedTime = '12:00 PM';
 
-                try {
-                    const response = await fetch('/api/booking/checkout', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            name: user.full_name,
-                            email: user.email,
-                            phone: user.phone,
-                            date_of_birth: user.date_of_birth || '',
-                            session_type: chartType,
-                            date: dateStr,
-                            time: '12:00 PM',
-                            duration: chartDurations[chartType],
-                            is_pack: false,
-                            session_format: 'distance'
-                        })
-                    });
-                    const data = await response.json();
-                    if (data.url) {
-                        window.location.href = data.url;
-                    } else {
-                        alert('Error creating booking: ' + (data.error || 'Unknown error'));
-                    }
-                } catch (error) {
-                    console.error('Chart booking error:', error);
-                    alert('Error creating booking. Please try again.');
-                }
+                bookingState.currentStep = 4;
+                updateBookingStep();
             });
         });
 
