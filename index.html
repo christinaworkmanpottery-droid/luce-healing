@@ -1832,6 +1832,7 @@
                 if (response.ok) {
                     alert('Password changed successfully! Please log in again with your new password.');
                     adminPassword = ''; // Clear stored password
+                    sessionStorage.removeItem('luce-admin-pw');
                     adminPanel.classList.remove('active');
                     document.getElementById('admin-password-form').reset();
                 } else {
@@ -2226,10 +2227,40 @@
         });
 
         // Open admin panel (if password is correct)
-        // Store admin password when authenticated (in memory during session)
-        let adminPassword = '';
+        // Store admin password in sessionStorage so it persists across page navigation
+        let adminPassword = sessionStorage.getItem('luce-admin-pw') || '';
+
+        // Auto-open admin panel if we have a stored password and URL has #admin
+        if (adminPassword && window.location.hash === '#admin') {
+            fetch(`/api/admin/bookings?password=${encodeURIComponent(adminPassword)}`)
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('admin-panel').classList.add('active');
+                        loadAdminData();
+                    } else {
+                        sessionStorage.removeItem('luce-admin-pw');
+                        adminPassword = '';
+                    }
+                });
+        }
 
         function openAdminPanel() {
+            // If already authenticated, just open
+            if (adminPassword) {
+                fetch(`/api/admin/bookings?password=${encodeURIComponent(adminPassword)}`)
+                    .then(response => {
+                        if (response.ok) {
+                            document.getElementById('admin-panel').classList.add('active');
+                            loadAdminData();
+                        } else {
+                            sessionStorage.removeItem('luce-admin-pw');
+                            adminPassword = '';
+                            openAdminPanel(); // retry with prompt
+                        }
+                    });
+                return;
+            }
+
             const password = prompt('Admin password:');
             if (!password) return;
             
@@ -2237,8 +2268,9 @@
             fetch(`/api/admin/bookings?password=${encodeURIComponent(password)}`)
                 .then(response => {
                     if (response.ok) {
-                        adminPassword = password; // Store for this session
-                        adminPanel.classList.add('active');
+                        adminPassword = password;
+                        sessionStorage.setItem('luce-admin-pw', password);
+                        document.getElementById('admin-panel').classList.add('active');
                         loadAdminData();
                     } else {
                         alert('Incorrect password');
@@ -2439,8 +2471,8 @@
                 blocks.forEach(block => {
                     html += `<tr>
                         <td>${block.date}</td>
-                        <td>${block.start_time}</td>
-                        <td>${block.end_time}</td>
+                        <td>${fmt12(block.start_time)}</td>
+                        <td>${fmt12(block.end_time)}</td>
                         <td>${block.reason || '—'}</td>
                         <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8em;" onclick="removeBlock(${block.id})">Remove</button></td>
                     </tr>`;
