@@ -2074,7 +2074,7 @@
             for (let i = 0; i < daysToShow; i++) {
                 const date = new Date(today);
                 date.setDate(date.getDate() + i);
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = formatDateStr(date);
                 const dayName = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
                 const dayBtn = document.createElement('button');
@@ -2572,20 +2572,24 @@
 
         function getMonday(d) {
             const date = new Date(d);
-            const day = date.getUTCDay();
+            const day = date.getDay(); // local time
             const diff = (day === 0 ? -6 : 1) - day;
-            date.setUTCDate(date.getUTCDate() + diff);
-            date.setUTCHours(0, 0, 0, 0);
+            date.setDate(date.getDate() + diff);
+            date.setHours(0, 0, 0, 0);
             return date;
         }
 
         function formatDateStr(d) {
-            return d.toISOString().split('T')[0];
+            // Format as YYYY-MM-DD in LOCAL time (not UTC)
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
         }
 
         function formatDateShort(d) {
             const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-            return months[d.getUTCMonth()] + ' ' + d.getUTCDate();
+            return months[d.getMonth()] + ' ' + d.getDate();
         }
 
         function calendarToday() {
@@ -2594,12 +2598,12 @@
         }
 
         function calendarPrevWeek() {
-            calendarWeekStart.setUTCDate(calendarWeekStart.getUTCDate() - 7);
+            calendarWeekStart.setDate(calendarWeekStart.getDate() - 7);
             loadWeekCalendar();
         }
 
         function calendarNextWeek() {
-            calendarWeekStart.setUTCDate(calendarWeekStart.getUTCDate() + 7);
+            calendarWeekStart.setDate(calendarWeekStart.getDate() + 7);
             loadWeekCalendar();
         }
 
@@ -2620,11 +2624,11 @@
 
             const weekStartStr = formatDateStr(calendarWeekStart);
             const endDate = new Date(calendarWeekStart);
-            endDate.setUTCDate(endDate.getUTCDate() + 6);
+            endDate.setDate(endDate.getDate() + 6);
 
             // Update label
             const label = document.getElementById('calendar-week-label');
-            if (label) label.textContent = formatDateShort(calendarWeekStart) + ' — ' + formatDateShort(endDate) + ', ' + endDate.getUTCFullYear();
+            if (label) label.textContent = formatDateShort(calendarWeekStart) + ' — ' + formatDateShort(endDate) + ', ' + endDate.getFullYear();
 
             try {
                 const response = await fetch(`/api/admin/calendar?week_start=${weekStartStr}&password=${encodeURIComponent(adminPassword)}`);
@@ -2646,7 +2650,7 @@
             const dates = [];
             for (let i = 0; i < 7; i++) {
                 const d = new Date(calendarWeekStart);
-                d.setUTCDate(d.getUTCDate() + i);
+                d.setDate(d.getDate() + i);
                 dates.push(formatDateStr(d));
             }
 
@@ -2679,9 +2683,9 @@
             let html = '<table class="week-cal-table"><thead><tr><th class="week-cal-time-col"></th>';
             for (let i = 0; i < 7; i++) {
                 const d = new Date(calendarWeekStart);
-                d.setUTCDate(d.getUTCDate() + i);
+                d.setDate(d.getDate() + i);
                 const today = formatDateStr(new Date()) === dates[i] ? ' week-cal-today' : '';
-                html += `<th class="week-cal-day-header${today}">${dayNames[i]}<br><span style="font-weight:400;font-size:0.85em;">${d.getUTCMonth()+1}/${d.getUTCDate()}</span></th>`;
+                html += `<th class="week-cal-day-header${today}">${dayNames[i]}<br><span style="font-weight:400;font-size:0.85em;">${d.getMonth()+1}/${d.getDate()}</span></th>`;
             }
             html += '</tr></thead><tbody>';
 
@@ -2807,7 +2811,7 @@
                 const container = document.getElementById('upcoming-bookings-list');
                 if (!container) return;
 
-                const today = new Date().toISOString().split('T')[0];
+                const today = formatDateStr(new Date());
                 const upcoming = bookings.filter(b => b.date >= today && !b.cancelled).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
                 if (!upcoming.length) {
