@@ -3778,6 +3778,16 @@
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ path: window.location.pathname + window.location.hash })
     }).catch(() => {});
+
+    // Auto-open booking modal if URL has #book
+    function checkBookHash() {
+        if (window.location.hash === '#book') {
+            const modal = document.getElementById('booking-modal');
+            if (modal) modal.classList.add('active');
+        }
+    }
+    checkBookHash();
+    window.addEventListener('hashchange', checkBookHash);
     </script>
 </body>
 </html>
