@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+body { margin: 0; padding: 0; background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.meme {
+  width: 1080px; height: 1080px;
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column;
+  font-family: Georgia, serif;
+}
+.bg {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url('https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?w=1080&h=1080&fit=crop');
+  background-size: cover; background-position: center;
+}
+.overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15,12,41,0.70);
+}
+.content {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; height: 100%;
+  padding: 65px 75px 50px;
+  box-sizing: border-box;
+}
+.tag {
+  font-size: 15px; color: #d4af37;
+  letter-spacing: 5px; text-transform: uppercase;
+  font-family: Arial, sans-serif; margin-bottom: 18px;
+}
+.title {
+  font-size: 44px; color: #d4af37;
+  line-height: 1.2; margin-bottom: 45px;
+  text-shadow: 0 2px 15px rgba(0,0,0,0.4);
+}
+.tips {
+  list-style: none; padding: 0; margin: 0;
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: center; gap: 26px;
+}
+.tips li {
+  font-size: 27px; color: #e8dcc8;
+  line-height: 1.45; padding-left: 48px;
+  position: relative; font-family: Arial, sans-serif;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.3);
+}
+.tips li .num {
+  position: absolute; left: 0; top: 0;
+  font-size: 26px; color: #d4af37;
+  font-family: Georgia, serif; font-weight: bold;
+}
+.divider {
+  width: 60px; height: 2px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  margin: 25px 0;
+}
+.bottom { margin-top: auto; }
+.brand {
+  font-size: 20px; color: #c9b896;
+  letter-spacing: 5px; text-transform: uppercase;
+  font-family: Arial, sans-serif;
+}
+.handle {
+  font-size: 16px; color: #8a7d6b;
+  letter-spacing: 2px; margin-top: 8px;
+  font-family: Arial, sans-serif;
+}
+</style></head><body>
+<div class="meme">
+  <div class="bg"></div>
+  <div class="overlay"></div>
+  <div class="content">
+    <div class="tag">✦ Energy Check</div>
+    <div class="title">5 Signs Your Energy<br>Needs Clearing</div>
+    <ul class="tips">
+      <li><span class="num">1.</span>You feel drained for no reason</li>
+      <li><span class="num">2.</span>You absorb other people's moods</li>
+      <li><span class="num">3.</span>Your sleep is restless</li>
+      <li><span class="num">4.</span>You feel stuck or foggy</li>
+      <li><span class="num">5.</span>Spaces feel heavy when you walk in</li>
+    </ul>
+    <div class="bottom">
+      <div class="divider"></div>
+      <div class="brand">LUCE HEALING</div>
+      <div class="handle">@lucehealing13</div>
+    </div>
+  </div>
+</div>
+</body></html>
