@@ -1121,6 +1121,8 @@ app.put('/api/client/appointments/:id/cancel', verifyAuthToken, async (req, res)
 
 app.get('/booking-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'booking-success.html')); });
 app.get('/booking-cancel.html', (req, res) => { res.sendFile(path.join(__dirname, 'booking-cancel.html')); });
+app.get('/memes-gallery.html', (req, res) => { res.sendFile(path.join(__dirname, 'memes-gallery.html')); });
+app.use('/memes-gallery', express.static(path.join(__dirname, 'memes-gallery')));
 app.get('/blog', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
 app.get('/blog/:slug', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
 
