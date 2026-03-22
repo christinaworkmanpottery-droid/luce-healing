@@ -195,6 +195,25 @@ section {
     width: 100%;
 }
 
+.nav-book-btn {
+    border: 1.5px solid var(--primary-gold);
+    padding: 6px 20px;
+    border-radius: 25px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--primary-gold) !important;
+    transition: all 0.3s ease;
+}
+
+.nav-book-btn:after {
+    display: none !important;
+}
+
+.nav-book-btn:hover {
+    background: var(--primary-gold);
+    color: #fff !important;
+}
+
 .hamburger {
     display: none;
     flex-direction: column;
