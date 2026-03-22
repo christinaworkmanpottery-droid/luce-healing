@@ -14,9 +14,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // PostgreSQL connection
+if (!process.env.DATABASE_URL) {
+  console.error('FATAL: DATABASE_URL environment variable is not set!');
+  console.error('Set it in Render dashboard → Environment → Add DATABASE_URL');
+}
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 10000
 });
 
 // Middleware
@@ -1141,16 +1146,29 @@ app.get('/api/booking/session/:sessionId', async (req, res) => {
 // ============================================================================
 
 async function startServer() {
-  try {
-    await initializeDatabase();
-    console.log('Database initialized successfully');
-  } catch (error) {
-    console.error('Database initialization error:', error);
-    process.exit(1);
+  const MAX_RETRIES = 5;
+  const RETRY_DELAY = 3000;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`Database connection attempt ${attempt}/${MAX_RETRIES}...`);
+      await initializeDatabase();
+      console.log('Database initialized successfully');
+      break;
+    } catch (error) {
+      console.error(`Database initialization error (attempt ${attempt}):`, error.message);
+      if (attempt === MAX_RETRIES) {
+        console.error('All database connection attempts failed. Exiting.');
+        process.exit(1);
+      }
+      console.log(`Retrying in ${RETRY_DELAY/1000} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+    }
   }
 
   app.listen(PORT, () => {
     console.log(`Luce Healing server running on port ${PORT}`);
+    console.log(`DATABASE_URL set: ${!!process.env.DATABASE_URL}`);
   });
 }
 
