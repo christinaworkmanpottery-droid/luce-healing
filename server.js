@@ -210,6 +210,33 @@ async function initializeDatabase() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS promo_codes (
+      id SERIAL PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      discount_percent INTEGER NOT NULL CHECK (discount_percent BETWEEN 1 AND 100),
+      description TEXT,
+      max_uses INTEGER,
+      times_used INTEGER DEFAULT 0,
+      active INTEGER DEFAULT 1,
+      expires_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  // Add promo_code column to bookings if it doesn't exist
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'bookings' AND column_name = 'promo_code'
+      ) THEN
+        ALTER TABLE bookings ADD COLUMN promo_code TEXT;
+      END IF;
+    END $$;
+  `);
+
   // Seed default availability if empty
   const availCount = await dbGet('SELECT COUNT(*) as count FROM availability');
   if (parseInt(availCount.count) === 0) {
@@ -442,7 +469,7 @@ app.get('/api/auth/me', async (req, res) => {
 app.post('/api/booking/checkout', async (req, res) => {
   try {
     if (!stripe) return res.status(500).json({ error: 'Payment system not configured' });
-    const { name, email, phone, date_of_birth, session_type, date, time, duration, is_pack, session_format } = req.body;
+    const { name, email, phone, date_of_birth, session_type, date, time, duration, is_pack, session_format, promo_code } = req.body;
     if (!name || !email || !phone || !session_type || !date || !time || !duration || !session_format) return res.status(400).json({ error: 'Missing required fields' });
 
     const slots = await getAvailableSlots(date, parseInt(duration));
@@ -451,8 +478,26 @@ app.post('/api/booking/checkout', async (req, res) => {
 
     const pricing = getPricingInfo();
     const durationInt = parseInt(duration);
-    const priceAmount = is_pack ? pricing[durationInt].pack : pricing[durationInt].single;
+    let priceAmount = is_pack ? pricing[durationInt].pack : pricing[durationInt].single;
     const packLabel = is_pack ? ' (3-Pack)' : '';
+
+    // Apply promo code discount if provided
+    let validPromoCode = null;
+    let discountPercent = 0;
+    if (promo_code) {
+      const promo = await dbGet('SELECT * FROM promo_codes WHERE code = $1', [promo_code.toUpperCase().trim()]);
+      if (promo && promo.active) {
+        const notExpired = !promo.expires_at || new Date(promo.expires_at) >= new Date();
+        const notMaxed = promo.max_uses === null || promo.times_used < promo.max_uses;
+        if (notExpired && notMaxed) {
+          discountPercent = promo.discount_percent;
+          validPromoCode = promo.code;
+          priceAmount = Math.round(priceAmount * (1 - discountPercent / 100));
+        }
+      }
+    }
+
+    const discountLabel = validPromoCode ? ` (${discountPercent}% off with ${validPromoCode})` : '';
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -460,16 +505,22 @@ app.post('/api/booking/checkout', async (req, res) => {
       line_items: [{
         price_data: {
           currency: 'usd',
-          product_data: { name: `${durationInt}-Minute Energy Healing Session${packLabel}`, description: `Date: ${date}, Time: ${time} PT, Format: ${session_format}` },
+          product_data: { name: `${durationInt}-Minute Energy Healing Session${packLabel}${discountLabel}`, description: `Date: ${date}, Time: ${time} PT, Format: ${session_format}` },
           unit_amount: priceAmount
         },
         quantity: 1
       }],
       customer_email: email,
-      metadata: { client_name: name, phone, date_of_birth: date_of_birth || '', session_type, date, time, duration: durationInt, is_pack: is_pack ? 'true' : 'false', session_format },
+      metadata: { client_name: name, phone, date_of_birth: date_of_birth || '', session_type, date, time, duration: durationInt, is_pack: is_pack ? 'true' : 'false', session_format, promo_code: validPromoCode || '' },
       success_url: `${process.env.DOMAIN || 'http://localhost:3000'}/booking-success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.DOMAIN || 'http://localhost:3000'}/booking-cancel.html`
     });
+
+    // Increment promo usage if valid code was applied
+    if (validPromoCode) {
+      await dbRun('UPDATE promo_codes SET times_used = times_used + 1 WHERE code = $1', [validPromoCode]);
+    }
+
     res.json({ sessionId: session.id, url: session.url });
   } catch (error) {
     console.error('Checkout error:', error);
@@ -501,8 +552,8 @@ app.post('/api/stripe/webhook', async (req, res) => {
     } else if (m.is_pack === 'true') {
       await dbRun('UPDATE clients SET sessions_remaining = sessions_remaining + 3 WHERE id = $1', [client.id]);
     }
-    await dbRun('INSERT INTO bookings (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',
-      [m.client_name, m.email, m.phone, m.date_of_birth || null, m.session_type, m.duration, m.date, m.time, m.session_format || 'in-person', m.is_pack === 'true' ? 1 : 0, 'completed', session.id, 'paid']);
+    await dbRun('INSERT INTO bookings (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status, promo_code) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+      [m.client_name, m.email, m.phone, m.date_of_birth || null, m.session_type, m.duration, m.date, m.time, m.session_format || 'in-person', m.is_pack === 'true' ? 1 : 0, 'completed', session.id, 'paid', m.promo_code || null]);
     console.log(`Booking created for ${m.client_name} on ${m.date} at ${m.time}`);
   }
   res.json({ received: true });
@@ -895,6 +946,98 @@ app.put('/api/admin/password', checkAdminPassword, async (req, res) => {
     res.json({ success: true, message: 'Password changed successfully' });
   } catch (error) {
     console.error('Password change error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// PROMO CODE ENDPOINTS
+// ============================================================================
+
+// Public: validate a promo code
+app.get('/api/promo/validate', async (req, res) => {
+  try {
+    const { code } = req.query;
+    if (!code) return res.json({ valid: false, error: 'No code provided' });
+
+    const promo = await dbGet('SELECT * FROM promo_codes WHERE code = $1', [code.toUpperCase().trim()]);
+    if (!promo) return res.json({ valid: false, error: 'Invalid promo code' });
+    if (!promo.active) return res.json({ valid: false, error: 'This promo code is no longer active' });
+    if (promo.expires_at && new Date(promo.expires_at) < new Date()) return res.json({ valid: false, error: 'This promo code has expired' });
+    if (promo.max_uses !== null && promo.times_used >= promo.max_uses) return res.json({ valid: false, error: 'This promo code has reached its usage limit' });
+
+    res.json({ valid: true, discount_percent: promo.discount_percent, description: promo.description || '' });
+  } catch (error) {
+    console.error('Promo validate error:', error);
+    res.status(500).json({ valid: false, error: 'Server error' });
+  }
+});
+
+// Admin: create promo code
+app.post('/api/admin/promos', checkAdminPassword, async (req, res) => {
+  try {
+    const { code, discount_percent, description, max_uses, expires_at } = req.body;
+    if (!code || !discount_percent) return res.status(400).json({ error: 'Code and discount_percent required' });
+    if (discount_percent < 1 || discount_percent > 100) return res.status(400).json({ error: 'Discount must be between 1 and 100' });
+
+    const upperCode = code.toUpperCase().trim();
+    const existing = await dbGet('SELECT id FROM promo_codes WHERE code = $1', [upperCode]);
+    if (existing) return res.status(400).json({ error: 'A promo code with this name already exists' });
+
+    await dbRun(
+      'INSERT INTO promo_codes (code, discount_percent, description, max_uses, expires_at) VALUES ($1, $2, $3, $4, $5)',
+      [upperCode, discount_percent, description || '', max_uses || null, expires_at || null]
+    );
+    const promo = await dbGet('SELECT * FROM promo_codes WHERE code = $1', [upperCode]);
+    res.json(promo);
+  } catch (error) {
+    console.error('Create promo error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin: list all promo codes
+app.get('/api/admin/promos', checkAdminPassword, async (req, res) => {
+  try {
+    const promos = await dbAll('SELECT * FROM promo_codes ORDER BY created_at DESC');
+    res.json(promos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin: update promo code
+app.put('/api/admin/promos/:id', checkAdminPassword, async (req, res) => {
+  try {
+    const { code, discount_percent, description, max_uses, expires_at, active } = req.body;
+    const promo = await dbGet('SELECT * FROM promo_codes WHERE id = $1', [req.params.id]);
+    if (!promo) return res.status(404).json({ error: 'Promo code not found' });
+
+    const updatedCode = code ? code.toUpperCase().trim() : promo.code;
+    const updatedDiscount = discount_percent !== undefined ? discount_percent : promo.discount_percent;
+    const updatedDesc = description !== undefined ? description : promo.description;
+    const updatedMaxUses = max_uses !== undefined ? (max_uses || null) : promo.max_uses;
+    const updatedExpires = expires_at !== undefined ? (expires_at || null) : promo.expires_at;
+    const updatedActive = active !== undefined ? (active ? 1 : 0) : promo.active;
+
+    await dbRun(
+      'UPDATE promo_codes SET code = $1, discount_percent = $2, description = $3, max_uses = $4, expires_at = $5, active = $6 WHERE id = $7',
+      [updatedCode, updatedDiscount, updatedDesc, updatedMaxUses, updatedExpires, updatedActive, req.params.id]
+    );
+    const updated = await dbGet('SELECT * FROM promo_codes WHERE id = $1', [req.params.id]);
+    res.json(updated);
+  } catch (error) {
+    console.error('Update promo error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin: delete promo code
+app.delete('/api/admin/promos/:id', checkAdminPassword, async (req, res) => {
+  try {
+    await dbRun('DELETE FROM promo_codes WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
