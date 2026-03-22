@@ -1904,3 +1904,40 @@ section {
         padding: 60px 20px;
     }
 }
+
+/* ============================================================================
+   PRICING FORMAT LABELS
+   ============================================================================ */
+
+.pricing-format-label {
+    font-size: 0.55em;
+    font-weight: 400;
+    color: #999;
+    text-transform: lowercase;
+    letter-spacing: 0.5px;
+}
+
+.pricing-amount {
+    font-size: 1.1em;
+}
+
+/* ============================================================================
+   ASTROLOGY CHART READING SECTION
+   ============================================================================ */
+
+.astrology-reading {
+    padding: 80px 20px;
+    background: linear-gradient(180deg, #fffaf0 0%, #f9f3e9 50%, #fffaf0 100%);
+}
+
+.astrology-reading .section-subtitle {
+    color: #888;
+    font-style: italic;
+    margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+    .astrology-content {
+        grid-template-columns: 1fr !important;
+    }
+}

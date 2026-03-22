@@ -63,8 +63,8 @@
                     "United States",
                     "Worldwide"
                 ],
-                "serviceType": ["Energy Healing", "Reiki", "Remote Healing", "Distance Healing", "Self Healing", "Grief Support", "End of Life Support", "Space Clearing", "Land Clearing", "Spiritual Guidance"],
-                "priceRange": "$45-$525",
+                "serviceType": ["Energy Healing", "Reiki", "Remote Healing", "Distance Healing", "Self Healing", "Grief Support", "End of Life Support", "Space Clearing", "Land Clearing", "Spiritual Guidance", "Astrology Chart Reading", "Birth Chart Reading"],
+                "priceRange": "$45-$630",
                 "openingHoursSpecification": [
                     {"@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "09:00", "closes": "18:00"},
                     {"@type": "OpeningHoursSpecification", "dayOfWeek": "Saturday", "opens": "10:00", "closes": "14:00"}
@@ -141,6 +141,7 @@
                 <li><a href="#home" class="nav-link">Home</a></li>
                 <li><a href="#about" class="nav-link">About</a></li>
                 <li><a href="#services" class="nav-link">Services</a></li>
+                <li><a href="#astrology" class="nav-link">Astrology</a></li>
                 <li><a href="#pricing" class="nav-link">Pricing</a></li>
                 <li><a href="#work-with-me" class="nav-link">Work With Me</a></li>
                 <li><a href="#blog" class="nav-link">Blog</a></li>
@@ -315,6 +316,59 @@
         </div>
     </section>
 
+    <!-- Astrology Chart Reading Section -->
+    <section id="astrology" class="astrology-reading">
+        <div class="container">
+            <div class="section-header">
+                <h2>Astrology Chart Reading</h2>
+                <div class="accent-line"></div>
+                <p class="section-subtitle">Discover the cosmic blueprint of your soul</p>
+            </div>
+            <div class="astrology-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start;">
+                <div class="astrology-info">
+                    <div class="service-icon" style="font-size: 2em; margin-bottom: 15px;">☽✦☽</div>
+                    <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 1.6em; color: #333; margin-bottom: 15px;">Birth Chart Reading</h3>
+                    <p style="color: #555; line-height: 1.8; margin-bottom: 15px;">
+                        Christina creates a detailed birth chart based on your date, time, and place of birth. She interprets the positions of the planets and how they influence your personality, relationships, career, and spiritual path.
+                    </p>
+                    <p style="color: #555; line-height: 1.8; margin-bottom: 20px;">
+                        Add a personal consultation where Christina walks through the chart with you — answering your questions, highlighting key themes, and offering guidance on how to work with your cosmic energy.
+                    </p>
+                    <div class="astrology-chart-placeholder" style="background: linear-gradient(135deg, rgba(212, 165, 116, 0.08) 0%, rgba(255, 249, 240, 0.4) 100%); border: 2px dashed rgba(212, 165, 116, 0.4); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 25px;">
+                        <img id="chart-example-img" src="" alt="Example Birth Chart" style="max-width: 100%; display: none; border-radius: 8px;">
+                        <p style="color: #bbb; font-style: italic; margin: 0;" id="chart-placeholder-text">✦ Example chart coming soon ✦</p>
+                    </div>
+                </div>
+                <div class="astrology-pricing">
+                    <div style="display: grid; gap: 20px;">
+                        <div class="service-card" style="padding: 25px; background: linear-gradient(135deg, rgba(212, 165, 116, 0.05) 0%, rgba(255, 249, 240, 0.6) 100%); border: 1px solid rgba(212, 165, 116, 0.3); border-radius: 12px;">
+                            <h4 style="margin-top: 0; color: #333; font-family: 'Cormorant Garamond', serif; font-size: 1.3em;">📜 Written Chart Report</h4>
+                            <p style="color: #666; font-size: 0.95em; margin-bottom: 15px;">A beautifully detailed written interpretation of your birth chart — yours to keep and revisit.</p>
+                            <div style="font-size: 1.5em; color: #D4A574; font-weight: 700; margin-bottom: 15px;">$75</div>
+                            <button class="btn btn-secondary book-chart-reading" data-chart-type="chart-written" style="width: 100%;">Book Written Report</button>
+                        </div>
+                        <div class="service-card" style="padding: 25px; background: linear-gradient(135deg, rgba(212, 165, 116, 0.1) 0%, rgba(255, 249, 240, 0.8) 100%); border: 2px solid rgba(212, 165, 116, 0.5); border-radius: 12px;">
+                            <h4 style="margin-top: 0; color: #333; font-family: 'Cormorant Garamond', serif; font-size: 1.3em;">📜 + 🗣️ Chart + 30-Min Personal Reading</h4>
+                            <p style="color: #666; font-size: 0.95em; margin-bottom: 15px;">Written report plus a 30-minute personal session where Christina walks through your chart with you.</p>
+                            <div style="font-size: 1.5em; color: #D4A574; font-weight: 700; margin-bottom: 15px;">$125</div>
+                            <button class="btn btn-primary book-chart-reading" data-chart-type="chart-30min" style="width: 100%;">Book Chart + Reading</button>
+                        </div>
+                        <div class="service-card" style="padding: 25px; background: linear-gradient(135deg, rgba(212, 165, 116, 0.05) 0%, rgba(255, 249, 240, 0.6) 100%); border: 1px solid rgba(212, 165, 116, 0.3); border-radius: 12px;">
+                            <h4 style="margin-top: 0; color: #333; font-family: 'Cormorant Garamond', serif; font-size: 1.3em;">📜 + 🗣️ Chart + 60-Min Deep Dive Reading</h4>
+                            <p style="color: #666; font-size: 0.95em; margin-bottom: 15px;">Written report plus a full 60-minute deep dive — the most immersive way to explore your birth chart.</p>
+                            <div style="font-size: 1.5em; color: #D4A574; font-weight: 700; margin-bottom: 15px;">$175</div>
+                            <button class="btn btn-secondary book-chart-reading" data-chart-type="chart-60min" style="width: 100%;">Book Deep Dive</button>
+                        </div>
+                    </div>
+                    <p style="margin-top: 20px; font-size: 0.9em; color: #888; text-align: center;">
+                        ✦ You'll need your birth date, exact time, and birthplace ✦<br>
+                        ✦ Written reports delivered within 5–7 days ✦
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Pricing Section -->
     <section id="pricing" class="pricing">
         <div class="container">
@@ -328,8 +382,8 @@
                     <div class="pricing-icon">✦</div>
                     <h3>15-Minute Session</h3>
                     <p class="pricing-desc">Quick check-in, energy tune-up, or follow-up</p>
-                    <div class="pricing-amount">$45</div>
-                    <div class="pricing-pack">3-Pack: $125</div>
+                    <div class="pricing-amount">$45 <span class="pricing-format-label">distance</span> / $55 <span class="pricing-format-label">in-person</span></div>
+                    <div class="pricing-pack">3-Pack: $125 distance / $150 in-person</div>
                     <p class="pricing-note-small">*Requires at least one 30-min session first</p>
                     <button class="btn btn-secondary open-booking">Book Now</button>
                 </div>
@@ -337,40 +391,40 @@
                     <div class="pricing-icon">✦✦</div>
                     <h3>30-Minute Session</h3>
                     <p class="pricing-desc">Focused session for a specific intention</p>
-                    <div class="pricing-amount">$60</div>
-                    <div class="pricing-pack">3-Pack: $150</div>
+                    <div class="pricing-amount">$60 <span class="pricing-format-label">distance</span> / $75 <span class="pricing-format-label">in-person</span></div>
+                    <div class="pricing-pack">3-Pack: $150 distance / $180 in-person</div>
                     <button class="btn btn-secondary open-booking">Book Now</button>
                 </div>
                 <div class="pricing-card featured">
                     <div class="pricing-icon">✦✦✦</div>
                     <h3>45-Minute Session</h3>
                     <p class="pricing-desc">Full healing session — most popular</p>
-                    <div class="pricing-amount">$75</div>
-                    <div class="pricing-pack">3-Pack: $175</div>
+                    <div class="pricing-amount">$75 <span class="pricing-format-label">distance</span> / $90 <span class="pricing-format-label">in-person</span></div>
+                    <div class="pricing-pack">3-Pack: $175 distance / $210 in-person</div>
                     <button class="btn btn-primary open-booking">Book Now</button>
                 </div>
                 <div class="pricing-card">
                     <div class="pricing-icon">✦✦✦✦</div>
                     <h3>60-Minute Session</h3>
                     <p class="pricing-desc">Extended session for deeper work</p>
-                    <div class="pricing-amount">$100</div>
-                    <div class="pricing-pack">3-Pack: $250</div>
+                    <div class="pricing-amount">$100 <span class="pricing-format-label">distance</span> / $120 <span class="pricing-format-label">in-person</span></div>
+                    <div class="pricing-pack">3-Pack: $250 distance / $300 in-person</div>
                     <button class="btn btn-secondary open-booking">Book Now</button>
                 </div>
                 <div class="pricing-card">
                     <div class="pricing-icon">✦✦✦✦✦</div>
                     <h3>90-Minute Session</h3>
                     <p class="pricing-desc">Deep session for complex needs</p>
-                    <div class="pricing-amount">$145</div>
-                    <div class="pricing-pack">3-Pack: $375</div>
+                    <div class="pricing-amount">$145 <span class="pricing-format-label">distance</span> / $175 <span class="pricing-format-label">in-person</span></div>
+                    <div class="pricing-pack">3-Pack: $375 distance / $450 in-person</div>
                     <button class="btn btn-secondary open-booking">Book Now</button>
                 </div>
                 <div class="pricing-card">
                     <div class="pricing-icon">✦✦✦✦✦✦</div>
                     <h3>120-Minute Session</h3>
                     <p class="pricing-desc">The deepest, most transformative experience</p>
-                    <div class="pricing-amount">$200</div>
-                    <div class="pricing-pack">3-Pack: $525</div>
+                    <div class="pricing-amount">$200 <span class="pricing-format-label">distance</span> / $240 <span class="pricing-format-label">in-person</span></div>
+                    <div class="pricing-pack">3-Pack: $525 distance / $630 in-person</div>
                     <button class="btn btn-secondary open-booking">Book Now</button>
                 </div>
             </div>
@@ -483,6 +537,7 @@
                             <option value="Personal Energy Healing">Personal Energy Healing</option>
                             <option value="End-of-Life & Grief Support">End-of-Life & Grief Support</option>
                             <option value="Space & Land Clearing">Space & Land Clearing</option>
+                            <option value="Astrology Chart Reading">Astrology Chart Reading</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -631,6 +686,7 @@
                                 <option value="Personal Energy Healing">Personal Energy Healing</option>
                                 <option value="End-of-Life & Grief Support">End-of-Life & Grief Support</option>
                                 <option value="Space & Land Clearing">Space & Land Clearing</option>
+                                <option value="Astrology Chart Reading">Astrology Chart Reading</option>
                                 <option value="General Inquiry">General Inquiry</option>
                             </select>
                         </div>
@@ -782,35 +838,36 @@
                 <div class="session-options">
                     <div class="option-card duration-card" data-duration="15">
                         <h4>15 min</h4>
-                        <p class="price">$45</p>
+                        <p class="price">$45 / $55</p>
                         <p class="note">Quick tune-up</p>
                     </div>
                     <div class="option-card duration-card" data-duration="30">
                         <h4>30 min</h4>
-                        <p class="price">$60</p>
+                        <p class="price">$60 / $75</p>
                         <p class="note">Focused session</p>
                     </div>
                     <div class="option-card duration-card featured" data-duration="45">
                         <h4>45 min</h4>
-                        <p class="price">$75</p>
+                        <p class="price">$75 / $90</p>
                         <p class="note">Most popular</p>
                     </div>
                     <div class="option-card duration-card" data-duration="60">
                         <h4>60 min</h4>
-                        <p class="price">$100</p>
+                        <p class="price">$100 / $120</p>
                         <p class="note">Extended</p>
                     </div>
                     <div class="option-card duration-card" data-duration="90">
                         <h4>90 min</h4>
-                        <p class="price">$145</p>
+                        <p class="price">$145 / $175</p>
                         <p class="note">Deep work</p>
                     </div>
                     <div class="option-card duration-card" data-duration="120">
                         <h4>120 min</h4>
-                        <p class="price">$200</p>
+                        <p class="price">$200 / $240</p>
                         <p class="note">Transformative</p>
                     </div>
                 </div>
+                <p style="margin-top: 8px; font-size: 0.85em; color: #999;">💡 Prices shown: distance / in-person</p>
 
                 <h4 style="margin: 25px 0 15px 0;">Single or 3-Pack?</h4>
                 <div class="session-options">
@@ -1979,14 +2036,20 @@
 
         function updatePriceSummary() {
             const pricing = {
-                15: { single: 45, pack: 125 },
-                30: { single: 60, pack: 150 },
-                45: { single: 75, pack: 175 },
-                60: { single: 100, pack: 250 },
-                90: { single: 145, pack: 375 },
-                120: { single: 200, pack: 525 }
+                15: { single: 45, pack: 125, inPersonSingle: 55, inPersonPack: 150 },
+                30: { single: 60, pack: 150, inPersonSingle: 75, inPersonPack: 180 },
+                45: { single: 75, pack: 175, inPersonSingle: 90, inPersonPack: 210 },
+                60: { single: 100, pack: 250, inPersonSingle: 120, inPersonPack: 300 },
+                90: { single: 145, pack: 375, inPersonSingle: 175, inPersonPack: 450 },
+                120: { single: 200, pack: 525, inPersonSingle: 240, inPersonPack: 630 }
             };
-            const originalPrice = pricing[bookingState.selectedDuration][bookingState.isPack ? 'pack' : 'single'];
+            const isInPerson = bookingState.sessionFormat === 'in-person';
+            let originalPrice;
+            if (isInPerson) {
+                originalPrice = pricing[bookingState.selectedDuration][bookingState.isPack ? 'inPersonPack' : 'inPersonSingle'];
+            } else {
+                originalPrice = pricing[bookingState.selectedDuration][bookingState.isPack ? 'pack' : 'single'];
+            }
             
             // Apply promo discount
             let finalPrice = originalPrice;
@@ -2015,12 +2078,12 @@
 
         async function submitBooking() {
             const pricing = {
-                15: { single: 45, pack: 125 },
-                30: { single: 60, pack: 150 },
-                45: { single: 75, pack: 175 },
-                60: { single: 100, pack: 250 },
-                90: { single: 145, pack: 375 },
-                120: { single: 200, pack: 525 }
+                15: { single: 45, pack: 125, inPersonSingle: 55, inPersonPack: 150 },
+                30: { single: 60, pack: 150, inPersonSingle: 75, inPersonPack: 180 },
+                45: { single: 75, pack: 175, inPersonSingle: 90, inPersonPack: 210 },
+                60: { single: 100, pack: 250, inPersonSingle: 120, inPersonPack: 300 },
+                90: { single: 145, pack: 375, inPersonSingle: 175, inPersonPack: 450 },
+                120: { single: 200, pack: 525, inPersonSingle: 240, inPersonPack: 630 }
             };
 
             // Map session format
@@ -3518,6 +3581,76 @@
                 alert('Error deleting promo');
             }
         };
+
+        // ============================================================================
+        // ASTROLOGY CHART READING BOOKING
+        // ============================================================================
+
+        document.querySelectorAll('.book-chart-reading').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const token = localStorage.getItem('luce-auth-token');
+                if (!token) {
+                    alert('Please log in or create an account to book a reading.');
+                    openRegisterModal();
+                    return;
+                }
+
+                const chartType = btn.dataset.chartType;
+                const chartNames = {
+                    'chart-written': 'Written Birth Chart Report ($75)',
+                    'chart-30min': 'Birth Chart + 30-Min Personal Reading ($125)',
+                    'chart-60min': 'Birth Chart + 60-Min Deep Dive Reading ($175)'
+                };
+                const chartDurations = {
+                    'chart-written': 0,
+                    'chart-30min': 30,
+                    'chart-60min': 60
+                };
+
+                if (!confirm(`Book: ${chartNames[chartType]}?\n\nYou'll be taken to Stripe to complete payment.`)) return;
+
+                // Get user info from stored auth
+                const user = JSON.parse(localStorage.getItem('luce-user') || '{}');
+                if (!user.full_name || !user.email || !user.phone) {
+                    alert('Please complete your profile first. Go to the booking flow to enter your info.');
+                    return;
+                }
+
+                // Pick a placeholder date/time — chart readings don't need a specific time slot
+                // but the checkout endpoint requires them. Use tomorrow at 12:00 PM as placeholder.
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const dateStr = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth()+1).padStart(2,'0') + '-' + String(tomorrow.getDate()).padStart(2,'0');
+
+                try {
+                    const response = await fetch('/api/booking/checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: user.full_name,
+                            email: user.email,
+                            phone: user.phone,
+                            date_of_birth: user.date_of_birth || '',
+                            session_type: chartType,
+                            date: dateStr,
+                            time: '12:00 PM',
+                            duration: chartDurations[chartType],
+                            is_pack: false,
+                            session_format: 'distance'
+                        })
+                    });
+                    const data = await response.json();
+                    if (data.url) {
+                        window.location.href = data.url;
+                    } else {
+                        alert('Error creating booking: ' + (data.error || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Chart booking error:', error);
+                    alert('Error creating booking. Please try again.');
+                }
+            });
+        });
 
         // ============================================================================
         // LOAD ON PAGE INIT

@@ -372,12 +372,16 @@ async function getAvailableSlots(dateStr, duration) {
 
 function getPricingInfo() {
   return {
-    15: { single: 4500, pack: 12500 },
-    30: { single: 6000, pack: 15000 },
-    45: { single: 7500, pack: 17500 },
-    60: { single: 10000, pack: 25000 },
-    90: { single: 14500, pack: 37500 },
-    120: { single: 20000, pack: 52500 }
+    15: { single: 4500, pack: 12500, inPersonSingle: 5500, inPersonPack: 15000 },
+    30: { single: 6000, pack: 15000, inPersonSingle: 7500, inPersonPack: 18000 },
+    45: { single: 7500, pack: 17500, inPersonSingle: 9000, inPersonPack: 21000 },
+    60: { single: 10000, pack: 25000, inPersonSingle: 12000, inPersonPack: 30000 },
+    90: { single: 14500, pack: 37500, inPersonSingle: 17500, inPersonPack: 45000 },
+    120: { single: 20000, pack: 52500, inPersonSingle: 24000, inPersonPack: 63000 },
+    // Astrology Chart Readings
+    'chart-written': { single: 7500 },
+    'chart-30min': { single: 12500 },
+    'chart-60min': { single: 17500 }
   };
 }
 
@@ -475,16 +479,36 @@ app.post('/api/booking/checkout', async (req, res) => {
   try {
     if (!stripe) return res.status(500).json({ error: 'Payment system not configured' });
     const { name, email, phone, date_of_birth, session_type, date, time, duration, is_pack, session_format, promo_code } = req.body;
-    if (!name || !email || !phone || !session_type || !date || !time || !duration || !session_format) return res.status(400).json({ error: 'Missing required fields' });
+    if (!name || !email || !phone || !session_type || !date || !time || !session_format) return res.status(400).json({ error: 'Missing required fields' });
 
-    const slots = await getAvailableSlots(date, parseInt(duration));
-    const slotsFormatted = slots.map(slot => to12HourFormat(slot));
-    if (!slotsFormatted.includes(time)) return res.status(400).json({ error: 'Selected time slot is no longer available' });
+    // Skip availability check for chart readings (they don't need a specific time slot)
+    const isChartReading = session_type && session_type.startsWith('chart-');
+    if (!isChartReading) {
+      if (!duration) return res.status(400).json({ error: 'Missing required fields' });
+      const slots = await getAvailableSlots(date, parseInt(duration));
+      const slotsFormatted = slots.map(slot => to12HourFormat(slot));
+      if (!slotsFormatted.includes(time)) return res.status(400).json({ error: 'Selected time slot is no longer available' });
+    }
 
     const pricing = getPricingInfo();
     const durationInt = parseInt(duration);
-    let priceAmount = is_pack ? pricing[durationInt].pack : pricing[durationInt].single;
-    const packLabel = is_pack ? ' (3-Pack)' : '';
+    const isInPerson = session_format === 'in-person';
+    let priceAmount;
+    let packLabel = is_pack ? ' (3-Pack)' : '';
+
+    // Check if this is an astrology chart reading
+    if (session_type && session_type.startsWith('chart-')) {
+      const chartPricing = pricing[session_type];
+      if (!chartPricing) return res.status(400).json({ error: 'Invalid chart reading type' });
+      priceAmount = chartPricing.single;
+      packLabel = '';
+    } else {
+      if (isInPerson) {
+        priceAmount = is_pack ? pricing[durationInt].inPersonPack : pricing[durationInt].inPersonSingle;
+      } else {
+        priceAmount = is_pack ? pricing[durationInt].pack : pricing[durationInt].single;
+      }
+    }
 
     // Apply promo code discount if provided
     let validPromoCode = null;
@@ -504,13 +528,27 @@ app.post('/api/booking/checkout', async (req, res) => {
 
     const discountLabel = validPromoCode ? ` (${discountPercent}% off with ${validPromoCode})` : '';
 
+    // Build product name
+    let productName;
+    const chartNames = {
+      'chart-written': 'Written Birth Chart Report',
+      'chart-30min': 'Birth Chart + 30-Min Personal Reading',
+      'chart-60min': 'Birth Chart + 60-Min Deep Dive Reading'
+    };
+    if (session_type && session_type.startsWith('chart-')) {
+      productName = `${chartNames[session_type] || 'Astrology Chart Reading'}${discountLabel}`;
+    } else {
+      const formatLabel = isInPerson ? ' (In-Person)' : ' (Distance)';
+      productName = `${durationInt}-Minute Energy Healing Session${packLabel}${formatLabel}${discountLabel}`;
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
       line_items: [{
         price_data: {
           currency: 'usd',
-          product_data: { name: `${durationInt}-Minute Energy Healing Session${packLabel}${discountLabel}`, description: `Date: ${date}, Time: ${time} PT, Format: ${session_format}` },
+          product_data: { name: productName, description: `Date: ${date}, Time: ${time} PT, Format: ${session_format}` },
           unit_amount: priceAmount
         },
         quantity: 1
