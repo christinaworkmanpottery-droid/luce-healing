@@ -323,11 +323,13 @@ async function getAvailableSlots(dateStr, duration) {
   const bookings = await dbAll('SELECT time, duration FROM bookings WHERE date = $1 AND status = $2 AND cancelled = 0', [dateStr, 'completed']);
   const bookedRanges = bookings.map(b => {
     const bookStart = timeToMinutes(b.time);
-    return { start: bookStart, end: bookStart + b.duration + 15 };
+    // 30-min buffer before AND after each session (for energy/space clearing)
+    return { start: bookStart - 30, end: bookStart + b.duration + 30 };
   });
 
   const slots = [];
-  for (let slotStart = startMins; slotStart + duration <= endMins; slotStart += duration) {
+  // Step in 30-min increments for more flexible booking options
+  for (let slotStart = startMins; slotStart + duration <= endMins; slotStart += 30) {
     const slotEnd = slotStart + duration;
     const isBlocked = allBlockedRanges.some(r => slotStart < r.end && slotEnd > r.start);
     const isBooked = bookedRanges.some(r => slotStart < r.end && slotEnd > r.start);
