@@ -334,9 +334,13 @@
                     <p style="color: #555; line-height: 1.8; margin-bottom: 20px;">
                         Add a personal consultation where Christina walks through the chart with you — answering your questions, highlighting key themes, and offering guidance on how to work with your cosmic energy.
                     </p>
-                    <div class="astrology-chart-placeholder" style="background: linear-gradient(135deg, rgba(212, 165, 116, 0.08) 0%, rgba(255, 249, 240, 0.4) 100%); border: 2px dashed rgba(212, 165, 116, 0.4); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 25px;">
-                        <img id="chart-example-img" src="" alt="Example Birth Chart" style="max-width: 100%; display: none; border-radius: 8px;">
-                        <p style="color: #bbb; font-style: italic; margin: 0;" id="chart-placeholder-text">✦ Example chart coming soon ✦</p>
+                    <div class="astrology-chart-placeholder" style="background: linear-gradient(135deg, rgba(212, 165, 116, 0.08) 0%, rgba(255, 249, 240, 0.4) 100%); border: 1px solid rgba(212, 165, 116, 0.3); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 25px;">
+                        <img src="/images/venice-natal-wheel.png" alt="Venice's Natal Chart - Cane Corso, Born March 16, 2023" style="max-width: 100%; border-radius: 8px; margin-bottom: 12px;">
+                        <p style="color: #333; font-family: 'Cormorant Garamond', serif; font-size: 1.2em; font-weight: 600; margin: 0 0 4px;">Venice — Army Dog · Cane Corso</p>
+                        <p style="color: #888; font-size: 0.85em; margin: 0 0 8px;">Sun in Pisces · Moon in Capricorn · Aries Rising</p>
+                        <p style="color: #555; font-size: 0.85em; font-style: italic; line-height: 1.6; margin: 0 0 10px;">"Getting Venice's chart completely changed how I understand him. I learned why he reacts the way he does and how to work with his energy instead of against it."</p>
+                        <p style="margin: 0;"><a href="/images/venice-sample-reading.pdf" style="color: #D4A574; text-decoration: none; font-size: 0.9em; font-weight: 500;">📄 View Venice's full sample reading →</a></p>
+                        <p style="color: #D4A574; font-size: 0.8em; margin: 8px 0 0; letter-spacing: 1px;">✦ Yes, I do charts for pets too! ✦</p>
                     </div>
                 </div>
                 <div class="astrology-pricing">
@@ -2399,6 +2403,7 @@
                 tab.classList.add('active');
                 const contentId = tab.getAttribute('data-tab');
                 document.getElementById(contentId).classList.add('active');
+                if (contentId === 'admin-blog') loadAdminBlog();
             });
         });
 
