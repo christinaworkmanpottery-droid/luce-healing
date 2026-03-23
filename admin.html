@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Luce Healing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:#FFFDF5; color:#333; min-height:100vh; }
+        .login-screen, .admin-screen { max-width:800px; margin:0 auto; padding:40px 20px; }
+        h1 { font-family:'Cormorant Garamond',serif; font-size:2em; color:#2a1f15; margin-bottom:20px; }
+        h2 { font-family:'Cormorant Garamond',serif; font-size:1.5em; color:#2a1f15; margin:20px 0 12px; }
+        .login-box { max-width:400px; margin:80px auto; text-align:center; }
+        .login-box h1 { margin-bottom:30px; }
+        input[type="password"], input[type="text"], textarea, select {
+            width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; font-size:15px;
+            font-family:'Inter',sans-serif; margin-bottom:12px;
+        }
+        textarea { min-height:200px; font-size:14px; line-height:1.6; }
+        .btn { padding:12px 24px; border:none; border-radius:8px; font-size:15px; cursor:pointer; font-family:'Inter',sans-serif; }
+        .btn-primary { background:#D4AF37; color:#fff; }
+        .btn-primary:hover { background:#b8962e; }
+        .btn-secondary { background:#eee; color:#333; }
+        .btn-danger { background:#c0392b; color:#fff; }
+        .btn-sm { padding:8px 14px; font-size:13px; }
+        .hidden { display:none; }
+        .post-card { background:#fff; border:1px solid #e8dcc8; border-radius:10px; padding:20px; margin-bottom:16px; }
+        .post-card h3 { font-family:'Cormorant Garamond',serif; font-size:1.3em; color:#2a1f15; margin-bottom:6px; }
+        .post-meta { font-size:13px; color:#999; margin-bottom:10px; }
+        .status-draft { color:#e67e22; font-weight:600; }
+        .status-published { color:#27ae60; font-weight:600; }
+        .btn-group { display:flex; gap:8px; flex-wrap:wrap; }
+        .preview-content { padding:24px; line-height:1.8; font-size:16px; color:#444; }
+        .preview-content h2 { font-size:1.5em; margin:24px 0 12px; color:#2a1f15; }
+        .preview-content p { margin-bottom:14px; }
+        .preview-content ul { margin:10px 0 14px 24px; }
+        .preview-content li { margin-bottom:8px; }
+        .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+        .modal { background:#fff; border-radius:12px; max-width:700px; width:95%; max-height:85vh; overflow-y:auto; }
+        .modal-header { padding:20px 24px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
+        .modal-header h2 { margin:0; }
+        .modal-close { background:none; border:none; font-size:24px; cursor:pointer; color:#999; }
+        .modal-body { padding:24px; }
+        .modal-footer { padding:16px 24px; border-top:1px solid #eee; display:flex; gap:8px; justify-content:flex-end; }
+        .toast { position:fixed; bottom:20px; right:20px; padding:14px 20px; border-radius:8px; color:#fff; font-size:14px; z-index:2000; }
+        .toast-success { background:#27ae60; }
+        .toast-error { background:#c0392b; }
+        .tabs { display:flex; gap:0; margin-bottom:20px; border-bottom:2px solid #e8dcc8; }
+        .tab { padding:12px 20px; cursor:pointer; font-size:14px; color:#999; border-bottom:2px solid transparent; margin-bottom:-2px; }
+        .tab.active { color:#D4AF37; border-bottom-color:#D4AF37; font-weight:600; }
+        label { display:block; font-size:13px; font-weight:500; color:#666; margin-bottom:4px; }
+        .checkbox-label { display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:12px; }
+        .checkbox-label input { width:auto; margin:0; }
+    </style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-box">
+    <h1>✦ Luce Healing Admin</h1>
+    <input type="password" id="passwordInput" placeholder="Admin password" onkeydown="if(event.key==='Enter')doLogin()">
+    <br>
+    <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
+</div>
+
+<div id="adminScreen" class="admin-screen hidden">
+    <h1>✦ Luce Healing Admin</h1>
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('blog')">Blog Posts</div>
+        <div class="tab" onclick="switchTab('newsletter')">Newsletter</div>
+    </div>
+
+    <div id="blogTab">
+        <button class="btn btn-primary btn-sm" onclick="openEditor()" style="margin-bottom:16px">+ New Post</button>
+        <div id="postsList">Loading...</div>
+    </div>
+
+    <div id="newsletterTab" class="hidden">
+        <h2>Newsletter Subscribers</h2>
+        <div id="subscriberInfo">Loading...</div>
+    </div>
+</div>
+
+<script>
+let adminPw = '';
+
+function showToast(msg, type='success') {
+    const t = document.createElement('div');
+    t.className = 'toast toast-' + type;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+}
+
+async function api(path, method='GET', body=null) {
+    const sep = path.includes('?') ? '&' : '?';
+    const url = '/api/admin/' + path + sep + 'password=' + encodeURIComponent(adminPw);
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Request failed'); }
+    return res.json();
+}
+
+async function doLogin() {
+    adminPw = document.getElementById('passwordInput').value;
+    try {
+        await api('blog');
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('adminScreen').classList.remove('hidden');
+        loadPosts();
+    } catch(e) {
+        showToast('Wrong password', 'error');
+        adminPw = '';
+    }
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tabs .tab').forEach(t => { if(t.textContent.toLowerCase().includes(tab)) t.classList.add('active'); });
+    document.getElementById('blogTab').classList.toggle('hidden', tab !== 'blog');
+    document.getElementById('newsletterTab').classList.toggle('hidden', tab !== 'newsletter');
+    if (tab === 'newsletter') loadNewsletter();
+}
+
+async function loadPosts() {
+    try {
+        const posts = await api('blog');
+        const el = document.getElementById('postsList');
+        if (!posts.length) { el.innerHTML = '<p style="color:#999">No blog posts yet</p>'; return; }
+        el.innerHTML = posts.map(p => `
+            <div class="post-card">
+                <h3>${esc(p.title)}</h3>
+                <div class="post-meta">
+                    <span class="${p.published ? 'status-published' : 'status-draft'}">${p.published ? '✅ Published' : '📝 Draft'}</span>
+                    · ${new Date(p.created_at).toLocaleDateString()} · /${esc(p.slug)}
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary btn-sm" onclick="previewPost(${p.id})">👁️ Preview</button>
+                    <button class="btn btn-secondary btn-sm" onclick="editPost(${p.id})">✏️ Edit</button>
+                    ${!p.published ? `<button class="btn btn-primary btn-sm" onclick="publishPost(${p.id})">📢 Publish</button>` : `<button class="btn btn-secondary btn-sm" onclick="unpublishPost(${p.id})">Unpublish</button>`}
+                    <button class="btn btn-danger btn-sm" onclick="deletePost(${p.id})">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+let allPosts = [];
+async function getPosts() {
+    allPosts = await api('blog');
+    return allPosts;
+}
+
+async function previewPost(id) {
+    const posts = await getPosts();
+    const p = posts.find(x => x.id === id);
+    if (!p) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.onclick = e => { if(e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = `
+        <div class="modal">
+            <div class="modal-header">
+                <h2>${esc(p.title)}</h2>
+                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+            </div>
+            <div class="preview-content">${p.content}</div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove();editPost(${p.id})">✏️ Edit</button>
+                ${!p.published ? `<button class="btn btn-primary" onclick="publishPost(${p.id});this.closest('.modal-overlay').remove()">📢 Publish</button>` : ''}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+function openEditor(post=null) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.onclick = e => { if(e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = `
+        <div class="modal">
+            <div class="modal-header">
+                <h2>${post ? 'Edit Post' : 'New Post'}</h2>
+                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label>Title</label>
+                <input type="text" id="edTitle" value="${esc(post?.title || '')}">
+                <label>Slug</label>
+                <input type="text" id="edSlug" value="${esc(post?.slug || '')}" placeholder="auto-generated">
+                <label>Excerpt</label>
+                <input type="text" id="edExcerpt" value="${esc(post?.excerpt || '')}">
+                <label>Content (HTML)</label>
+                <textarea id="edContent">${esc(post?.content || '')}</textarea>
+                <label class="checkbox-label"><input type="checkbox" id="edPublished" ${post?.published ? 'checked' : ''}> Published</label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                <button class="btn btn-primary" onclick="savePost(${post?.id || 'null'})">Save</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+async function editPost(id) {
+    const posts = await getPosts();
+    const p = posts.find(x => x.id === id);
+    if (p) openEditor(p);
+}
+
+async function savePost(id) {
+    const title = document.getElementById('edTitle').value;
+    const content = document.getElementById('edContent').value;
+    if (!title || !content) { showToast('Title and content are required', 'error'); return; }
+    const slug = document.getElementById('edSlug').value || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const data = {
+        title,
+        slug,
+        excerpt: document.getElementById('edExcerpt').value || content.replace(/<[^>]*>/g, '').substring(0, 200),
+        content,
+        published: document.getElementById('edPublished').checked ? 1 : 0
+    };
+    try {
+        if (id) {
+            await api('blog/' + id, 'PUT', data);
+        } else {
+            await api('blog', 'POST', data);
+        }
+        document.querySelector('.modal-overlay')?.remove();
+        showToast('Post saved!');
+        loadPosts();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function publishPost(id) {
+    if (!confirm('Publish this post?')) return;
+    try {
+        const posts = await getPosts();
+        const p = posts.find(x => x.id === id);
+        if (!p) return;
+        await api('blog/' + id, 'PUT', { title: p.title, slug: p.slug, content: p.content, excerpt: p.excerpt, published: 1 });
+        showToast('Published!');
+        loadPosts();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function unpublishPost(id) {
+    try {
+        const posts = await getPosts();
+        const p = posts.find(x => x.id === id);
+        if (!p) return;
+        await api('blog/' + id, 'PUT', { title: p.title, slug: p.slug, content: p.content, excerpt: p.excerpt, published: 0 });
+        showToast('Unpublished');
+        loadPosts();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function deletePost(id) {
+    if (!confirm('Delete this post? This cannot be undone.')) return;
+    try {
+        await api('blog/' + id, 'DELETE');
+        showToast('Deleted');
+        loadPosts();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function loadNewsletter() {
+    try {
+        const subs = await api('newsletter/subscribers');
+        document.getElementById('subscriberInfo').innerHTML = `<p>${subs.length} subscriber${subs.length !== 1 ? 's' : ''}</p>`;
+    } catch(e) { document.getElementById('subscriberInfo').innerHTML = '<p style="color:#999">Could not load subscribers</p>'; }
+}
+
+function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+</script>
+</body>
+</html>

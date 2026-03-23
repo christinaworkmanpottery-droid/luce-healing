@@ -1166,6 +1166,7 @@ app.get('/booking-success.html', (req, res) => { res.sendFile(path.join(__dirnam
 app.get('/booking-cancel.html', (req, res) => { res.sendFile(path.join(__dirname, 'booking-cancel.html')); });
 app.get('/memes-gallery.html', (req, res) => { res.sendFile(path.join(__dirname, 'memes-gallery.html')); });
 app.use('/memes-gallery', express.static(path.join(__dirname, 'memes-gallery')));
+app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'admin.html')); });
 app.get('/blog', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
 app.get('/blog/:slug', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
 
