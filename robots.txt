@@ -29,4 +29,3 @@ User-agent: LinkedInBot
 Allow: /
 
 Sitemap: https://lucehealing.com/sitemap.xml
-Sitemap: https://www.lucehealing.com/sitemap.xml
