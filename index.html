@@ -670,22 +670,22 @@
             <div class="contact-layout">
                 <div class="contact-form-wrapper">
                     <h3>Send Me a Message</h3>
-                    <form class="contact-form" action="https://formspree.io/f/xyzzydvr" method="POST">
+                    <form class="contact-form" id="contact-form" onsubmit="submitContactForm(event)">
                         <div class="form-group">
-                            <label for="name">Name *</label>
-                            <input type="text" id="name" name="name" required>
+                            <label for="contact-name">Name *</label>
+                            <input type="text" id="contact-name" name="name" required>
                         </div>
                         <div class="form-group">
-                            <label for="email">Email *</label>
-                            <input type="email" id="email" name="email" required>
+                            <label for="contact-email">Email *</label>
+                            <input type="email" id="contact-email" name="email" required>
                         </div>
                         <div class="form-group">
-                            <label for="phone">Phone (optional)</label>
-                            <input type="tel" id="phone" name="phone">
+                            <label for="contact-phone">Phone (optional)</label>
+                            <input type="tel" id="contact-phone" name="phone">
                         </div>
                         <div class="form-group">
-                            <label for="subject">What brings you here? *</label>
-                            <select id="subject" name="subject" required>
+                            <label for="contact-subject">What brings you here? *</label>
+                            <select id="contact-subject" name="subject" required>
                                 <option value="">Select...</option>
                                 <option value="Personal Energy Healing">Personal Energy Healing</option>
                                 <option value="End-of-Life & Grief Support">End-of-Life & Grief Support</option>
@@ -695,10 +695,11 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="message">Message *</label>
-                            <textarea id="message" name="message" rows="6" required></textarea>
+                            <label for="contact-message">Message *</label>
+                            <textarea id="contact-message" name="message" rows="6" required></textarea>
                         </div>
-                        <button type="submit" class="btn btn-primary">Send Message</button>
+                        <button type="submit" class="btn btn-primary" id="contact-submit-btn">Send Message</button>
+                        <div id="contact-form-feedback" style="display: none; margin-top: 15px; padding: 15px; border-radius: 8px; font-size: 0.95em;"></div>
                     </form>
                 </div>
                 <div class="contact-info">
@@ -1074,6 +1075,7 @@
                 <button class="admin-tab" data-tab="admin-reviews">Reviews</button>
                 <button class="admin-tab" data-tab="admin-dashboard">Dashboard</button>
                 <button class="admin-tab" data-tab="admin-promos">🎁 Promos</button>
+                <button class="admin-tab" data-tab="admin-messages">✉️ Messages</button>
                 <button class="admin-tab" data-tab="admin-traffic">📊 Traffic</button>
                 <button class="admin-tab" data-tab="admin-settings">⚙️ Settings</button>
             </div>
@@ -1382,7 +1384,15 @@
                 </div>
             </div>
 
-            <!-- Traffic Tab -->
+            <!-- Contact Messages Tab -->
+            <div id="admin-messages" class="admin-tab-content">
+                <div class="admin-card">
+                    <h3>✉️ Contact Form Messages</h3>
+                    <div id="contact-messages-list" style="margin-top: 15px;">Loading...</div>
+                </div>
+            </div>
+
+<!-- Traffic Tab -->
             <div id="admin-traffic" class="admin-tab-content">
                 <div class="dashboard-stats" id="traffic-stats">
                     <div class="stat-card">
@@ -2404,6 +2414,7 @@
                 const contentId = tab.getAttribute('data-tab');
                 document.getElementById(contentId).classList.add('active');
                 if (contentId === 'admin-blog') loadAdminBlog();
+                if (contentId === 'admin-messages') loadAdminMessages();
             });
         });
 
@@ -2472,6 +2483,7 @@
                 loadUpcomingBookings();
                 loadAdminTraffic();
                 loadAdminPromos();
+                loadAdminMessages();
             } catch (error) {
                 console.error('Error loading admin data:', error);
             }
@@ -3625,6 +3637,52 @@
             }
         });
 
+        async function loadAdminMessages() {
+            try {
+                const response = await fetch(`/api/admin/contact-messages?password=${encodeURIComponent(adminPassword)}`);
+                const messages = await response.json();
+                const container = document.getElementById('contact-messages-list');
+                if (!messages.length) {
+                    container.innerHTML = '<p style="color:#999; text-align:center; padding:20px;">No messages yet</p>';
+                    return;
+                }
+                container.innerHTML = messages.map(m => {
+                    const date = new Date(m.created_at).toLocaleString();
+                    const readClass = m.read ? 'opacity: 0.6;' : 'border-left: 4px solid #D4A574;';
+                    return `<div class="admin-card" style="margin-bottom:12px; padding:15px; ${readClass}">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <strong>${m.name}</strong>
+                            <span style="font-size:0.85em; color:#999;">${date}</span>
+                        </div>
+                        <div style="font-size:0.9em; color:#666; margin-bottom:5px;">
+                            📧 ${m.email}${m.phone ? ' · 📞 ' + m.phone : ''}
+                        </div>
+                        ${m.subject ? `<div style="font-size:0.9em; color:#333; margin-bottom:8px;"><strong>Re:</strong> ${m.subject}</div>` : ''}
+                        <div style="padding:10px; background:#f9f9f9; border-radius:6px; margin-bottom:10px; white-space:pre-wrap;">${m.message}</div>
+                        <div style="display:flex; gap:8px;">
+                            ${!m.read ? `<button class="btn btn-secondary" style="font-size:0.8em; padding:5px 12px;" onclick="markMessageRead(${m.id})">Mark Read</button>` : ''}
+                            <button class="btn btn-secondary" style="font-size:0.8em; padding:5px 12px; color:#c62828;" onclick="deleteMessage(${m.id})">Delete</button>
+                            <a href="mailto:${m.email}?subject=Re: ${encodeURIComponent(m.subject || 'Your inquiry to Luce Healing')}" class="btn btn-primary" style="font-size:0.8em; padding:5px 12px; text-decoration:none;">Reply</a>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                document.getElementById('contact-messages-list').innerHTML = '<p style="color:red;">Error loading messages</p>';
+            }
+        }
+
+        async function markMessageRead(id) {
+            await fetch(`/api/admin/contact-messages/${id}/read?password=${encodeURIComponent(adminPassword)}`, { method: 'PATCH' });
+            loadAdminMessages();
+        }
+
+        async function deleteMessage(id) {
+            if (!confirm('Delete this message?')) return;
+            await fetch(`/api/admin/contact-messages/${id}?password=${encodeURIComponent(adminPassword)}`, { method: 'DELETE' });
+            loadAdminMessages();
+        }
+
         async function loadAdminPromos() {
             try {
                 const response = await fetch(`/api/admin/promos?password=${encodeURIComponent(adminPassword)}`);
@@ -3793,6 +3851,49 @@
     }
     checkBookHash();
     window.addEventListener('hashchange', checkBookHash);
+    </script>
+    <script>
+    async function submitContactForm(e) {
+        e.preventDefault();
+        const btn = document.getElementById('contact-submit-btn');
+        const feedback = document.getElementById('contact-form-feedback');
+        const form = document.getElementById('contact-form');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        feedback.style.display = 'none';
+        try {
+            const res = await fetch('/api/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: document.getElementById('contact-name').value.trim(),
+                    email: document.getElementById('contact-email').value.trim(),
+                    phone: document.getElementById('contact-phone').value.trim(),
+                    subject: document.getElementById('contact-subject').value,
+                    message: document.getElementById('contact-message').value.trim()
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                feedback.style.display = 'block';
+                feedback.style.background = '#e8f5e9';
+                feedback.style.border = '1px solid #4caf50';
+                feedback.style.color = '#2e7d32';
+                feedback.innerHTML = '✨ ' + data.message;
+                form.reset();
+            } else {
+                throw new Error(data.error || 'Something went wrong');
+            }
+        } catch (err) {
+            feedback.style.display = 'block';
+            feedback.style.background = '#ffebee';
+            feedback.style.border = '1px solid #f44336';
+            feedback.style.color = '#c62828';
+            feedback.innerHTML = '⚠️ ' + err.message + ' — Please try again or email directly.';
+        }
+        btn.disabled = false;
+        btn.textContent = 'Send Message';
+    }
     </script>
 </body>
 </html>

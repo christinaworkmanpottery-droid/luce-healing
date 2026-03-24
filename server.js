@@ -229,6 +229,19 @@ async function initializeDatabase() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS contact_messages (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT,
+      subject TEXT,
+      message TEXT NOT NULL,
+      read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
   // Add promo_code column to bookings if it doesn't exist
   await pool.query(`
     DO $$
@@ -844,6 +857,40 @@ app.get('/api/admin/blog', checkAdminPassword, async (req, res) => {
 });
 
 // ============================================================================
+// CONTACT FORM ENDPOINTS
+// ============================================================================
+
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { name, email, phone, subject, message } = req.body;
+    if (!name || !email || !message) return res.status(400).json({ error: 'Name, email, and message are required' });
+    await dbRun('INSERT INTO contact_messages (name, email, phone, subject, message) VALUES ($1, $2, $3, $4, $5)',
+      [name, email, phone || null, subject || null, message]);
+    res.json({ success: true, message: 'Thank you for reaching out! Christina will get back to you soon.' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.get('/api/admin/contact-messages', checkAdminPassword, async (req, res) => {
+  try {
+    const messages = await dbAll('SELECT * FROM contact_messages ORDER BY created_at DESC');
+    res.json(messages);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.patch('/api/admin/contact-messages/:id/read', checkAdminPassword, async (req, res) => {
+  try {
+    await dbRun('UPDATE contact_messages SET read = TRUE WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.delete('/api/admin/contact-messages/:id', checkAdminPassword, async (req, res) => {
+  try {
+    await dbRun('DELETE FROM contact_messages WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 // NEWSLETTER ENDPOINTS
 // ============================================================================
 
