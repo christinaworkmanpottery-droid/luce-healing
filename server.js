@@ -57,6 +57,7 @@ function hashPassword(password) {
 }
 
 function verifyPassword(password, hash) {
+  if (!password || !hash) return false;
   return crypto.scryptSync(password, 'luce-salt', 64).toString('hex') === hash;
 }
 
