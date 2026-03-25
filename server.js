@@ -3,6 +3,7 @@ const path = require('path');
 const cors = require('cors');
 const crypto = require('crypto');
 const { Pool } = require('pg');
+const nodemailer = require('nodemailer');
 
 const stripeKey = process.env.STRIPE_SECRET_KEY;
 if (!stripeKey) {
@@ -12,6 +13,18 @@ const stripe = stripeKey ? require('stripe')(stripeKey) : null;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// SMTP transporter for newsletters
+let smtpTransporter = null;
+function setupSmtp(user, pass) {
+  if (user && pass) {
+    smtpTransporter = nodemailer.createTransport({ service: 'gmail', auth: { user, pass } });
+    smtpTransporter.verify(err => {
+      if (err) console.error('⚠️ SMTP verification failed:', err.message);
+      else console.log('✅ SMTP connected as', user);
+    });
+  }
+}
 
 // PostgreSQL connection
 if (!process.env.DATABASE_URL) {
@@ -239,6 +252,27 @@ async function initializeDatabase() {
       subject TEXT,
       message TEXT NOT NULL,
       read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  // Newsletter sends and tracking tables
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS newsletter_sends (
+      id SERIAL PRIMARY KEY,
+      send_id TEXT NOT NULL UNIQUE,
+      blog_post_id INTEGER,
+      subject TEXT NOT NULL,
+      sent_at TIMESTAMP DEFAULT NOW(),
+      recipients_count INTEGER DEFAULT 0
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS newsletter_tracking (
+      id SERIAL PRIMARY KEY,
+      send_id TEXT NOT NULL,
+      recipient_email TEXT NOT NULL,
+      event_type TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
@@ -934,6 +968,155 @@ app.delete('/api/admin/newsletter/:id', checkAdminPassword, async (req, res) => 
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// ---- Newsletter Email Settings ----
+app.get('/api/admin/email-settings', checkAdminPassword, async (req, res) => {
+  try {
+    const user = await dbGet("SELECT value FROM admin_settings WHERE key = 'smtp_user'");
+    res.json({ configured: !!(user && user.value), email: user ? user.value : null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/email-settings', checkAdminPassword, async (req, res) => {
+  try {
+    const { smtp_user, smtp_pass } = req.body;
+    if (!smtp_user || !smtp_pass) return res.status(400).json({ error: 'Email and app password required' });
+    await dbRun("INSERT INTO admin_settings (key, value) VALUES ('smtp_user', $1) ON CONFLICT (key) DO UPDATE SET value = $1", [smtp_user]);
+    await dbRun("INSERT INTO admin_settings (key, value) VALUES ('smtp_pass', $1) ON CONFLICT (key) DO UPDATE SET value = $1", [smtp_pass]);
+    setupSmtp(smtp_user, smtp_pass);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/email-settings/test', checkAdminPassword, async (req, res) => {
+  if (!smtpTransporter) return res.json({ success: false, error: 'No email configured' });
+  try {
+    await smtpTransporter.verify();
+    res.json({ success: true, message: 'Email connection working!' });
+  } catch(e) { res.json({ success: false, error: e.message }); }
+});
+
+// ---- Newsletter Send ----
+app.post('/api/admin/newsletter/send', checkAdminPassword, async (req, res) => {
+  try {
+    const { blogPostId, subject: customSubject } = req.body;
+    
+    let subject, htmlContent, postSlug;
+    
+    if (blogPostId) {
+      const post = await dbGet('SELECT * FROM blog_posts WHERE id = $1', [blogPostId]);
+      if (!post) return res.status(404).json({ error: 'Blog post not found' });
+      subject = customSubject || 'New from Luce Healing: ' + post.title;
+      postSlug = post.slug;
+      htmlContent = `<h3 style="color:#333;margin-top:0">${post.title}</h3>
+        <p style="color:#666;line-height:1.6">${post.excerpt || (post.content || '').substring(0, 300)}</p>`;
+    } else if (customSubject) {
+      subject = customSubject;
+      htmlContent = `<p style="color:#666;line-height:1.6">${req.body.content || ''}</p>`;
+      postSlug = null;
+    } else {
+      return res.status(400).json({ error: 'blogPostId or subject required' });
+    }
+    
+    const subscribers = await dbAll('SELECT email, name FROM newsletter_subscribers WHERE active = 1');
+    if (!subscribers.length) return res.json({ success: true, recipientCount: 0 });
+    
+    const sendId = crypto.randomUUID();
+    
+    await dbRun('INSERT INTO newsletter_sends (send_id, blog_post_id, subject, recipients_count) VALUES ($1, $2, $3, $4)', 
+      [sendId, blogPostId || null, subject, subscribers.length]);
+    
+    if (smtpTransporter) {
+      const smtpUser = await dbGet("SELECT value FROM admin_settings WHERE key = 'smtp_user'");
+      const fromEmail = smtpUser ? smtpUser.value : 'thepottersmudroom@gmail.com';
+      
+      subscribers.forEach(sub => {
+        const emailB64 = Buffer.from(sub.email).toString('base64');
+        const trackOpen = `https://lucehealing.com/api/newsletter/open/${sendId}/${emailB64}`;
+        const trackClick = postSlug 
+          ? `https://lucehealing.com/api/newsletter/click/${sendId}/${emailB64}?url=${encodeURIComponent('https://lucehealing.com/blog/' + postSlug)}`
+          : `https://lucehealing.com/api/newsletter/click/${sendId}/${emailB64}?url=${encodeURIComponent('https://lucehealing.com')}`;
+        
+        const mailHtml = `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+            <div style="background:linear-gradient(135deg,#D4A574 0%,#C49B6A 100%);padding:20px;text-align:center;color:white">
+              <h2 style="margin:0">✨ Luce Healing</h2>
+            </div>
+            <div style="padding:20px;border:1px solid #ddd;border-top:none">
+              ${htmlContent}
+              ${postSlug ? `<div style="text-align:center;margin:20px 0">
+                <a href="${trackClick}" style="background:#D4A574;color:white;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">Read More</a>
+              </div>` : ''}
+            </div>
+            <div style="padding:10px 20px;background:#f5f5f5;font-size:12px;color:#999;text-align:center">
+              <p>Luce Healing © 2026 · <a href="https://lucehealing.com" style="color:#D4A574;text-decoration:none">lucehealing.com</a></p>
+            </div>
+            <img src="${trackOpen}" width="1" height="1" style="display:none" alt="">
+          </div>`;
+        
+        smtpTransporter.sendMail({
+          from: fromEmail,
+          to: sub.email,
+          subject,
+          html: mailHtml
+        }).catch(err => console.error('Newsletter email error:', err.message));
+      });
+    }
+    
+    res.json({ success: true, recipientCount: subscribers.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Newsletter send history
+app.get('/api/admin/newsletter/history', checkAdminPassword, async (req, res) => {
+  try {
+    const sends = await dbAll('SELECT ns.*, bp.title, bp.slug FROM newsletter_sends ns LEFT JOIN blog_posts bp ON ns.blog_post_id = bp.id ORDER BY ns.sent_at DESC LIMIT 20');
+    res.json(sends);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Newsletter stats
+app.get('/api/admin/newsletter/stats/:sendId', checkAdminPassword, async (req, res) => {
+  try {
+    const { sendId } = req.params;
+    const send = await dbGet('SELECT * FROM newsletter_sends WHERE send_id = $1', [sendId]);
+    if (!send) return res.status(404).json({ error: 'Not found' });
+    const opens = await dbGet('SELECT COUNT(DISTINCT recipient_email) as count FROM newsletter_tracking WHERE send_id = $1 AND event_type = $2', [sendId, 'open']);
+    const clicks = await dbGet('SELECT COUNT(DISTINCT recipient_email) as count FROM newsletter_tracking WHERE send_id = $1 AND event_type = $2', [sendId, 'click']);
+    res.json({
+      send,
+      opens: parseInt(opens.count),
+      clicks: parseInt(clicks.count),
+      recipients: send.recipients_count,
+      openRate: send.recipients_count > 0 ? Math.round((parseInt(opens.count) / send.recipients_count) * 100) : 0,
+      clickRate: send.recipients_count > 0 ? Math.round((parseInt(clicks.count) / send.recipients_count) * 100) : 0
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Newsletter tracking: open pixel
+app.get('/api/newsletter/open/:sendId/:email', async (req, res) => {
+  try {
+    const { sendId, email } = req.params;
+    const decoded = Buffer.from(email, 'base64').toString();
+    const existing = await dbGet('SELECT id FROM newsletter_tracking WHERE send_id = $1 AND recipient_email = $2 AND event_type = $3', [sendId, decoded, 'open']);
+    if (!existing) await dbRun('INSERT INTO newsletter_tracking (send_id, recipient_email, event_type) VALUES ($1, $2, $3)', [sendId, decoded, 'open']);
+  } catch(e) { /* silent */ }
+  const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+  res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store' });
+  res.send(pixel);
+});
+
+// Newsletter tracking: click
+app.get('/api/newsletter/click/:sendId/:email', async (req, res) => {
+  try {
+    const { sendId, email } = req.params;
+    const decoded = Buffer.from(email, 'base64').toString();
+    const existing = await dbGet('SELECT id FROM newsletter_tracking WHERE send_id = $1 AND recipient_email = $2 AND event_type = $3', [sendId, decoded, 'click']);
+    if (!existing) await dbRun('INSERT INTO newsletter_tracking (send_id, recipient_email, event_type) VALUES ($1, $2, $3)', [sendId, decoded, 'click']);
+  } catch(e) { /* silent */ }
+  res.redirect(302, req.query.url || 'https://lucehealing.com');
+});
+
 // ============================================================================
 // REVIEWS/TESTIMONIALS ENDPOINTS
 // ============================================================================
@@ -1270,9 +1453,15 @@ async function startServer() {
     }
   }
 
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Luce Healing server running on port ${PORT}`);
     console.log(`DATABASE_URL set: ${!!process.env.DATABASE_URL}`);
+    // Load SMTP from database
+    try {
+      const smtpUser = await dbGet("SELECT value FROM admin_settings WHERE key = 'smtp_user'");
+      const smtpPass = await dbGet("SELECT value FROM admin_settings WHERE key = 'smtp_pass'");
+      if (smtpUser && smtpPass) setupSmtp(smtpUser.value, smtpPass.value);
+    } catch(e) { /* not configured yet */ }
   });
 }
 
