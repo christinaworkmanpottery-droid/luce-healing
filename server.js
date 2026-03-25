@@ -1218,6 +1218,23 @@ app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'admin.html'
 app.get('/blog', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
 app.get('/blog/:slug', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
 
+// Dynamic sitemap with blog posts
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const posts = await dbAll("SELECT slug, created_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC");
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+    xml += '  <url><loc>https://lucehealing.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n';
+    xml += '  <url><loc>https://lucehealing.com/blog</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n';
+    posts.forEach(p => {
+      const date = p.created_at ? p.created_at.split('T')[0].split(' ')[0] : '';
+      xml += `  <url><loc>https://lucehealing.com/blog/${p.slug}</loc>${date ? '<lastmod>' + date + '</lastmod>' : ''}<changefreq>monthly</changefreq><priority>0.7</priority></url>\n`;
+    });
+    xml += '</urlset>';
+    res.set('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch(e) { res.status(500).send('Error generating sitemap'); }
+});
+
 app.get('/api/booking/session/:sessionId', async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.retrieve(req.params.sessionId);
