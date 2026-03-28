@@ -1458,6 +1458,7 @@ app.get('/blog/:slug', (req, res) => { res.sendFile(path.join(__dirname, 'blog.h
 app.get('/forecast', (req, res) => { res.sendFile(path.join(__dirname, 'forecast.html')); });
 app.get('/forecast-success', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
 app.get('/forecast-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
+app.get('/subscribe', (req, res) => { res.sendFile(path.join(__dirname, 'subscribe.html')); });
 
 // Forecast checkout
 app.post('/api/forecast/checkout', async (req, res) => {

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join the Mailing List - Luce Healing</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #faf8f2;
+    padding: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 40px 32px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+  }
+  .sub {
+    color: #666;
+    font-size: 0.95rem;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+  input[type="text"], input[type="email"] {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid #D4AF37;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    margin-bottom: 12px;
+    outline: none;
+  }
+  input:focus { border-color: #B8960C; }
+  button {
+    width: 100%;
+    padding: 14px;
+    background: #1a1a1a;
+    color: #D4AF37;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.05rem;
+    font-family: inherit;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+  button:active { background: #333; }
+  .feedback {
+    display: none;
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 8px;
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #4caf50;
+    font-size: 0.95rem;
+  }
+  .feedback.error {
+    background: #fce4ec;
+    color: #c62828;
+    border-color: #e57373;
+  }
+  .note {
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-top: 16px;
+  }
+  .brand {
+    margin-top: 20px;
+    font-family: 'Cormorant Garamond', serif;
+    color: #D4AF37;
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Stay Connected</h1>
+  <p class="sub">Healing tips, astrology insights, upcoming events & exclusive offers — delivered to your inbox.</p>
+  <form id="signupForm">
+    <input type="text" id="name" placeholder="Your name (optional)">
+    <input type="email" id="email" placeholder="Your email address" required>
+    <button type="submit">Subscribe</button>
+  </form>
+  <div class="feedback" id="feedback"></div>
+  <p class="note">No spam. Unsubscribe anytime.</p>
+  <div class="brand">Luce Healing</div>
+</div>
+<script>
+document.getElementById('signupForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const name = document.getElementById('name').value;
+  const fb = document.getElementById('feedback');
+  if (!email) return;
+  try {
+    const res = await fetch('/api/newsletter/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name, source: 'luce-healing' })
+    });
+    const data = await res.json();
+    fb.className = 'feedback';
+    fb.textContent = data.success ? '✓ You\'re in! Thanks for subscribing.' : (data.error || 'Something went wrong.');
+    if (!data.success) fb.classList.add('error');
+    fb.style.display = 'block';
+    if (data.success) { document.getElementById('email').value = ''; document.getElementById('name').value = ''; }
+  } catch (err) {
+    fb.className = 'feedback error';
+    fb.textContent = 'Connection error. Please try again.';
+    fb.style.display = 'block';
+  }
+});
+</script>
+</body>
+</html>
