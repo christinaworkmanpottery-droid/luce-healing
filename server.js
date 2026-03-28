@@ -303,6 +303,12 @@ async function initializeDatabase() {
       ) THEN
         ALTER TABLE bookings ADD COLUMN promo_code TEXT;
       END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'newsletter_subscribers' AND column_name = 'source'
+      ) THEN
+        ALTER TABLE newsletter_subscribers ADD COLUMN source TEXT DEFAULT 'luce-healing';
+      END IF;
     END $$;
   `);
 
@@ -956,14 +962,34 @@ app.delete('/api/admin/contact-messages/:id', checkAdminPassword, async (req, re
 // NEWSLETTER ENDPOINTS
 // ============================================================================
 
+// CORS preflight for newsletter subscribe (cross-site)
+app.options('/api/newsletter/subscribe', (req, res) => {
+  const allowedOrigins = ['https://christinaworkmanpottery.com', 'https://esmeandjade.com', 'https://lucehealing.com', 'http://localhost:3000'];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'POST');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+  }
+  res.sendStatus(204);
+});
+
 app.post('/api/newsletter/subscribe', async (req, res) => {
+  // Allow cross-origin requests from Christina's other sites
+  const allowedOrigins = ['https://christinaworkmanpottery.com', 'https://esmeandjade.com', 'https://lucehealing.com', 'http://localhost:3000'];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'POST');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+  }
   try {
-    const { email, name } = req.body;
+    const { email, name, source } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     const existing = await dbGet('SELECT id FROM newsletter_subscribers WHERE email = $1', [email]);
-    if (existing) return res.status(400).json({ error: 'Email already subscribed' });
-    await dbRun('INSERT INTO newsletter_subscribers (email, name, active) VALUES ($1, $2, 1)', [email, name || '']);
-    res.json({ success: true, message: 'Thank you for subscribing to Healing Insights!' });
+    if (existing) return res.json({ success: true, message: 'You are already subscribed!' });
+    await dbRun('INSERT INTO newsletter_subscribers (email, name, active, source) VALUES ($1, $2, 1, $3)', [email, name || '', source || 'luce-healing']);
+    res.json({ success: true, message: 'Thank you for subscribing!' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
