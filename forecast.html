@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalized Astrology Forecast | Luce Healing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        /* Forecast-specific overrides and additions */
+        .forecast-header {
+            background: linear-gradient(135deg, rgba(212, 165, 116, 0.1) 0%, rgba(232, 201, 160, 0.05) 100%);
+            padding: 4rem 2rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            border-bottom: 2px solid #D4A574;
+        }
+
+        .forecast-header h1 {
+            font-size: 3rem;
+            color: #2C2C2C;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .forecast-header p {
+            font-size: 1.1rem;
+            color: #6B6B6B;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.8;
+        }
+
+        .pricing-tiers {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 4rem;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .tier-card {
+            background: white;
+            border: 2px solid #E8C9A0;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .tier-card:hover {
+            border-color: #D4A574;
+            box-shadow: 0 10px 30px rgba(212, 165, 116, 0.15);
+            transform: translateY(-4px);
+        }
+
+        .tier-card input[type="radio"] {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .tier-card input[type="radio"]:checked + .tier-content {
+            color: #D4A574;
+        }
+
+        .tier-card input[type="radio"]:checked {
+            accent-color: #D4A574;
+        }
+
+        .tier-content {
+            transition: color 0.3s ease;
+        }
+
+        .tier-card h3 {
+            font-size: 1.5rem;
+            color: #2C2C2C;
+            margin-bottom: 1rem;
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .tier-price {
+            font-size: 2.5rem;
+            color: #D4A574;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .tier-price span {
+            font-size: 1rem;
+            color: #6B6B6B;
+        }
+
+        .tier-description {
+            color: #6B6B6B;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .form-section {
+            max-width: 700px;
+            margin: 3rem auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #E8C9A0;
+        }
+
+        .form-section h2 {
+            font-size: 1.75rem;
+            color: #2C2C2C;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #2C2C2C;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #D4C4E5;
+            border-radius: 4px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            background: white;
+            color: #2C2C2C;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #D4A574;
+            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background: #D4A574;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            margin-top: 1rem;
+        }
+
+        .submit-btn:hover {
+            background: #C19460;
+            box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .form-note {
+            background: #f0f8f5;
+            border-left: 4px solid #D4A574;
+            padding: 1rem;
+            margin-top: 2rem;
+            border-radius: 4px;
+            color: #555;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 3rem;
+        }
+
+        .back-link a {
+            color: #D4A574;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .back-link a:hover {
+            color: #C19460;
+        }
+
+        .error-message {
+            background: #fee;
+            border-left: 4px solid #c33;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            color: #a33;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .success-message {
+            background: #efe;
+            border-left: 4px solid #3c3;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            color: #3a3;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .spinner {
+            border: 3px solid #E8C9A0;
+            border-top: 3px solid #D4A574;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .tier-selection-info {
+            text-align: center;
+            color: #6B6B6B;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="forecast-header">
+        <h1>Personalized Astrology Forecast</h1>
+        <p>Receive a detailed written forecast based on your natal chart. Gain clarity on upcoming cycles and cosmic influences tailored specifically to your astrological profile.</p>
+    </div>
+
+    <div class="container">
+        <!-- Pricing Tiers -->
+        <section>
+            <div class="pricing-tiers">
+                <label class="tier-card">
+                    <input type="radio" name="forecastType" value="3month" required>
+                    <div class="tier-content">
+                        <h3>3-Month Forecast</h3>
+                        <div class="tier-price">$30</div>
+                        <p class="tier-description">A three-month outlook covering your personal cycles and major planetary transits.</p>
+                    </div>
+                </label>
+
+                <label class="tier-card">
+                    <input type="radio" name="forecastType" value="6month">
+                    <div class="tier-content">
+                        <h3>6-Month Forecast</h3>
+                        <div class="tier-price">$50</div>
+                        <p class="tier-description">A comprehensive six-month guide with deeper insights into each seasonal shift.</p>
+                    </div>
+                </label>
+
+                <label class="tier-card">
+                    <input type="radio" name="forecastType" value="12month">
+                    <div class="tier-content">
+                        <h3>12-Month Forecast</h3>
+                        <div class="tier-price">$100</div>
+                        <p class="tier-description">A full-year forecast—the most comprehensive option with detailed monthly breakdowns.</p>
+                    </div>
+                </label>
+            </div>
+            <div class="tier-selection-info">
+                Select a forecast duration above to get started.
+            </div>
+        </section>
+
+        <!-- Order Form -->
+        <section class="form-section">
+            <h2>Your Information</h2>
+            
+            <div id="errorMessage" class="error-message"></div>
+            <div id="successMessage" class="success-message"></div>
+
+            <form id="forecastForm">
+                <div class="form-group">
+                    <label for="fullName">Full Name *</label>
+                    <input type="text" id="fullName" name="fullName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="birthDate">Birth Date *</label>
+                        <input type="date" id="birthDate" name="birthDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="birthTime">Birth Time *</label>
+                        <input type="time" id="birthTime" name="birthTime" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="birthLocation">Birth Location / City *</label>
+                    <input type="text" id="birthLocation" name="birthLocation" placeholder="e.g., Los Angeles, CA" required>
+                </div>
+
+                <button type="submit" class="submit-btn">Proceed to Payment</button>
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p>Processing your order...</p>
+                </div>
+
+                <div class="form-note">
+                    <strong>📧 Your personalized forecast will be emailed within 24 hours of purchase.</strong>
+                </div>
+            </form>
+        </section>
+
+        <!-- Back Link -->
+        <div class="back-link">
+            <a href="/">← Back to Luce Healing</a>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('forecastForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMessage.style.display = 'none';
+
+            // Validate forecast type is selected
+            const forecastType = document.querySelector('input[name="forecastType"]:checked');
+            if (!forecastType) {
+                showError('Please select a forecast duration.');
+                return;
+            }
+
+            // Collect form data
+            const formData = {
+                name: document.getElementById('fullName').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                birthDate: document.getElementById('birthDate').value,
+                birthTime: document.getElementById('birthTime').value,
+                birthLocation: document.getElementById('birthLocation').value.trim(),
+                forecastType: forecastType.value
+            };
+
+            // Validate required fields
+            if (!formData.name || !formData.email || !formData.birthDate || !formData.birthTime || !formData.birthLocation) {
+                showError('All fields are required.');
+                return;
+            }
+
+            // Show loading spinner
+            loadingSpinner.style.display = 'block';
+            form.querySelector('button[type="submit"]').disabled = true;
+
+            try {
+                const response = await fetch('/api/forecast/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create checkout session');
+                }
+
+                if (data.url) {
+                    // Redirect to Stripe checkout
+                    window.location.href = data.url;
+                } else {
+                    showError('No checkout URL received. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message || 'An error occurred. Please try again.');
+                loadingSpinner.style.display = 'none';
+                form.querySelector('button[type="submit"]').disabled = false;
+            }
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

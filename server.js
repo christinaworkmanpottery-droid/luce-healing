@@ -277,6 +277,22 @@ async function initializeDatabase() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS forecast_orders (
+      id SERIAL PRIMARY KEY,
+      client_name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      birth_date TEXT NOT NULL,
+      birth_time TEXT NOT NULL,
+      birth_location TEXT NOT NULL,
+      forecast_type TEXT NOT NULL,
+      price INTEGER NOT NULL,
+      stripe_session_id TEXT,
+      stripe_payment_status TEXT DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
   // Add promo_code column to bookings if it doesn't exist
   await pool.query(`
     DO $$
@@ -637,7 +653,17 @@ app.post('/api/stripe/webhook', async (req, res) => {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const m = session.metadata;
-    let client = await dbGet('SELECT * FROM clients WHERE email = $1', [m.email]);
+
+    // Handle forecast orders
+    if (m.type === 'forecast') {
+      await dbRun(
+        "UPDATE forecast_orders SET stripe_payment_status = 'paid' WHERE stripe_session_id = $1",
+        [session.id]
+      );
+      console.log(`Forecast order paid: ${m.forecast_type} for ${m.client_name}`);
+    } else {
+      // Handle booking payments (existing logic)
+      let client = await dbGet('SELECT * FROM clients WHERE email = $1', [m.email]);
     if (!client) {
       await dbRun('INSERT INTO clients (name, email, phone, date_of_birth, sessions_remaining) VALUES ($1, $2, $3, $4, $5)', [m.client_name, m.email, m.phone, m.date_of_birth || null, m.is_pack === 'true' ? 3 : 0]);
     } else if (m.is_pack === 'true') {
@@ -646,6 +672,7 @@ app.post('/api/stripe/webhook', async (req, res) => {
     await dbRun('INSERT INTO bookings (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status, promo_code) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
       [m.client_name, m.email, m.phone, m.date_of_birth || null, m.session_type, m.duration, m.date, m.time, m.session_format || 'in-person', m.is_pack === 'true' ? 1 : 0, 'completed', session.id, 'paid', m.promo_code || null]);
     console.log(`Booking created for ${m.client_name} on ${m.date} at ${m.time}`);
+    }
   }
   res.json({ received: true });
 });
@@ -1401,6 +1428,73 @@ app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'admin.html'
 app.get('/blog', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
 app.get('/blog/:slug', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
 
+// Forecast routes
+app.get('/forecast', (req, res) => { res.sendFile(path.join(__dirname, 'forecast.html')); });
+app.get('/forecast-success', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
+app.get('/forecast-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
+
+// Forecast checkout
+app.post('/api/forecast/checkout', async (req, res) => {
+  try {
+    if (!stripe) return res.status(500).json({ error: 'Payment system not configured' });
+    const { name, email, birthDate, birthTime, birthLocation, forecastType } = req.body;
+    if (!name || !email || !birthDate || !birthTime || !birthLocation || !forecastType) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+    const prices = { '3month': 3000, '6month': 5000, '12month': 10000 };
+    const labels = { '3month': '3-Month Astrology Forecast', '6month': '6-Month Astrology Forecast', '12month': '12-Month Astrology Forecast' };
+    if (!prices[forecastType]) return res.status(400).json({ error: 'Invalid forecast type' });
+
+    const price = prices[forecastType];
+    const label = labels[forecastType];
+    const domain = process.env.DOMAIN || 'http://localhost:3000';
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: { name: label, description: `Personalized astrology forecast for ${name}` },
+          unit_amount: price
+        },
+        quantity: 1
+      }],
+      mode: 'payment',
+      success_url: `${domain}/forecast-success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${domain}/forecast`,
+      customer_email: email,
+      metadata: {
+        type: 'forecast',
+        forecast_type: forecastType,
+        client_name: name,
+        birth_date: birthDate,
+        birth_time: birthTime,
+        birth_location: birthLocation
+      }
+    });
+
+    await dbRun(
+      'INSERT INTO forecast_orders (client_name, email, birth_date, birth_time, birth_location, forecast_type, price, stripe_session_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+      [name, email, birthDate, birthTime, birthLocation, forecastType, price, session.id]
+    );
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error('Forecast checkout error:', error);
+    res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+});
+
+// Admin: get forecast orders
+app.get('/api/admin/forecast-orders', checkAdminPassword, async (req, res) => {
+  try {
+    const orders = await dbAll('SELECT * FROM forecast_orders ORDER BY created_at DESC');
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Dynamic sitemap with blog posts
 app.get('/sitemap.xml', async (req, res) => {
   try {
@@ -1408,6 +1502,7 @@ app.get('/sitemap.xml', async (req, res) => {
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
     xml += '  <url><loc>https://lucehealing.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n';
     xml += '  <url><loc>https://lucehealing.com/blog</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n';
+    xml += '  <url><loc>https://lucehealing.com/forecast</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>\n';
     posts.forEach(p => {
       const date = p.created_at ? p.created_at.split('T')[0].split(' ')[0] : '';
       xml += `  <url><loc>https://lucehealing.com/blog/${p.slug}</loc>${date ? '<lastmod>' + date + '</lastmod>' : ''}<changefreq>monthly</changefreq><priority>0.7</priority></url>\n`;

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forecast Order Confirmed | Luce Healing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Lato', sans-serif;
+            background: linear-gradient(135deg, #f5f1ed 0%, #fef9f3 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .success-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            padding: 60px 40px;
+            text-align: center;
+        }
+        .success-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 0.6s ease;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5em;
+            color: #2d2d2d;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .subtitle {
+            color: #8B7355;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .confirmation-details {
+            background: #f9f7f4;
+            border-left: 4px solid #D4A574;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: left;
+            border-radius: 4px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e8e4e0;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #8B7355;
+        }
+        .detail-value {
+            color: #2d2d2d;
+        }
+        .next-steps {
+            background: #f0f8f5;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: left;
+        }
+        .next-steps h3 {
+            font-family: 'Cormorant Garamond', serif;
+            color: #2d2d2d;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .next-steps ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .next-steps li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #555;
+        }
+        .next-steps li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #D4A574;
+            font-weight: bold;
+        }
+        .contact-info {
+            margin: 30px 0;
+            color: #666;
+            font-size: 0.95em;
+        }
+        .contact-info a {
+            color: #D4A574;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .contact-info a:hover {
+            text-decoration: underline;
+        }
+        .btn-container {
+            margin-top: 30px;
+        }
+        a.btn {
+            display: inline-block;
+            background: #D4A574;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+        a.btn:hover {
+            background: #c19460;
+        }
+        .loading {
+            color: #8B7355;
+            font-size: 0.9em;
+            margin-top: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-icon">✓</div>
+        <h1>Your Forecast Order is Confirmed!</h1>
+        <p class="subtitle">Thank you for ordering your personalized astrology forecast. Your payment has been received.</p>
+        
+        <div class="confirmation-details" id="details" style="display: none;">
+            <div class="detail-row">
+                <span class="detail-label">Order Reference:</span>
+                <span class="detail-value" id="order-id">–</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Forecast Duration:</span>
+                <span class="detail-value" id="forecast-type">–</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Amount Paid:</span>
+                <span class="detail-value" id="amount">–</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Confirmation Email:</span>
+                <span class="detail-value" id="email">–</span>
+            </div>
+        </div>
+
+        <div class="next-steps">
+            <h3>What Happens Next</h3>
+            <ul>
+                <li>A confirmation email will be sent to you shortly</li>
+                <li>Your personalized astrology forecast will be carefully prepared</li>
+                <li>You'll receive your detailed forecast via email within 24 hours</li>
+                <li>The forecast is tailored to your birth chart and current planetary transits</li>
+            </ul>
+        </div>
+
+        <div class="contact-info">
+            <p>Questions? Christina is here to help.</p>
+            <p><strong>Email:</strong> <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a></p>
+            <p><strong>Phone:</strong> <a href="tel:+1-310-910-1684">310-910-1684</a></p>
+            <p style="margin-top: 15px; font-size: 0.9em; color: #999;">Response time: Within 24 hours</p>
+        </div>
+
+        <div class="btn-container">
+            <a href="/" class="btn">Return Home</a>
+        </div>
+
+        <div class="loading">Loading order details...</div>
+    </div>
+
+    <script>
+        // Get session ID from URL
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get('session_id');
+
+        if (sessionId) {
+            // Fetch session details from Stripe via backend
+            fetch(`/api/booking/session/${sessionId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.metadata) {
+                        document.getElementById('order-id').textContent = sessionId.substring(0, 12) + '...';
+                        document.getElementById('forecast-type').textContent = formatForecastType(data.metadata.forecast_type);
+                        document.getElementById('email').textContent = data.customer_email;
+                        
+                        // Calculate amount
+                        const amount = (data.amount_total / 100).toFixed(2);
+                        document.getElementById('amount').textContent = `$${amount}`;
+                        
+                        document.getElementById('details').style.display = 'block';
+                        document.querySelector('.loading').style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching session:', err);
+                    document.querySelector('.loading').textContent = 'Forecast order confirmed! Check your email for details.';
+                });
+        } else {
+            document.querySelector('.loading').textContent = 'Check your email for order confirmation.';
+        }
+
+        function formatForecastType(type) {
+            const types = {
+                '3month': '3-Month Forecast',
+                '6month': '6-Month Forecast',
+                '12month': '12-Month Forecast'
+            };
+            return types[type] || type;
+        }
+    </script>
+</body>
+</html>
