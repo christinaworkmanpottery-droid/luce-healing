@@ -19,7 +19,8 @@ Track past blog posts to avoid repeating topics.
 | (pre-log) | Why Your Space Holds Energy (And How to Clear It) | Energy healing tips |
 | (pre-log) | This Week's Astrology: Fresh Energy, New Beginnings | (astrology — bonus) |
 | (pre-log) | Sample Pet Birth Chart Reading: Meet Venice | (astrology — bonus) |
-| 2026-03-25 | The Real Secret to Manifestation (It's Not What You Think) | Manifestation techniques |
+| 2026-04-01 | Spiritual Self-Care Is Not A Luxury | Spiritual self-care |
+| 2026-04-08 | Feel Scattered? Here's How to Come Back to Earth. | Grounding & centering |
 
 ## Meme Topics Used
 - Be Your Own Healer
@@ -27,11 +28,11 @@ Track past blog posts to avoid repeating topics.
 - Center Yourself
 - 5 Signs Your Energy Needs Clearing
 - Clear Your Space
-- The Real Secret to Manifestation (2026-03-25)
+- Spiritual Self-Care (2026-04-01)
+- Grounding — Feel Scattered? Come Back to Earth. (2026-04-08)
 
 ## Next Up (suggested rotation)
-- Spiritual self-care
-- Grounding & centering
 - Bettering yourself
 - Energy healing tips (fresh angle)
 - Self-healing practices (fresh angle)
+- Manifestation techniques (fresh angle)

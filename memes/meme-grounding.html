@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+body { margin: 0; padding: 0; background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.meme {
+  width: 1080px; height: 1080px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d4a3e 50%, #4a3728 100%);
+  display: flex; flex-direction: column; padding: 70px 80px; box-sizing: border-box;
+  font-family: Georgia, serif; position: relative; overflow: hidden;
+}
+.glow { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 30% 80%, rgba(139,100,60,0.18) 0%, transparent 55%), radial-gradient(circle at 75% 15%, rgba(80,160,100,0.12) 0%, transparent 45%); }
+.content { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; }
+.tag { font-size: 16px; color: #a8c5a0; letter-spacing: 5px; text-transform: uppercase; font-family: Arial, sans-serif; margin-bottom: 20px; }
+.title { font-size: 44px; color: #fff; line-height: 1.2; margin-bottom: 10px; text-shadow: 0 2px 15px rgba(0,0,0,0.5); }
+.subtitle { font-size: 20px; color: #c9b99a; font-style: italic; margin-bottom: 36px; font-family: Arial, sans-serif; }
+.tips { list-style: none; padding: 0; margin: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 24px; }
+.tips li { font-size: 25px; color: #e8e0d8; line-height: 1.45; padding-left: 48px; position: relative; font-family: Arial, sans-serif; }
+.tips li .icon { position: absolute; left: 0; top: 1px; font-size: 26px; }
+.divider { width: 60px; height: 2px; background: linear-gradient(90deg, transparent, #a8c5a0, transparent); margin: 28px 0; }
+.bottom { margin-top: auto; }
+.brand { font-size: 20px; color: #fff; letter-spacing: 5px; text-transform: uppercase; font-family: Arial, sans-serif; }
+.handle { font-size: 16px; color: #a8c5a0; letter-spacing: 2px; margin-top: 8px; font-family: Arial, sans-serif; }
+</style></head><body>
+<div class="meme">
+  <div class="glow"></div>
+  <div class="content">
+    <div class="tag">Grounding &amp; Centering</div>
+    <div class="title">Feel Scattered?<br>Come Back to Earth.</div>
+    <div class="subtitle">5 ways to ground yourself — no crystals required</div>
+    <ul class="tips">
+      <li><span class="icon">🌱</span>Barefoot on grass or dirt for 5 minutes. Let the earth do the work.</li>
+      <li><span class="icon">🌬️</span>Breathe in for 4, hold for 4, out for 6. Repeat until you feel your feet again.</li>
+      <li><span class="icon">🫲</span>Hold something cold or heavy. Physical sensation pulls you back into your body fast.</li>
+      <li><span class="icon">🌿</span>Name 5 things you can see right now. Presence is the antidote to spiral.</li>
+      <li><span class="icon">🔥</span>Light a candle. Watch the flame. Your nervous system will thank you.</li>
+    </ul>
+    <div class="bottom">
+      <div class="divider"></div>
+      <div class="brand">LUCE HEALING</div>
+      <div class="handle">@lucehealing13</div>
+    </div>
+  </div>
+</div>
+</body></html>
