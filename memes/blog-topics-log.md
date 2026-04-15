@@ -32,7 +32,10 @@ Track past blog posts to avoid repeating topics.
 - Grounding — Feel Scattered? Come Back to Earth. (2026-04-08)
 
 ## Next Up (suggested rotation)
-- Bettering yourself
 - Energy healing tips (fresh angle)
 - Self-healing practices (fresh angle)
 - Manifestation techniques (fresh angle)
+- Spiritual self-care (fresh angle)
+- Grounding & centering (fresh angle)
+- Bettering yourself (fresh angle)
+le)

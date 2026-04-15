@@ -8,11 +8,11 @@ const path = require('path');
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1080, height: 1080 });
-  await page.goto('file://' + path.resolve(__dirname, 'meme-spiritual-self-care.html'), { waitUntil: 'load' });
+  await page.goto('file://' + path.resolve(__dirname, 'meme-bettering-yourself.html'), { waitUntil: 'load' });
   
   const element = await page.$('.meme');
-  await element.screenshot({ path: path.resolve(__dirname, 'meme-spiritual-self-care.png'), type: 'png' });
+  await element.screenshot({ path: path.resolve(__dirname, 'meme-bettering-yourself.png'), type: 'png' });
   
-  console.log('Screenshot saved to meme-spiritual-self-care.png');
+  console.log('Screenshot saved to meme-bettering-yourself.png');
   await browser.close();
 })();
