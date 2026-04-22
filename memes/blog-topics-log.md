@@ -30,6 +30,22 @@ Track past blog posts to avoid repeating topics.
 - Clear Your Space
 - Spiritual Self-Care (2026-04-01)
 - Grounding — Feel Scattered? Come Back to Earth. (2026-04-08)
+- 5-Minute Daily Rituals to Heal Your Nervous System (2026-04-22)
+
+## Next Up (suggested rotation)
+- Energy healing tips (fresh angle)
+- Self-healing practices (fresh angle)
+- Manifestation techniques (fresh angle)
+- Spiritual self-care (fresh angle)
+- Grounding & centering (fresh angle)
+- Bettering yourself (fresh angle)
+le)
+r Crystals
+- Center Yourself
+- 5 Signs Your Energy Needs Clearing
+- Clear Your Space
+- Spiritual Self-Care (2026-04-01)
+- Grounding — Feel Scattered? Come Back to Earth. (2026-04-08)
 
 ## Next Up (suggested rotation)
 - Energy healing tips (fresh angle)
