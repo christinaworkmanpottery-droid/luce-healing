@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+body { margin: 0; padding: 0; background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.meme {
+  width: 1080px; height: 1080px;
+  background: linear-gradient(135deg, #0f0c29 0%, #1a1535 40%, #2d1f4e 100%);
+  display: flex; flex-direction: column; padding: 70px 80px; box-sizing: border-box;
+  font-family: Georgia, serif; position: relative; overflow: hidden;
+}
+.glow { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 30% 80%, rgba(212,175,55,0.06) 0%, transparent 50%); }
+.content { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; }
+.tag { font-size: 16px; color: #d4af37; letter-spacing: 5px; text-transform: uppercase; font-family: Arial, sans-serif; margin-bottom: 20px; }
+.title { font-size: 48px; color: #d4af37; line-height: 1.2; margin-bottom: 30px; text-shadow: 0 2px 15px rgba(212,175,55,0.2); }
+.subtitle { font-size: 22px; color: #c9b896; line-height: 1.4; margin-bottom: 30px; font-style: italic; font-family: Georgia, serif; }
+.tips { list-style: none; padding: 0; margin: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+.tips li { font-size: 24px; color: #e8dcc8; line-height: 1.4; padding-left: 50px; position: relative; font-family: Arial, sans-serif; }
+.tips li .icon { position: absolute; left: 0; top: 2px; font-size: 26px; }
+.tips li b { color: #d4af37; font-weight: 600; }
+.divider { width: 60px; height: 2px; background: linear-gradient(90deg, transparent, #d4af37, transparent); margin: 30px 0; }
+.bottom { margin-top: auto; }
+.brand { font-size: 20px; color: #c9b896; letter-spacing: 5px; text-transform: uppercase; font-family: Arial, sans-serif; }
+.handle { font-size: 16px; color: #8a7d6b; letter-spacing: 2px; margin-top: 8px; font-family: Arial, sans-serif; }
+</style></head><body>
+<div class="meme">
+  <div class="glow"></div>
+  <div class="content">
+    <div class="tag">Self-Healing</div>
+    <div class="title">Where You Hold It</div>
+    <div class="subtitle">Your body has been keeping the score. Here's where emotions get stuck — and how to free them.</div>
+    <ul class="tips">
+      <li><span class="icon">🫀</span><b>Chest tight?</b> Grief lives here. Place a hand. Sigh out loud.</li>
+      <li><span class="icon">🦴</span><b>Tense jaw?</b> Words you didn't say. Hum, yawn, or scream into a pillow.</li>
+      <li><span class="icon">🌊</span><b>Heavy belly?</b> Fear and worry settle here. Breathe deep into it.</li>
+      <li><span class="icon">🪨</span><b>Stiff hips?</b> Old emotion lives in your hips. Move them slowly, daily.</li>
+      <li><span class="icon">🔥</span><b>Tight shoulders?</b> Responsibility you've been carrying. Let it drop.</li>
+    </ul>
+    <div class="bottom">
+      <div class="divider"></div>
+      <div class="brand">LUCE HEALING</div>
+      <div class="handle">@lucehealing13</div>
+    </div>
+  </div>
+</div>
+</body></html>
