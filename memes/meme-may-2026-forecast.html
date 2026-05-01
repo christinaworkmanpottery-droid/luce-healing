@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body { margin: 0; padding: 0; background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.meme {
+  width: 1080px; height: 1080px;
+  background: linear-gradient(135deg, #0f0c29 0%, #1a1535 40%, #2d1f4e 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 70px; box-sizing: border-box;
+  font-family: Georgia, serif;
+  position: relative; overflow: hidden;
+}
+.glow {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle at 25% 15%, rgba(212,175,55,0.1) 0%, transparent 50%),
+              radial-gradient(circle at 75% 85%, rgba(180,120,200,0.06) 0%, transparent 40%),
+              radial-gradient(circle at 50% 50%, rgba(212,175,55,0.04) 0%, transparent 60%);
+}
+.stars {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 25% 35%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 40% 8%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 15% 75%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 90% 10%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 60% 85%, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 35% 90%, rgba(255,255,255,0.4), transparent);
+}
+.content { position: relative; z-index: 1; text-align: center; }
+.month-label {
+  font-size: 18px; color: #c9b896; letter-spacing: 8px;
+  text-transform: uppercase; font-family: Arial, sans-serif;
+  margin-bottom: 20px;
+}
+.moon-icon { font-size: 60px; margin-bottom: 24px; opacity: 0.7; }
+.title {
+  font-size: 44px; color: #d4af37; line-height: 1.3; font-style: italic;
+  margin-bottom: 16px; text-shadow: 0 2px 20px rgba(212,175,55,0.3);
+}
+.subtitle {
+  font-size: 28px; color: #e8d5a3; font-style: normal; opacity: 0.85;
+  line-height: 1.5; margin-bottom: 36px;
+}
+.transits {
+  font-size: 20px; color: #a89b84; line-height: 2.2;
+  font-family: Arial, sans-serif; letter-spacing: 1px;
+}
+.transits .highlight { color: #d4af37; }
+.divider {
+  width: 60px; height: 2px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  margin: 32px auto;
+}
+.brand {
+  font-size: 22px; color: #c9b896; letter-spacing: 6px;
+  text-transform: uppercase; font-family: Arial, sans-serif;
+}
+.credit {
+  font-size: 14px; color: #8a7d6b; letter-spacing: 3px;
+  margin-top: 10px; font-family: Arial, sans-serif;
+}
+</style>
+</head>
+<body>
+<div class="meme">
+  <div class="glow"></div>
+  <div class="stars"></div>
+  <div class="content">
+    <div class="month-label">May 2026</div>
+    <div class="moon-icon">🌕✦🌑</div>
+    <div class="title">Monthly Healing Forecast</div>
+    <div class="subtitle">Let the Scorpio Moon take<br>what is dead — let the Taurus Moon<br>plant what is alive.</div>
+    <div class="transits">
+      <span class="highlight">☽</span> Full Moon in Scorpio · May 1<br>
+      <span class="highlight">♀</span> Venus enters Taurus · May 5<br>
+      <span class="highlight">☿</span> Mercury enters Gemini · May 11<br>
+      <span class="highlight">☽</span> New Moon in Taurus · May 16<br>
+      <span class="highlight">☉</span> Gemini Season Begins · May 21
+    </div>
+    <div class="divider"></div>
+    <div class="brand">LUCE HEALING</div>
+    <div class="credit">lucehealing.com</div>
+  </div>
+</div>
+</body>
+</html>
