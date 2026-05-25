@@ -1567,8 +1567,9 @@ app.get('/blog/:slug', async (req, res) => {
                 <a class="share-btn pin" href="https://pinterest.com/pin/create/button/?url=${encodeURIComponent(postUrl)}&description=${encodeURIComponent(post.title + ' — ' + (post.excerpt || ''))}" target="_blank" rel="noopener">📌 Pinterest</a>
                 <a class="share-btn x" href="https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(post.title)}" target="_blank" rel="noopener">𝕏 Post</a>
                 <button class="share-btn copy" onclick="navigator.clipboard.writeText('${postUrl}');this.textContent='✅ Copied!';setTimeout(()=>this.textContent='📋 Copy Link',2000)">📋 Copy Link</button>
+                <button class="share-btn" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);" onclick="navigator.clipboard.writeText('${escapedTitle.replace(/'/g, "\\'") }\n\n✨ New on the blog \u2192 link in bio\n\n${postUrl}\n\n#energyhealing #weeklyastrology #spiritualwellness #mindbodyspirit #healingjourney');this.textContent='✅ Copied!';setTimeout(()=>this.textContent='📸 Instagram Caption',2000)">📸 Instagram Caption</button>
             </div>
-            <p style="color:#999;margin-top:10px;font-size:0.85em">For Instagram & TikTok — copy the link and add it to your bio or story!</p>
+            <p style="color:#999;margin-top:10px;font-size:0.85em">Instagram: tap "📸 Instagram Caption" to copy a ready-to-paste caption with hashtags!</p>
         </div>
     </div>
     <footer class="footer" style="margin-top: 60px;"><div class="container"><div class="footer-content"><div class="footer-section"><h4>Luce Healing</h4><p>Energy healing, spiritual guidance, and sacred support.</p><p class="footer-contact"><a href="tel:+1-949-303-9404">949-303-9404</a> | <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a> | <a href="https://www.instagram.com/lucehealing13" target="_blank">@lucehealing13</a></p></div></div><div class="footer-bottom"><p>&copy; 2026 Luce Healing. All rights reserved.</p></div></div></footer>
