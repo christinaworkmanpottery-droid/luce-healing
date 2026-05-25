@@ -932,10 +932,30 @@ app.get('/api/admin/blog', checkAdminPassword, async (req, res) => {
 
 app.post('/api/contact', async (req, res) => {
   try {
-    const { name, email, phone, subject, message } = req.body;
+    const { name, email, phone, subject, message, website } = req.body;
+    // Honeypot: if 'website' field is filled, it's a bot (field is hidden from humans)
+    if (website) return res.json({ success: true, message: 'Thank you for reaching out!' });
     if (!name || !email || !message) return res.status(400).json({ error: 'Name, email, and message are required' });
+    // Spam detection: reject if name/email/message look like random strings
+    const looksRandom = (str) => /^[a-zA-Z]{15,}$/.test(str.replace(/[^a-zA-Z]/g, '')) && !/[aeiou]{2,}/i.test(str);
+    if (looksRandom(name) || looksRandom(message)) return res.json({ success: true, message: 'Thank you for reaching out!' });
+    // Rate limit: max 3 messages per email per day
+    const today = new Date().toISOString().split('T')[0];
+    const recentCount = await dbGet("SELECT COUNT(*) as c FROM contact_messages WHERE email = $1 AND created_at::date = $2::date", [email, today]);
+    if (recentCount && recentCount.c >= 3) return res.json({ success: true, message: 'Thank you for reaching out!' });
     await dbRun('INSERT INTO contact_messages (name, email, phone, subject, message) VALUES ($1, $2, $3, $4, $5)',
       [name, email, phone || null, subject || null, message]);
+    // Send email notification to Christina
+    try {
+      if (smtpTransporter) {
+        await smtpTransporter.sendMail({
+          from: '"Luce Healing" <lucehealing13@gmail.com>',
+          to: 'lucehealing13@gmail.com',
+          subject: `New contact: ${name} - ${subject || 'No subject'}`,
+          html: `<p><strong>From:</strong> ${name} (${email})</p><p><strong>Phone:</strong> ${phone || 'Not provided'}</p><p><strong>Subject:</strong> ${subject || 'None'}</p><p><strong>Message:</strong></p><p>${message}</p>`
+        });
+      }
+    } catch(emailErr) { console.error('[CONTACT EMAIL ERROR]', emailErr.message); }
     res.json({ success: true, message: 'Thank you for reaching out! Christina will get back to you soon.' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
