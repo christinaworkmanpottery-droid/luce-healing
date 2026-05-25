@@ -34,7 +34,9 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 10000
+  connectionTimeoutMillis: 15000,
+  idleTimeoutMillis: 30000,
+  max: 5
 });
 
 // Middleware
@@ -1452,7 +1454,78 @@ app.get('/memes-gallery.html', (req, res) => { res.sendFile(path.join(__dirname,
 app.use('/memes-gallery', express.static(path.join(__dirname, 'memes-gallery')));
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'admin.html')); });
 app.get('/blog', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
-app.get('/blog/:slug', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
+app.get('/blog/:slug', async (req, res) => {
+  try {
+    const post = await dbGet('SELECT * FROM blog_posts WHERE slug = $1 AND published = 1', [req.params.slug]);
+    if (!post) return res.sendFile(path.join(__dirname, 'blog.html'));
+    // Server-render the blog post into HTML for SEO
+    const date = post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+    const escapedTitle = (post.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedExcerpt = (post.excerpt || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapedTitle} - Luce Healing</title>
+    <meta name="description" content="${escapedExcerpt}">
+    <meta property="og:title" content="${escapedTitle}">
+    <meta property="og:description" content="${escapedExcerpt}">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://lucehealing.com/blog/${post.slug}">
+    <meta property="og:image" content="https://lucehealing.com/og-image.jpg">
+    <meta property="og:site_name" content="Luce Healing">
+    <meta property="article:author" content="Christina Workman">
+    <meta property="article:published_time" content="${post.created_at || ''}">
+    <link rel="canonical" href="https://lucehealing.com/blog/${post.slug}">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23D4A574'>✦</text></svg>">
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .blog-page-container { max-width: 900px; margin: 0 auto; padding: 120px 20px 40px 20px; }
+        .blog-post { line-height: 1.8; }
+        .blog-post h1 { font-size: 2.5em; margin-bottom: 10px; color: #333; }
+        .blog-post-meta { color: #999; margin-bottom: 30px; font-size: 0.95em; }
+        .blog-post p, .blog-post ul, .blog-post ol { color: #555; margin-bottom: 15px; }
+        .blog-post h2 { font-size: 1.8em; margin-top: 30px; margin-bottom: 15px; color: #333; }
+        .blog-post h3 { font-size: 1.3em; margin-top: 20px; margin-bottom: 12px; color: #333; }
+        .blog-post ul, .blog-post ol { margin-left: 25px; }
+        .blog-post li { margin-bottom: 10px; }
+        .back-link { display: inline-block; margin-bottom: 30px; color: #D4A574; text-decoration: none; font-weight: 500; }
+        .back-link:hover { color: #b8934d; }
+    </style>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "${escapedTitle}",
+      "description": "${escapedExcerpt}",
+      "author": { "@type": "Person", "name": "Christina Workman" },
+      "publisher": { "@type": "Organization", "name": "Luce Healing", "url": "https://lucehealing.com" },
+      "datePublished": "${post.created_at || ''}",
+      "url": "https://lucehealing.com/blog/${post.slug}"
+    }
+    </script>
+</head>
+<body>
+    <nav class="navbar scrolled" id="navbar"><div class="nav-container"><div class="nav-logo"><a href="/"><img src="/images/logo.jpg" alt="Luce Healing" class="nav-logo-img"> Luce Healing</a></div><ul class="nav-menu"><li><a href="/" class="nav-link">Home</a></li><li><a href="/#about" class="nav-link">About</a></li><li><a href="/#services" class="nav-link">Services</a></li><li><a href="/#blog" class="nav-link">Blog</a></li><li><a href="/#reviews" class="nav-link">Reviews</a></li><li><a href="/#faq" class="nav-link">FAQ</a></li><li><a href="/#contact" class="nav-link">Contact</a></li></ul><div class="hamburger"><span></span><span></span><span></span></div></div></nav>
+    <div class="blog-page-container">
+        <a href="/blog" class="back-link">← Back to All Posts</a>
+        <article class="blog-post">
+            <h1>${escapedTitle}</h1>
+            <div class="blog-post-meta">${date}</div>
+            <div class="blog-post-body">${post.content}</div>
+        </article>
+    </div>
+    <footer class="footer" style="margin-top: 60px;"><div class="container"><div class="footer-content"><div class="footer-section"><h4>Luce Healing</h4><p>Energy healing, spiritual guidance, and sacred support.</p><p class="footer-contact"><a href="tel:+1-949-303-9404">949-303-9404</a> | <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a> | <a href="https://www.instagram.com/lucehealing13" target="_blank">@lucehealing13</a></p></div></div><div class="footer-bottom"><p>&copy; 2026 Luce Healing. All rights reserved.</p></div></div></footer>
+</body>
+</html>`;
+    res.send(html);
+  } catch(e) {
+    console.error('[BLOG SSR ERROR]', e.message);
+    res.sendFile(path.join(__dirname, 'blog.html'));
+  }
+});
 
 // Forecast routes
 app.get('/forecast', (req, res) => { res.sendFile(path.join(__dirname, 'forecast.html')); });
@@ -1537,7 +1610,7 @@ app.get('/sitemap.xml', async (req, res) => {
     xml += '</urlset>';
     res.set('Content-Type', 'application/xml');
     res.send(xml);
-  } catch(e) { res.status(500).send('Error generating sitemap'); }
+  } catch(e) { console.error('[SITEMAP ERROR]', e.message); res.status(500).set('Content-Type', 'application/xml').send('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>https://lucehealing.com/</loc><priority>1.0</priority></url>\n  <url><loc>https://lucehealing.com/blog</loc><priority>0.8</priority></url>\n</urlset>'); }
 });
 
 app.get('/api/booking/session/:sessionId', async (req, res) => {
