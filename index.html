@@ -3301,7 +3301,7 @@
                                     <h4 style="margin: 0 0 5px 0;">${post.title}</h4>
                                     <small style="color: #666;">/${post.slug}</small>
                                     <br>
-                                    <small style="color: #999;">${new Date(post.created_at).toLocaleDateString()} | ${post.published ? '✓ Published' : '○ Draft'}</small>
+                                    <small style="color: #999;">${new Date(post.created_at).toLocaleDateString()} | ${post.published ? '✓ Published' : '○ Draft'} | 👁 ${post.view_count || 0} views</small>
                                 </div>
                                 <div style="display: flex; gap: 8px;">
                                     <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;" onclick="openBlogEditor(${post.id})">Edit</button>

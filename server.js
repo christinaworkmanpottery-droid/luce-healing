@@ -314,6 +314,18 @@ async function initializeDatabase() {
     END $$;
   `);
 
+  // Add view_count to blog_posts if missing
+  await pool.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'blog_posts' AND column_name = 'view_count'
+      ) THEN
+        ALTER TABLE blog_posts ADD COLUMN view_count INTEGER DEFAULT 0;
+      END IF;
+    END $$;
+  `);
+
   // Seed default availability if empty
   const availCount = await dbGet('SELECT COUNT(*) as count FROM availability');
   if (parseInt(availCount.count) === 0) {
@@ -1478,10 +1490,13 @@ app.get('/blog/:slug', async (req, res) => {
   try {
     const post = await dbGet('SELECT * FROM blog_posts WHERE slug = $1 AND published = 1', [req.params.slug]);
     if (!post) return res.sendFile(path.join(__dirname, 'blog.html'));
+    // Track view
+    try { await dbRun('UPDATE blog_posts SET view_count = COALESCE(view_count,0) + 1 WHERE slug = $1', [req.params.slug]); } catch(e) {}
     // Server-render the blog post into HTML for SEO
     const date = post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
     const escapedTitle = (post.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const escapedExcerpt = (post.excerpt || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const postUrl = `https://lucehealing.com/blog/${post.slug}`;
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1492,12 +1507,12 @@ app.get('/blog/:slug', async (req, res) => {
     <meta property="og:title" content="${escapedTitle}">
     <meta property="og:description" content="${escapedExcerpt}">
     <meta property="og:type" content="article">
-    <meta property="og:url" content="https://lucehealing.com/blog/${post.slug}">
+    <meta property="og:url" content="${postUrl}">
     <meta property="og:image" content="https://lucehealing.com/og-image.jpg">
     <meta property="og:site_name" content="Luce Healing">
     <meta property="article:author" content="Christina Workman">
     <meta property="article:published_time" content="${post.created_at || ''}">
-    <link rel="canonical" href="https://lucehealing.com/blog/${post.slug}">
+    <link rel="canonical" href="${postUrl}">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23D4A574'>✦</text></svg>">
     <link rel="stylesheet" href="/styles.css">
@@ -1513,6 +1528,15 @@ app.get('/blog/:slug', async (req, res) => {
         .blog-post li { margin-bottom: 10px; }
         .back-link { display: inline-block; margin-bottom: 30px; color: #D4A574; text-decoration: none; font-weight: 500; }
         .back-link:hover { color: #b8934d; }
+        .share-section { margin-top: 40px; padding-top: 24px; border-top: 1px solid #eee; text-align: center; }
+        .share-section h4 { color: #333; margin-bottom: 12px; font-size: 1.1em; }
+        .share-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .share-btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 6px; text-decoration: none; color: #fff; font-size: 0.9em; font-weight: 500; transition: opacity 0.2s; }
+        .share-btn:hover { opacity: 0.85; }
+        .share-btn.fb { background: #1877F2; }
+        .share-btn.pin { background: #E60023; }
+        .share-btn.x { background: #000; }
+        .share-btn.copy { background: #D4A574; cursor: pointer; border: none; }
     </style>
     <script type="application/ld+json">
     {
@@ -1523,7 +1547,7 @@ app.get('/blog/:slug', async (req, res) => {
       "author": { "@type": "Person", "name": "Christina Workman" },
       "publisher": { "@type": "Organization", "name": "Luce Healing", "url": "https://lucehealing.com" },
       "datePublished": "${post.created_at || ''}",
-      "url": "https://lucehealing.com/blog/${post.slug}"
+      "url": "${postUrl}"
     }
     </script>
 </head>
@@ -1536,6 +1560,16 @@ app.get('/blog/:slug', async (req, res) => {
             <div class="blog-post-meta">${date}</div>
             <div class="blog-post-body">${post.content}</div>
         </article>
+        <div class="share-section">
+            <h4>✨ Share This Post</h4>
+            <div class="share-buttons">
+                <a class="share-btn fb" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}" target="_blank" rel="noopener">📘 Facebook</a>
+                <a class="share-btn pin" href="https://pinterest.com/pin/create/button/?url=${encodeURIComponent(postUrl)}&description=${encodeURIComponent(post.title + ' — ' + (post.excerpt || ''))}" target="_blank" rel="noopener">📌 Pinterest</a>
+                <a class="share-btn x" href="https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(post.title)}" target="_blank" rel="noopener">𝕏 Post</a>
+                <button class="share-btn copy" onclick="navigator.clipboard.writeText('${postUrl}');this.textContent='✅ Copied!';setTimeout(()=>this.textContent='📋 Copy Link',2000)">📋 Copy Link</button>
+            </div>
+            <p style="color:#999;margin-top:10px;font-size:0.85em">For Instagram & TikTok — copy the link and add it to your bio or story!</p>
+        </div>
     </div>
     <footer class="footer" style="margin-top: 60px;"><div class="container"><div class="footer-content"><div class="footer-section"><h4>Luce Healing</h4><p>Energy healing, spiritual guidance, and sacred support.</p><p class="footer-contact"><a href="tel:+1-949-303-9404">949-303-9404</a> | <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a> | <a href="https://www.instagram.com/lucehealing13" target="_blank">@lucehealing13</a></p></div></div><div class="footer-bottom"><p>&copy; 2026 Luce Healing. All rights reserved.</p></div></div></footer>
 </body>
