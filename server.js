@@ -1650,6 +1650,12 @@ app.get('/api/admin/forecast-orders', checkAdminPassword, async (req, res) => {
   }
 });
 
+// Serve llms.txt for AI search engines
+app.get('/llms.txt', (req, res) => {
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.sendFile(path.join(__dirname, 'llms.txt'));
+});
+
 // Dynamic sitemap with blog posts
 app.get('/sitemap.xml', async (req, res) => {
   try {
