@@ -232,10 +232,78 @@ section {
    HERO SECTION
    ============================================ */
 
+/* Special Offer Banner */
+.special-offer-banner {
+    margin-top: 60px;
+    padding: 3rem 2rem;
+    background: linear-gradient(135deg, #2C2C2C 0%, #3d3028 100%);
+    color: #fff;
+    text-align: center;
+}
+
+.offer-content {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.offer-badge {
+    display: inline-block;
+    font-size: 0.8em;
+    letter-spacing: 0.2em;
+    color: var(--primary-gold);
+    margin-bottom: 0.8rem;
+}
+
+.offer-title {
+    font-family: var(--font-serif);
+    font-size: 2.4em;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 1rem;
+}
+
+.offer-description {
+    font-size: 1.05em;
+    line-height: 1.7;
+    color: #ddd;
+    margin-bottom: 1.2rem;
+    font-style: italic;
+}
+
+.offer-details p {
+    font-size: 0.95em;
+    color: #ccc;
+    margin-bottom: 0.4rem;
+}
+
+.offer-payment {
+    margin: 1.2rem 0;
+    font-size: 0.9em;
+    color: #bbb;
+}
+
+.offer-btn {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 14px 32px;
+    background: var(--primary-gold);
+    color: #fff;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1em;
+    transition: var(--transition);
+}
+
+.offer-btn:hover {
+    background: var(--accent-gold);
+    transform: translateY(-2px);
+}
+
 .hero {
     padding: 10rem 0 6rem;
     background: linear-gradient(135deg, rgba(249, 247, 243, 0.5), rgba(255, 254, 248, 0.8));
-    margin-top: 60px;
+    margin-top: 0;
 }
 
 .hero-content {
