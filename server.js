@@ -1528,6 +1528,7 @@ app.get('/blog/:slug', async (req, res) => {
         .blog-post li { margin-bottom: 10px; }
         .back-link { display: inline-block; margin-bottom: 30px; color: #D4A574; text-decoration: none; font-weight: 500; }
         .back-link:hover { color: #b8934d; }
+        @media print { .navbar, .footer, .share-section, .back-link { display: none !important; } .blog-page-container { padding-top: 20px !important; } }
         .share-section { margin-top: 40px; padding-top: 24px; border-top: 1px solid #eee; text-align: center; }
         .share-section h4 { color: #333; margin-bottom: 12px; font-size: 1.1em; }
         .share-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
@@ -1568,6 +1569,7 @@ app.get('/blog/:slug', async (req, res) => {
                 <a class="share-btn x" href="https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(post.title)}" target="_blank" rel="noopener">𝕏 Post</a>
                 <button class="share-btn copy" onclick="navigator.clipboard.writeText('${postUrl}');this.textContent='✅ Copied!';setTimeout(()=>this.textContent='📋 Copy Link',2000)">📋 Copy Link</button>
                 <button class="share-btn" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href}).catch(()=>{})}else{navigator.clipboard.writeText(window.location.href);this.textContent='\u2705 Copied!';setTimeout(()=>this.textContent='\ud83d\udcf2 Share',2000)}">\ud83d\udcf2 Share</button>
+                <button class="share-btn" style="background:#555;" onclick="window.print()">🖨️ Print</button>
             </div>
             <p style="color:#999;margin-top:10px;font-size:0.85em">On mobile, tap 📲 Share to send to Instagram, WhatsApp, Messages, and more!</p>
         </div>
