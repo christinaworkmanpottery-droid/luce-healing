@@ -1508,7 +1508,13 @@ app.get('/blog/:slug', async (req, res) => {
     <meta property="og:description" content="${escapedExcerpt}">
     <meta property="og:type" content="article">
     <meta property="og:url" content="${postUrl}">
-    <meta property="og:image" content="https://lucehealing.com/og-image.jpg">
+    <meta property="og:image" content="https://lucehealing.com/images/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${escapedTitle}">
+    <meta name="twitter:description" content="${escapedExcerpt}">
+    <meta name="twitter:image" content="https://lucehealing.com/images/og-image.jpg">
     <meta property="og:site_name" content="Luce Healing">
     <meta property="article:author" content="Christina Workman">
     <meta property="article:published_time" content="${post.created_at || ''}">
