@@ -177,6 +177,17 @@
 
     <!-- Hero Section -->
     <!-- Special Offer Banner -->
+    <!-- Trust Bar -->
+    <div class="trust-bar">
+        <div class="trust-bar-inner">
+            <span>✦ Certified Reiki Master</span>
+            <span>✦ 20+ Years Experience</span>
+            <span>✦ Ordained Minister</span>
+            <span>✦ Distance &amp; In-Person Sessions</span>
+            <span>✦ Marina del Rey, CA &amp; Worldwide</span>
+        </div>
+    </div>
+
     <section id="special-offer" class="special-offer-banner">
         <div class="offer-content">
             <div class="offer-badge">✦ NEW ✦</div>
@@ -200,19 +211,22 @@
     <section id="home" class="hero">
         <div class="hero-content">
             <div class="hero-text">
-                <h1 class="hero-title">Welcome to Luce Healing</h1>
+                <p class="hero-eyebrow">Energy Healing · Astrology · Grief Support · Space Clearing</p>
+                <h1 class="hero-title">Clarity, Healing &amp; Guidance for Your Life's Journey</h1>
                 <p class="hero-subtitle">I don't heal you — I teach you to heal yourself</p>
                 <p class="hero-description">
-                    I'm Christina Workman — a Certified Reiki Master with over 20 years of experience, ordained non-denominational minister, and companion for life's most sacred transitions.
-                    No one can heal you but yourself. What I do is move energy, give you the tools, and guide you back to your own power. My work is about helping you remember who you already are.
+                    I'm Christina Workman — a Certified Reiki Master with 20+ years of experience. Whether you're feeling stuck, grieving, seeking direction, or simply ready to go deeper — I offer personal energy healing, astrology readings, grief support, and space clearing to help you find your way back to yourself.
                 </p>
                 <div class="hero-cta">
-                    <button class="btn btn-primary open-booking">Work With Me</button>
-                    <a href="#services" class="btn btn-secondary">Explore Services</a>
+                    <button class="btn btn-primary open-booking">Book a Session</button>
+                    <a href="#astrology" class="btn btn-secondary">$33 Astrology Reading →</a>
+                </div>
+                <div class="hero-social-proof">
+                    <div class="hero-proof-item">⭐⭐⭐⭐⭐ <span>"Life-changing. Christina's work is unlike anything I've experienced."</span></div>
                 </div>
             </div>
             <div class="hero-visual">
-                <img src="images/logo.jpg" alt="Luce Healing sacred lotus" class="hero-logo-img">
+                <img src="images/logo.jpg" alt="Luce Healing — Energy Healing &amp; Astrology with Christina Workman" class="hero-logo-img">
             </div>
         </div>
     </section>
@@ -1558,6 +1572,15 @@
                 navbar.classList.remove('scrolled');
             }
         });
+
+        // Keep trust bar (and anything else below the fixed nav) clear of the navbar's
+        // actual rendered height, since it varies by viewport width (nav link wrapping, etc.)
+        function syncNavbarHeight() {
+            document.documentElement.style.setProperty('--navbar-height', navbar.getBoundingClientRect().height + 'px');
+        }
+        syncNavbarHeight();
+        window.addEventListener('resize', syncNavbarHeight);
+        window.addEventListener('load', syncNavbarHeight);
 
         // Scroll to Top Button
         const scrollTopBtn = document.getElementById('scroll-to-top');

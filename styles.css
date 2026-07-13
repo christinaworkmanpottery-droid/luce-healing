@@ -203,6 +203,7 @@ section {
     letter-spacing: 0.5px;
     color: var(--primary-gold) !important;
     transition: all 0.3s ease;
+    white-space: nowrap; /* prevent "Book Now" from wrapping to 2 lines, which distorted the pill border into a lopsided double curve */
 }
 
 .nav-book-btn:after {
@@ -272,14 +273,17 @@ section {
 
 .offer-details p {
     font-size: 0.95em;
-    color: #ccc;
+    color: #e8e0d8;
     margin-bottom: 0.4rem;
 }
 
 .offer-payment {
     margin: 1.2rem 0;
     font-size: 0.9em;
-    color: #bbb;
+}
+
+.offer-payment p {
+    color: var(--light-gold);
 }
 
 .offer-btn {
@@ -2026,5 +2030,69 @@ section {
 @media (max-width: 768px) {
     .astrology-content {
         grid-template-columns: 1fr !important;
+    }
+}
+
+
+/* ============================================
+   CONVERSION OPTIMIZATION — NEW ELEMENTS
+   ============================================ */
+
+/* Trust Bar */
+.trust-bar {
+    background: var(--dark-text);
+    color: var(--light-gold);
+    padding: 10px 0;
+    overflow: hidden;
+    white-space: nowrap;
+    margin-top: var(--navbar-height, 126px); /* set dynamically by JS to match actual fixed navbar height, so it can never overlap regardless of nav wrapping */
+    position: relative;
+    z-index: 1;
+}
+.trust-bar-inner {
+    display: flex;
+    gap: 2.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0 1rem;
+}
+.trust-bar-inner span {
+    color: var(--light-gold);
+}
+
+/* Hero eyebrow label */
+.hero-eyebrow {
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 0.75rem;
+    font-family: var(--font-sans);
+    font-weight: 700;
+}
+
+/* Hero social proof */
+.hero-social-proof {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(212, 165, 116, 0.25);
+}
+.hero-proof-item {
+    font-size: 0.9rem;
+    color: var(--light-text);
+    font-style: italic;
+    line-height: 1.5;
+}
+.hero-proof-item span {
+    color: var(--light-text);
+}
+
+@media (max-width: 768px) {
+    .trust-bar-inner {
+        gap: 1rem;
+        font-size: 0.75rem;
     }
 }
