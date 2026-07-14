@@ -295,6 +295,22 @@ async function initializeDatabase() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS astrology_reading_orders (
+      id SERIAL PRIMARY KEY,
+      client_name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      birth_date TEXT NOT NULL,
+      birth_time TEXT,
+      birth_location TEXT NOT NULL,
+      question TEXT NOT NULL,
+      price INTEGER DEFAULT 3300,
+      stripe_session_id TEXT,
+      stripe_payment_status TEXT DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
   // Add promo_code column to bookings if it doesn't exist
   await pool.query(`
     DO $$
@@ -674,8 +690,55 @@ app.post('/api/stripe/webhook', async (req, res) => {
     const session = event.data.object;
     const m = session.metadata;
 
+    // Handle $33 astrology reading orders
+    if (m.type === 'astrology_reading') {
+      await dbRun(
+        "UPDATE astrology_reading_orders SET stripe_payment_status = 'paid' WHERE stripe_session_id = $1",
+        [session.id]
+      );
+      // Notify Christina
+      try {
+        if (smtpTransporter) {
+          await smtpTransporter.sendMail({
+            from: '"Luce Healing" <lucehealing13@gmail.com>',
+            to: 'lucehealing13@gmail.com',
+            subject: `⭐ New $33 Reading — ${m.client_name}`,
+            html: `<h2 style="color:#c9a96e">New One Question Astrology Reading</h2>
+<p><strong>Name:</strong> ${m.client_name}</p>
+<p><strong>Email:</strong> ${session.customer_email}</p>
+<p><strong>Birth Date:</strong> ${m.birth_date}</p>
+<p><strong>Birth Time:</strong> ${m.birth_time}</p>
+<p><strong>Birth Location:</strong> ${m.birth_location}</p>
+<p><strong>Question:</strong></p>
+<blockquote style="background:#f9f0e0;padding:15px;border-left:4px solid #c9a96e">${m.question}</blockquote>
+<p style="color:#888;font-size:0.9em">Payment confirmed via Stripe. Please deliver reading within 1–3 days.</p>`
+          });
+          // Send confirmation to client
+          await smtpTransporter.sendMail({
+            from: '"Christina @ Luce Healing" <lucehealing13@gmail.com>',
+            to: session.customer_email,
+            subject: 'Your Astrology Reading is Confirmed ✦',
+            html: `<div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:30px;background:#fffdf8">
+<h2 style="color:#c9a96e;font-family:Georgia,serif">Your Reading is Confirmed ✦</h2>
+<p>Hi ${m.client_name},</p>
+<p>Thank you for your order! I've received your question and will deliver your personalized astrology reading within <strong>1–3 days</strong> by email.</p>
+<p><strong>Your question:</strong></p>
+<blockquote style="background:#f9f0e0;padding:15px;border-left:4px solid #c9a96e;font-style:italic">${m.question}</blockquote>
+<p><strong>Birth info I'll use:</strong><br>
+Date: ${m.birth_date}<br>
+Time: ${m.birth_time}<br>
+Location: ${m.birth_location}</p>
+<p>If you have anything to add, simply reply to this email.</p>
+<p>With love and light,<br><strong>Christina</strong><br>Luce Healing</p>
+</div>`
+          });
+        }
+      } catch (emailErr) {
+        console.error('Email notification error (astrology reading):', emailErr.message);
+      }
+      console.log(`$33 astrology reading paid: ${m.client_name}`);
     // Handle forecast orders
-    if (m.type === 'forecast') {
+    } else if (m.type === 'forecast') {
       await dbRun(
         "UPDATE forecast_orders SET stripe_payment_status = 'paid' WHERE stripe_session_id = $1",
         [session.id]
@@ -1592,9 +1655,72 @@ app.get('/blog/:slug', async (req, res) => {
 
 // Forecast routes
 app.get('/forecast', (req, res) => { res.sendFile(path.join(__dirname, 'forecast.html')); });
+app.get('/reading', (req, res) => { res.sendFile(path.join(__dirname, 'reading.html')); });
 app.get('/forecast-success', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
 app.get('/forecast-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
 app.get('/subscribe', (req, res) => { res.sendFile(path.join(__dirname, 'subscribe.html')); });
+
+// ============================================================================
+// $33 ASTROLOGY READING CHECKOUT
+// ============================================================================
+
+app.post('/api/astrology-reading/checkout', async (req, res) => {
+  try {
+    if (!stripe) return res.status(500).json({ error: 'Payment system not configured' });
+    const { name, email, birthDate, birthTime, birthLocation, question } = req.body;
+    if (!name || !email || !birthDate || !birthLocation || !question) {
+      return res.status(400).json({ error: 'Name, email, birth date, birth location, and your question are all required.' });
+    }
+    if (question.trim().length < 10) {
+      return res.status(400).json({ error: 'Please enter your full question (at least 10 characters).' });
+    }
+    const domain = process.env.DOMAIN || 'http://localhost:3000';
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'One Question Astrology Reading — $33',
+            description: `Personalized birth chart reading for ${name}. Delivered by email within 1–3 days.`
+          },
+          unit_amount: 3300
+        },
+        quantity: 1
+      }],
+      mode: 'payment',
+      success_url: `${domain}/reading-success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${domain}/#book-reading`,
+      customer_email: email,
+      metadata: {
+        type: 'astrology_reading',
+        client_name: name,
+        birth_date: birthDate,
+        birth_time: birthTime || 'Not provided',
+        birth_location: birthLocation,
+        question: question.substring(0, 500)
+      }
+    });
+    await dbRun(
+      'INSERT INTO astrology_reading_orders (client_name, email, birth_date, birth_time, birth_location, question, price, stripe_session_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+      [name, email, birthDate, birthTime || null, birthLocation, question, 3300, session.id]
+    );
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error('Astrology reading checkout error:', error);
+    res.status(500).json({ error: 'Failed to create checkout session. Please try again.' });
+  }
+});
+
+// Admin: get astrology reading orders
+app.get('/api/admin/astrology-reading-orders', checkAdminPassword, async (req, res) => {
+  try {
+    const orders = await dbAll('SELECT * FROM astrology_reading_orders ORDER BY created_at DESC');
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Forecast checkout
 app.post('/api/forecast/checkout', async (req, res) => {
