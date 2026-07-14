@@ -41,9 +41,11 @@ const pool = new Pool({
 
 // Middleware
 app.use(cors());
+// Webhook raw body MUST come before express.json() — Stripe signature verification
+// requires the original raw bytes, not a parsed object
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(express.static(__dirname));
-app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 
 // ============================================================================
 // DATABASE HELPER FUNCTIONS (PostgreSQL)
@@ -675,11 +677,6 @@ app.post('/api/booking/checkout', async (req, res) => {
 // STRIPE WEBHOOK ENDPOINT
 // ============================================================================
 
-app.get('/api/debug/webhook-secret', (req, res) => {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET || 'NOT_SET';
-  res.json({ first8: secret.substring(0, 8), last4: secret.slice(-4), length: secret.length });
-});
-
 app.post('/api/stripe/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_secret';
@@ -687,8 +684,8 @@ app.post('/api/stripe/webhook', async (req, res) => {
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (error) {
-    console.error('Webhook signature verification failed:', error.message);
-    return res.sendStatus(400);
+    console.error('Webhook signature verification failed:', error.message, '| sig header:', sig ? sig.substring(0,40) : 'none', '| body type:', typeof req.body, '| body len:', req.body ? req.body.length : 0);
+    return res.status(400).json({ error: error.message });
   }
 
   if (event.type === 'checkout.session.completed') {
