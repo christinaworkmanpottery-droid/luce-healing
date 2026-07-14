@@ -15,6 +15,15 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://lucehealing.com">
     
+    <!-- Google Analytics (Replace GA_MEASUREMENT_ID with your actual ID) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'GA_MEASUREMENT_ID');
+    </script>
+    
     <!-- Open Graph Tags for Social Sharing -->
     <meta property="og:title" content="Luce Healing | Energy Healing & Spiritual Support">
     <meta property="og:description" content="Certified Reiki Master with 20+ years of experience and ordained minister offering personal healing, grief support, and space clearing in Marina del Rey, CA.">
@@ -46,7 +55,7 @@
                 "description": "I don't heal you — I teach you to heal yourself. Certified Reiki Master with 20+ years of experience offering personal energy healing, remote healing, reiki, grief support, end-of-life support, and space clearing in Marina del Rey, CA and worldwide via distance sessions.",
                 "url": "https://lucehealing.com",
                 "email": "lucehealing13@gmail.com",
-                "telephone": "+1-949-303-9404",
+                "email": "lucehealing13@gmail.com",
                 "address": {
                     "@type": "PostalAddress",
                     "addressLocality": "Marina del Rey",
@@ -519,7 +528,7 @@
                         </div>
                         <div class="contact-method">
                             <strong>Phone:</strong>
-                            <a href="tel:+1-949-303-9404">949-303-9404</a>
+                            <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a>
                         </div>
                         <div class="contact-method">
                             <strong>Location:</strong>
@@ -752,7 +761,7 @@
                     </div>
                     <div class="contact-block">
                         <h4>Phone</h4>
-                        <a href="tel:+1-949-303-9404" class="contact-link">949-303-9404</a>
+                        <a href="mailto:lucehealing13@gmail.com" class="contact-link">lucehealing13@gmail.com</a>
                     </div>
                     <div class="contact-block">
                         <h4>Location</h4>
@@ -779,7 +788,7 @@
                     <h4>Luce Healing</h4>
                     <p>Energy healing, spiritual guidance, and sacred support for life's most tender moments.</p>
                     <p class="footer-contact">
-                        <a href="tel:+1-949-303-9404">949-303-9404</a> | <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a> | <a href="https://www.instagram.com/lucehealing13" target="_blank">@lucehealing13</a>
+                        <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a> | <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a> | <a href="https://www.instagram.com/lucehealing13" target="_blank">@lucehealing13</a>
                     </p>
                 </div>
                 <div class="footer-section">
@@ -4090,5 +4099,51 @@
         btn.textContent = 'Send Message';
     }
     </script>
+    
+    <!-- Floating $33 Astrology CTA Button -->
+    <style>
+        .floating-astro-cta {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999;
+            animation: float-in 0.5s ease-out;
+        }
+        @keyframes float-in {
+            from { transform: translateY(100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .floating-astro-cta a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #D4A574 0%, #C19460 100%);
+            color: white;
+            padding: 14px 24px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 20px rgba(212, 165, 116, 0.4);
+            transition: all 0.3s ease;
+        }
+        .floating-astro-cta a:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(212, 165, 116, 0.6);
+        }
+        @media (max-width: 768px) {
+            .floating-astro-cta {
+                bottom: 15px;
+                right: 15px;
+            }
+            .floating-astro-cta a {
+                padding: 12px 18px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+    <div class="floating-astro-cta">
+        <a href="/reading.html">✦ $33 Reading</a>
+    </div>
 </body>
 </html>
