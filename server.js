@@ -1656,6 +1656,8 @@ app.get('/blog/:slug', async (req, res) => {
 // Forecast routes
 app.get('/forecast', (req, res) => { res.sendFile(path.join(__dirname, 'forecast.html')); });
 app.get('/reading', (req, res) => { res.sendFile(path.join(__dirname, 'reading.html')); });
+app.get('/reading-success', (req, res) => { res.sendFile(path.join(__dirname, 'reading-success.html')); });
+app.get('/reading-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'reading-success.html')); });
 app.get('/forecast-success', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
 app.get('/forecast-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
 app.get('/subscribe', (req, res) => { res.sendFile(path.join(__dirname, 'subscribe.html')); });
