@@ -675,6 +675,11 @@ app.post('/api/booking/checkout', async (req, res) => {
 // STRIPE WEBHOOK ENDPOINT
 // ============================================================================
 
+app.get('/api/debug/webhook-secret', (req, res) => {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET || 'NOT_SET';
+  res.json({ first8: secret.substring(0, 8), last4: secret.slice(-4), length: secret.length });
+});
+
 app.post('/api/stripe/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_secret';
