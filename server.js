@@ -1612,6 +1612,8 @@ app.get('/blog/:slug', async (req, res) => {
     const escapedTitle = (post.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const escapedExcerpt = (post.excerpt || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const postUrl = `https://lucehealing.com/blog/${post.slug}`;
+    const wordCount = (post.content || '').replace(/<[^>]+>/g, '').split(/\s+/).length;
+    const readingTime = Math.max(1, Math.ceil(wordCount / 200));
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1679,7 +1681,7 @@ app.get('/blog/:slug', async (req, res) => {
         <a href="/blog" class="back-link">← Back to All Posts</a>
         <article class="blog-post">
             <h1>${escapedTitle}</h1>
-            <div class="blog-post-meta">${date}</div>
+            <div class="blog-post-meta">${date} · ${readingTime} min read</div>
             <div class="blog-post-body">${post.content}</div>
         </article>
         <div class="share-section">
