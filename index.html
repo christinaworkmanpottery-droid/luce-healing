@@ -251,6 +251,20 @@
         </div>
     </section>
 
+    <!-- Forecast Update Section -->
+    <section id="forecast-update" style="padding: 40px 20px; background: linear-gradient(135deg, rgba(212, 165, 116, 0.06) 0%, rgba(255, 249, 240, 0.4) 100%); border-top: 1px solid rgba(212, 165, 116, 0.2); border-bottom: 1px solid rgba(212, 165, 116, 0.2);">
+        <div class="container" style="max-width: 800px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <span style="color: #D4A574; font-size: 0.85em; letter-spacing: 2px; text-transform: uppercase;">✦ Current Energy ✦</span>
+                <h2 style="font-family: 'Cormorant Garamond', serif; font-size: 1.8em; color: #2C2C2C; margin: 8px 0 0;">Astrology Forecast Update</h2>
+            </div>
+            <div id="forecast-update-content" style="text-align: center; color: #999; padding: 20px;">Loading...</div>
+            <div id="forecast-update-cta" style="text-align: center; margin-top: 20px; display: none;">
+                <a href="/forecast" style="color: #D4A574; font-weight: 600; font-size: 0.95rem; text-decoration: none;">Want your own personalized forecast? Starting at $75 →</a>
+            </div>
+        </div>
+    </section>
+
     <!-- About Section -->
     <section id="about" class="about">
         <div class="container">
@@ -3674,6 +3688,28 @@
             }
         });
 
+        async function loadForecastUpdate() {
+            try {
+                const response = await fetch('/api/forecast-updates/latest');
+                const update = await response.json();
+                const container = document.getElementById('forecast-update-content');
+                const cta = document.getElementById('forecast-update-cta');
+                if (!update) {
+                    document.getElementById('forecast-update').style.display = 'none';
+                    return;
+                }
+                const date = new Date(update.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                container.innerHTML = `
+                    <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 1.4em; color: #333; margin-bottom: 8px;">${update.title}</h3>
+                    <p style="color: #999; font-size: 0.85em; margin-bottom: 15px;">${date}</p>
+                    <div style="color: #555; line-height: 1.8; text-align: left; max-width: 700px; margin: 0 auto;">${update.content}</div>
+                `;
+                cta.style.display = 'block';
+            } catch (e) {
+                document.getElementById('forecast-update').style.display = 'none';
+            }
+        }
+
         async function loadPublicReviews() {
             try {
                 const response = await fetch('/api/reviews');
@@ -4048,6 +4084,7 @@
 
         loadBlogPosts();
         loadPublicReviews();
+        loadForecastUpdate();
 
         // Load auth state on page load
         loadAuthState();

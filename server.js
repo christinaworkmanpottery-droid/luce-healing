@@ -344,6 +344,17 @@ async function initializeDatabase() {
     END $$;
   `);
 
+  // Forecast updates table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS forecast_updates (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      published BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
   // Seed default availability if empty
   const availCount = await dbGet('SELECT COUNT(*) as count FROM availability');
   if (parseInt(availCount.count) === 0) {
@@ -976,6 +987,45 @@ app.post('/api/admin/blog', checkAdminPassword, async (req, res) => {
     await dbRun('INSERT INTO blog_posts (title, slug, content, excerpt, published) VALUES ($1, $2, $3, $4, $5)', [title, slug, content, excerpt || '', published ? 1 : 0]);
     const post = await dbGet('SELECT * FROM blog_posts WHERE slug = $1', [slug]);
     res.json(post);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============================================================================
+// FORECAST UPDATES API
+// ============================================================================
+
+// Public: get latest forecast update
+app.get('/api/forecast-updates/latest', async (req, res) => {
+  try {
+    const update = await dbGet('SELECT * FROM forecast_updates WHERE published = true ORDER BY created_at DESC LIMIT 1');
+    res.json(update || null);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Public: get all forecast updates
+app.get('/api/forecast-updates', async (req, res) => {
+  try {
+    const updates = await dbAll('SELECT * FROM forecast_updates WHERE published = true ORDER BY created_at DESC LIMIT 10');
+    res.json(updates);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Admin: create forecast update
+app.post('/api/admin/forecast-updates', checkAdminPassword, async (req, res) => {
+  try {
+    const { title, content } = req.body;
+    if (!title || !content) return res.status(400).json({ error: 'Title and content are required' });
+    await dbRun('INSERT INTO forecast_updates (title, content) VALUES ($1, $2)', [title, content]);
+    const update = await dbGet('SELECT * FROM forecast_updates ORDER BY created_at DESC LIMIT 1');
+    res.json(update);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Admin: delete forecast update
+app.delete('/api/admin/forecast-updates/:id', checkAdminPassword, async (req, res) => {
+  try {
+    await dbRun('DELETE FROM forecast_updates WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
