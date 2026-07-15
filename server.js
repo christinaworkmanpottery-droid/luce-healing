@@ -1734,8 +1734,8 @@ app.post('/api/forecast/checkout', async (req, res) => {
     if (!name || !email || !birthDate || !birthTime || !birthLocation || !forecastType) {
       return res.status(400).json({ error: 'All fields are required' });
     }
-    const prices = { '3month': 3000, '6month': 5000, '12month': 10000 };
-    const labels = { '3month': '3-Month Astrology Forecast', '6month': '6-Month Astrology Forecast', '12month': '12-Month Astrology Forecast' };
+    const prices = { '6month': 7500, '12month': 15000 };
+    const labels = { '6month': '6-Month Personalized Astrology Forecast', '12month': '12-Month Personalized Astrology Forecast (with Big-Picture Overview)' };
     if (!prices[forecastType]) return res.status(400).json({ error: 'Invalid forecast type' });
 
     const price = prices[forecastType];
