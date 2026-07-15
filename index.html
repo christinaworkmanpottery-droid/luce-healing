@@ -3672,6 +3672,9 @@
                 let html = '';
                 reviews.forEach(review => {
                     const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+                    const maxLen = 250;
+                    const isLong = review.review_text.length > maxLen;
+                    const shortText = isLong ? review.review_text.substring(0, maxLen).replace(/\s+\S*$/, '') + '…' : review.review_text;
                     html += `
                         <div class="review-card">
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
@@ -3681,7 +3684,8 @@
                                 </div>
                                 <div style="font-size: 1.2em; color: #D4A574; letter-spacing: 2px;">${stars}</div>
                             </div>
-                            <p style="color: #333; line-height: 1.6;">${review.review_text}</p>
+                            <p class="review-text-short" style="color: #333; line-height: 1.6;">${shortText}</p>
+                            ${isLong ? `<p class="review-text-full" style="color: #333; line-height: 1.6; display: none;">${review.review_text}</p><a href="#" class="review-read-more" style="color: #D4A574; font-weight: 600; font-size: 0.9rem; text-decoration: none;" onclick="event.preventDefault(); this.previousElementSibling.style.display='block'; this.previousElementSibling.previousElementSibling.style.display='none'; this.textContent = this.textContent === 'Read more →' ? 'Show less ←' : 'Read more →'; if(this.textContent === 'Read more →'){ this.previousElementSibling.style.display='none'; this.previousElementSibling.previousElementSibling.style.display='block'; }">Read more →</a>` : ''}
                         </div>
                     `;
                 });
