@@ -344,6 +344,18 @@ async function initializeDatabase() {
     END $$;
   `);
 
+  // Add category to blog_posts if missing
+  await pool.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'blog_posts' AND column_name = 'category'
+      ) THEN
+        ALTER TABLE blog_posts ADD COLUMN category TEXT DEFAULT 'Astrology';
+      END IF;
+    END $$;
+  `);
+
   // Forecast updates table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS forecast_updates (
