@@ -1694,6 +1694,13 @@ app.get('/blog/:slug', async (req, res) => {
             </div>
             <p style="color:#999;margin-top:10px;font-size:0.85em">On mobile, tap 📲 Share to send to Instagram, WhatsApp, Messages, and more!</p>
         </div>
+        <div style="max-width: 900px; margin: 40px auto 0; padding: 30px; background: linear-gradient(135deg, rgba(212, 165, 116, 0.08) 0%, rgba(255, 249, 240, 0.5) 100%); border: 1px solid rgba(212, 165, 116, 0.3); border-radius: 12px; text-align: center;">
+            <p style="color: #555; font-size: 1em; margin-bottom: 12px;">Want personalized insight into what's ahead for <em>you</em>?</p>
+            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <a href="/reading" style="color: #D4A574; font-weight: 600; text-decoration: none;">$33 Ask One Question →</a>
+                <a href="/forecast" style="color: #D4A574; font-weight: 600; text-decoration: none;">$75 / $150 Personalized Forecast →</a>
+            </div>
+        </div>
     </div>
     <footer class="footer" style="margin-top: 60px;"><div class="container"><div class="footer-content"><div class="footer-section"><h4>Luce Healing</h4><p>Energy healing, spiritual guidance, and sacred support.</p><p class="footer-contact"><a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a> | <a href="https://www.instagram.com/lucehealing13" target="_blank">@lucehealing13</a></p><p style="color:#999;font-size:0.9em;">Marina del Rey, CA · Distance Sessions Worldwide</p></div></div><div class="footer-bottom"><p>&copy; 2026 Luce Healing. All rights reserved.</p></div></div></footer>
 </body>
