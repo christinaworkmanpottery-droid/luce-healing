@@ -102,7 +102,31 @@
                 "@type": "WebSite",
                 "name": "Luce Healing",
                 "url": "https://lucehealing.com",
-                "description": "I don't heal you — I teach you to heal yourself. Certified Reiki Master with 20+ years of experience. Energy healing, reiki, self-healing tools, grief support, and space clearing."
+                "description": "I don't heal you — I teach you to heal yourself. Certified Reiki Master with 20+ years of experience. Energy healing, reiki, self-healing tools, grief support, and space clearing.",
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": "https://lucehealing.com/blog?q={search_term_string}",
+                    "query-input": "required name=search_term_string"
+                }
+            },
+            {
+                "@type": "Person",
+                "name": "Christina Workman",
+                "jobTitle": "Certified Reiki Master & Ordained Minister",
+                "url": "https://lucehealing.com",
+                "email": "lucehealing13@gmail.com",
+                "description": "Christina Workman is a Certified Reiki Master with 20+ years of experience offering energy healing, astrology readings, grief support, and space clearing in Marina del Rey, CA and worldwide via distance sessions.",
+                "address": {
+                    "@type": "PostalAddress",
+                    "addressLocality": "Marina del Rey",
+                    "addressRegion": "CA",
+                    "addressCountry": "US"
+                },
+                "knowsAbout": ["Energy Healing", "Reiki", "Astrology", "Grief Support", "Space Clearing", "Spiritual Guidance", "Birth Chart Reading"],
+                "sameAs": [
+                    "https://www.instagram.com/lucehealing13",
+                    "https://www.christinaworkmanpottery.com"
+                ]
             },
             {
                 "@type": "FAQPage",
@@ -142,7 +166,27 @@
     
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23D4A574'>✦</text></svg>">
-    
+
+    <!-- Google Analytics 4 — replace G-XXXXXXXXXX with your Measurement ID -->
+    <!-- Get your ID at: analytics.google.com → Admin → Data Streams → Web stream -->
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script> -->
+
+    <!-- Microsoft Clarity — replace CLARITY_ID with your project ID -->
+    <!-- Get your ID at: clarity.microsoft.com → New Project -->
+    <!-- <script type="text/javascript">
+      (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+      })(window, document, "clarity", "script", "CLARITY_ID");
+    </script> -->
+
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
