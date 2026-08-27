@@ -1716,6 +1716,24 @@ app.get('/blog/:slug', async (req, res) => {
             </div>
         </div>
     </div>
+    <script>
+        // Mobile Menu Toggle
+        const hamburger = document.querySelector('.hamburger');
+        const navMenu = document.querySelector('.nav-menu');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        hamburger.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        });
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('active');
+                hamburger.classList.remove('active');
+            });
+        });
+    </script>
     <footer class="footer" style="margin-top: 60px;"><div class="container"><div class="footer-content"><div class="footer-section"><h4>Luce Healing</h4><p>Energy healing, spiritual guidance, and sacred support.</p><p class="footer-contact"><a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a> | <a href="https://www.instagram.com/lucehealing13" target="_blank">@lucehealing13</a></p><p style="color:#999;font-size:0.9em;">Marina del Rey, CA · Distance Sessions Worldwide</p></div></div><div class="footer-bottom"><p>&copy; 2026 Luce Healing. All rights reserved.</p></div></div></footer>
 </body>
 </html>`;
