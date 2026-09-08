@@ -45,7 +45,7 @@ app.use(cors());
 // requires the original raw bytes, not a parsed object
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
-app.use(express.static(__dirname));
+// NOTE: express.static moved after SEO routes to allow server-rendering blog links
 
 // ============================================================================
 // DATABASE HELPER FUNCTIONS (PostgreSQL)
@@ -1604,6 +1604,96 @@ app.put('/api/client/appointments/:id/cancel', verifyAuthToken, async (req, res)
 });
 
 // ============================================================================
+// SEO: SERVER-RENDERED BLOG LINKS FOR CRAWLABILITY
+// ============================================================================
+
+// Helper function to generate server-rendered blog list HTML
+function renderBlogLinksHTML(posts, mode = 'full') {
+  if (!posts || posts.length === 0) {
+    return mode === 'homepage' 
+      ? '<p style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">No posts yet. Check back soon!</p>'
+      : '<p style="text-align: center; color: #999;">No posts yet. Check back soon!</p>';
+  }
+  
+  if (mode === 'homepage') {
+    // Homepage: show 6 most recent posts in grid
+    const recentPosts = posts.slice(0, 6);
+    return recentPosts.map(post => {
+      const date = post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+      const title = (post.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const excerpt = (post.excerpt || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `
+        <article class="blog-card">
+          <h3><a href="/blog/${post.slug}" style="color: #333; text-decoration: none;">${title}</a></h3>
+          <p class="blog-excerpt">${excerpt}</p>
+          <div class="blog-meta">
+            <small>${date}</small>
+            <a href="/blog/${post.slug}" style="color: #D4A574; text-decoration: none; font-weight: 500;">Read More →</a>
+          </div>
+        </article>
+      `;
+    }).join('\n');
+  }
+  
+  // Blog page: show all posts
+  return posts.map(post => {
+    const date = post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+    const title = (post.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const excerpt = (post.excerpt || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `
+      <div class="blog-list-item">
+        <h2><a href="/blog/${post.slug}" style="color: #333; text-decoration: none;">${title}</a></h2>
+        <small style="color: #999;">${date}</small>
+        <p>${excerpt}</p>
+        <a href="/blog/${post.slug}" style="color: #D4A574; text-decoration: none; font-weight: 500;">Read Full Post →</a>
+      </div>
+    `;
+  }).join('\n');
+}
+
+// Route for homepage with server-rendered blog links
+app.get('/', async (req, res) => {
+  try {
+    const posts = await dbAll('SELECT * FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
+    const fs = require('fs');
+    let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    
+    // Replace the "Loading posts..." placeholder with server-rendered links
+    const blogHTML = renderBlogLinksHTML(posts, 'homepage');
+    html = html.replace(
+      '<p style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">Loading posts...</p>',
+      blogHTML
+    );
+    
+    res.send(html);
+  } catch (e) {
+    console.error('[HOMEPAGE SSR ERROR]', e.message);
+    res.sendFile(path.join(__dirname, 'index.html'));
+  }
+});
+
+// Route for /blog with server-rendered blog links
+app.get('/blog', async (req, res) => {
+  try {
+    const posts = await dbAll('SELECT * FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
+    const fs = require('fs');
+    let html = fs.readFileSync(path.join(__dirname, 'blog.html'), 'utf8');
+    
+    // Replace the "Loading posts..." placeholder with server-rendered links
+    const blogHTML = renderBlogLinksHTML(posts, 'full');
+    html = html.replace(
+      '<p style="text-align: center; color: #999;">Loading posts...</p>',
+      blogHTML
+    );
+    
+    res.send(html);
+  } catch (e) {
+    console.error('[BLOG LIST SSR ERROR]', e.message);
+    res.sendFile(path.join(__dirname, 'blog.html'));
+  }
+});
+
+// ============================================================================
 // STATIC PAGES
 // ============================================================================
 
@@ -1612,7 +1702,7 @@ app.get('/booking-cancel.html', (req, res) => { res.sendFile(path.join(__dirname
 app.get('/memes-gallery.html', (req, res) => { res.sendFile(path.join(__dirname, 'memes-gallery.html')); });
 app.use('/memes-gallery', express.static(path.join(__dirname, 'memes-gallery')));
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'admin.html')); });
-app.get('/blog', (req, res) => { res.sendFile(path.join(__dirname, 'blog.html')); });
+// /blog route moved to SEO section above for server-side rendering
 app.get('/blog/:slug', async (req, res) => {
   try {
     const post = await dbGet('SELECT * FROM blog_posts WHERE slug = $1 AND published = 1', [req.params.slug]);
@@ -1752,6 +1842,9 @@ app.get('/reading-success.html', (req, res) => { res.sendFile(path.join(__dirnam
 app.get('/forecast-success', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
 app.get('/forecast-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
 app.get('/subscribe', (req, res) => { res.sendFile(path.join(__dirname, 'subscribe.html')); });
+
+// Static file serving (fallback for CSS, images, etc.)
+app.use(express.static(__dirname));
 
 // ============================================================================
 // $33 ASTROLOGY READING CHECKOUT
