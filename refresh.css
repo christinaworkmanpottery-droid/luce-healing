@@ -1,0 +1,91 @@
+/* Email-first public pages. Existing booking and admin components retain their own layout. */
+.email-first { --primary-gold:#624373; --accent-gold:#624373; --cream:#fcfafc; --warm-white:#f4eff6; --light-text:#55505c; --dark-text:#292331; background:#fcfafc; }
+.email-first .navbar { background:rgba(252,250,252,.98); border-bottom:1px solid #e8dfec; }
+.email-first .nav-container { min-height:82px; max-width:1240px; gap:28px; }
+.email-first .nav-logo { flex-shrink:0; }
+.email-first .nav-logo a { white-space:nowrap; color:#483353; }
+.email-first .nav-menu { gap:25px; align-items:center; }
+.email-first .nav-link { font-size:14px; white-space:nowrap; }
+.email-first .nav-book-btn { background:#624373; color:#fff; border:0; padding:12px 18px; border-radius:6px; }
+.email-first .hamburger { background:none; border:0; padding:12px; }
+.email-first a:focus-visible,.email-first button:focus-visible,.email-first input:focus-visible,.email-first summary:focus-visible { outline:3px solid #9679b2; outline-offset:4px; }
+.email-first .hero { padding:145px 0 62px; min-height:0; background:radial-gradient(ellipse at 85% 35%,#ebe3f0,transparent 60%),#fcfafc; }
+.email-first .hero-content { max-width:1200px; margin:auto; padding:0 32px; display:grid; grid-template-columns:1.25fr .85fr; gap:72px; align-items:center; }
+.email-first .hero-text h1 { font-size:clamp(44px,5vw,68px); line-height:1.04; color:#32273c; margin:20px 0 26px; font-weight:500; }
+.email-first .hero-title em { color:#735483; font-weight:500; }
+.email-first .hero-eyebrow,.email-first .eyebrow { color:#70577f; font:700 11px/1.6 var(--font-sans); letter-spacing:2px; margin-bottom:12px; }
+.email-first .hero-description { font-size:17px; line-height:1.8; max-width:530px; }
+.email-first .hero-cta { display:flex; align-items:stretch; flex-wrap:wrap; gap:12px; }
+.email-first .btn { font-size:14px; padding:14px 20px; border-radius:6px; text-transform:none; letter-spacing:0; white-space:normal; text-align:center; }
+.email-first .btn-primary { color:#fff; background:#624373; border:1px solid #624373; box-shadow:none; }
+.email-first .btn-primary:hover { background:#493058; }
+.email-first .btn-secondary { color:#513760; background:transparent; border:1px solid #9479a0; }
+.email-first .btn-secondary:hover { background:#ede5f1; }
+.email-first .hero-note { font-size:12px; margin:16px 0; color:#625969; }
+.email-first .session-link { font-size:13px; text-decoration:underline; text-underline-offset:4px; }
+.email-first .hero-visual { display:block; position:relative; width:100%; margin:0; }
+.email-first .portrait { display:block; width:100%; height:450px; object-fit:cover; object-position:center 30%; border-radius:180px 180px 12px 12px; }
+.email-first figcaption { padding:18px 5px 0; font:600 24px var(--font-serif); color:#483353; }
+.email-first figcaption span { display:block; margin-top:5px; font:12px var(--font-sans); color:#65576e; }
+.email-first .trust-bar { margin:0; padding:20px; background:#eee7f2; border:0; }
+.email-first .trust-bar-inner { max-width:1200px; flex-wrap:wrap; gap:16px 28px; justify-content:center; }
+.email-first .trust-bar-inner span { color:#594264; font-size:10px; }
+.email-first section { scroll-margin-top:90px; }
+.email-first .section-header { margin-bottom:36px; }
+.email-first .section-header h2,.email-first .signup-section h2 { font-size:clamp(32px,3.5vw,44px); color:#392c44; }
+.email-first .section-header p { max-width:650px; margin:15px auto 0; }
+.email-first .email-offers { padding:78px 0 64px; }
+.reading-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+.reading-card { border:1px solid #e0d5e6; border-radius:12px; background:#fff; padding:30px 26px; display:flex; flex-direction:column; }
+.reading-card.featured { border:2px solid #80608f; background:#f5f0f8; }
+.reading-card h3 { font-size:28px; }
+.reading-card .reading-price { font:500 40px var(--font-serif); color:#4c345b; margin:22px 0; }
+.reading-price span { font:12px var(--font-sans); color:#64556d; }
+.reading-card p { font-size:15px; }
+.reading-card .reading-detail { font-size:12px; padding-top:15px; margin-top:auto; }
+.reading-card .btn { margin-top:10px; }
+.offer-footnote { text-align:center; font-size:13px; margin:25px 0 0; }
+.offer-footnote a { text-decoration:underline; }
+.email-first .signup-section { padding:64px 0; background:#eee7f3; }
+.signup-layout { display:grid; grid-template-columns:1fr 1fr; gap:80px; align-items:center; }
+.signup-layout h2 { margin-bottom:18px; }
+.signup-layout form { display:grid; gap:9px; }
+.signup-layout label { color:#403449; font-size:13px; font-weight:700; }
+.signup-layout label span { font-weight:400; }
+.signup-layout input { width:100%; min-height:48px; background:#fff; border:1px solid #aa98b5; border-radius:6px; padding:12px; font:16px var(--font-sans); margin-bottom:8px; }
+.email-first .signup-note { font-size:12px; color:#64576c; margin:8px 0; }
+#newsletter-feedback:not([hidden]) { display:block; background:#fff; border:1px solid #776384; border-radius:6px; padding:12px; color:#3e3247; }
+.email-first .reading-steps { padding:64px 0; }
+.steps-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:44px; }
+.steps-grid span { display:block; color:#735283; font:32px var(--font-serif); border-bottom:1px solid #ded2e4; padding-bottom:12px; margin-bottom:20px; }
+.steps-grid h3 { font-size:26px; margin-bottom:12px; }
+.steps-grid p { font-size:15px; }
+.email-first .blog { background:#f4eff6; padding:64px 0; }
+.email-first .blog-meta a { color:#624373 !important; }
+.email-first .about,.email-first .services,.email-first .pricing,.email-first .work-with-me,.email-first .reviews,.email-first .faq,.email-first .contact,.email-first .astrology-reading { padding:60px 0; }
+.review-details { margin-top:25px; }
+.review-details summary { cursor:pointer; color:#624373; padding:15px 0; }
+.admin-access { text-align:center; }
+.admin-access button { background:none; border:0; color:#ddd; padding:16px; cursor:pointer; }
+@media(min-width:769px) and (max-width:1050px) { .email-first .nav-menu { gap:12px; } .email-first .nav-link { font-size:12px; } .email-first .hero-content { gap:32px; } }
+@media(max-width:768px) {
+ .email-first .nav-container { min-height:70px; padding:0 20px; }
+ .email-first .nav-menu { align-items:stretch; gap:10px; max-height:calc(100dvh - 70px); overflow-y:auto; }
+ .email-first .nav-menu .nav-link { display:block; padding:12px 20px; font-size:16px; }
+ .email-first .nav-book-btn { margin:0 25px; }
+ .email-first .hero { padding:104px 0 35px; }
+ .email-first .hero-content { grid-template-columns:1fr; gap:32px; padding:0 24px; }
+ .email-first .hero-text h1 { font-size:48px; }
+ .email-first .hero-description { font-size:16px; }
+ .email-first .hero-cta { flex-direction:column; }
+ .email-first .hero-visual { max-width:360px; margin:0 auto; }
+ .email-first .portrait { height:310px; }
+ .email-first .trust-bar-inner { gap:8px 16px; }
+ .email-first .email-offers { padding:48px 0; }
+ .reading-grid,.signup-layout,.steps-grid { grid-template-columns:1fr; gap:22px; }
+ .email-first .signup-section,.email-first .reading-steps { padding:44px 0; }
+ .reading-card { padding:25px; }
+ .email-first .signup-section h2 { font-size:36px; }
+}
+@media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { animation:none !important; transition:none !important; } }
+.session-pricing-details summary { cursor:pointer; padding:18px; border:1px solid #b29dc0; border-radius:6px; color:#513760; margin-bottom:25px; text-align:center; }

@@ -26,7 +26,7 @@
       "publisher": {
         "@type": "Person",
         "name": "Christina Workman",
-        "jobTitle": "Certified Reiki Master & Astrologer",
+        "jobTitle": "Certified Reiki Master & Intuitive Reader",
         "url": "https://lucehealing.com"
       },
       "inLanguage": "en-US"
@@ -34,13 +34,8 @@
     </script>
 
     <!-- Google Analytics 4 -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-N8LNK2RB2P"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-N8LNK2RB2P');
-    </script>
+    
+    
     <!-- Microsoft Clarity — replace CLARITY_ID with your project ID -->
     <!-- <script type="text/javascript">(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", "CLARITY_ID");</script> -->
 
@@ -48,13 +43,8 @@
     <link rel="stylesheet" href="/styles.css">
 
     <!-- Google Analytics 4 -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-N8LNK2RB2P"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-N8LNK2RB2P');
-    </script>
+    
+    
     <!-- Microsoft Clarity — replace CLARITY_ID with your project ID -->
     <!-- <script type="text/javascript">(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", "CLARITY_ID");</script> -->
 
@@ -166,7 +156,7 @@
             color: #b8934d;
         }
     </style>
-</head>
+<link rel="stylesheet" href="/review-fixes.css"></head>
 <body>
     <!-- Navigation -->
     <nav class="navbar scrolled" id="navbar">
@@ -178,7 +168,7 @@
                 <li><a href="/" class="nav-link">Home</a></li>
                 <li><a href="/#about" class="nav-link">About</a></li>
                 <li><a href="/#services" class="nav-link">Services</a></li>
-                <li><a href="/#blog" class="nav-link">Blog</a></li>
+                <li><a href="/blog" class="nav-link">Blog</a></li>
                 <li><a href="/#reviews" class="nav-link">Reviews</a></li>
                 <li><a href="/#faq" class="nav-link">FAQ</a></li>
                 <li><a href="/#contact" class="nav-link">Contact</a></li>
@@ -191,7 +181,7 @@
         </div>
     </nav>
 
-    <div class="blog-page-container">
+    <div class="blog-page-container"><aside style="background:#eee7f3;padding:24px;border-radius:12px;margin-bottom:28px;text-align:center"><h2>A little light in your inbox.</h2><p>Get Christina’s astrology blogs, intuitive reflections, and occasional reading offers by email.</p><a href="/subscribe" class="btn btn-primary" style="background:#624373;color:white">Get the free emails →</a></aside>
         <!-- Single Post View -->
         <div id="single-post" style="display: none;">
             <a href="/blog" class="back-link">← Back to All Posts</a>
@@ -251,7 +241,7 @@
     <script>
         const currentPath = window.location.pathname;
         const slugMatch = currentPath.match(/\/blog\/(.+)$/);
-        const slug = slugMatch ? slugMatch[1] : null;
+        const slug = new URLSearchParams(location.search).get('post') || (slugMatch ? slugMatch[1].replace(/\/$/, '') : null);
 
         async function loadBlogList() {
             try {
@@ -269,10 +259,10 @@
                     const date = new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
                     html += `
                         <div class="blog-list-item">
-                            <h2><a href="/blog/${post.slug}" style="color: #333; text-decoration: none;">${post.title}</a></h2>
+                            <h2><a href="/blog/${encodeURIComponent(post.slug)}" style="color: #333; text-decoration: none;">${post.title}</a></h2>
                             <small style="color: #999;">${date}</small>
                             <p>${post.excerpt}</p>
-                            <a href="/blog/${post.slug}" style="color: #D4A574; text-decoration: none; font-weight: 500;">Read Full Post →</a>
+                            <a href="/blog/${encodeURIComponent(post.slug)}" style="color: #D4A574; text-decoration: none; font-weight: 500;">Read Full Post →</a>
                         </div>
                     `;
                 });
@@ -315,5 +305,11 @@
             loadBlogList();
         }
     </script>
-</body>
+<script>
+const menuButton=document.querySelector('.hamburger');
+menuButton.setAttribute('role','button');menuButton.setAttribute('tabindex','0');menuButton.setAttribute('aria-label','Open menu');menuButton.setAttribute('aria-expanded','false');
+function toggleBlogMenu(){const open=document.querySelector('.nav-menu').classList.toggle('active');menuButton.setAttribute('aria-expanded',String(open));}
+menuButton.addEventListener('click',toggleBlogMenu);menuButton.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleBlogMenu();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelector('.nav-menu').classList.remove('active');menuButton.setAttribute('aria-expanded','false');}});
+</script></body>
 </html>

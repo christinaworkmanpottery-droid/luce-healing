@@ -147,7 +147,7 @@
     <div class="success-container">
         <div class="success-icon">✓</div>
         <h1>Your Booking is Confirmed!</h1>
-        <p class="subtitle">Thank you for booking with Luce Healing. Your session has been secured and payment received.</p>
+        <p class="subtitle">Checking your payment confirmation…</p>
         
         <div class="confirmation-details" id="details" style="display: none;">
             <div class="detail-row">
@@ -175,7 +175,7 @@
         <div class="next-steps">
             <h3>What Happens Next</h3>
             <ul>
-                <li>A confirmation email will be sent to you shortly with all session details</li>
+                <li>Keep this page for your session details</li>
                 <li>Christina will reach out if any preparation is needed for your session</li>
                 <li>Distance sessions will include a Zoom or phone link (sent before your session)</li>
                 <li>In-person sessions are in Marina del Rey, CA</li>
@@ -207,11 +207,15 @@
             fetch(`/api/booking/session/${sessionId}`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.metadata) {
+                    if (data.metadata && data.payment_status === 'paid') {
+                        const chart=data.metadata.session_type?.startsWith('chart-');
+                        document.querySelector('.subtitle').textContent=chart?'Your reading payment is confirmed. Written delivery is by email; any included consultation will be arranged separately.':'Your session payment is confirmed.';
+                        if(chart)document.querySelector('.next-steps ul').textContent='Christina will prepare your written reading and contact you by email about any included consultation.';
                         document.getElementById('booking-id').textContent = sessionId.substring(0, 12) + '...';
-                        document.getElementById('session-type').textContent = `${data.metadata.duration}-Minute Session`;
-                        document.getElementById('session-date').textContent = data.metadata.date;
-                        document.getElementById('session-time').textContent = data.metadata.time;
+                        document.getElementById('session-type').textContent = data.metadata.session_type?.startsWith('chart-') ? 'Written reading' : `${data.metadata.duration}-Minute Session`;
+                        document.getElementById('session-date').textContent = data.metadata.date || 'Arranged separately';
+                        if(!data.metadata.date)document.getElementById('session-date').parentElement.textContent='No appointment booked';
+                        if(document.getElementById('session-time'))document.getElementById('session-time').textContent = data.metadata.time;
                         document.getElementById('email').textContent = data.customer_email;
                         
                         // Calculate amount
@@ -224,7 +228,7 @@
                 })
                 .catch(err => {
                     console.error('Error fetching session:', err);
-                    document.querySelector('.loading').textContent = 'Booking confirmed! Check your email for details.';
+                    document.querySelector('.loading').textContent = 'Unable to load confirmation. Please refresh or contact Christina with your payment reference.';
                 });
         } else {
             document.querySelector('.loading').textContent = 'Check your email for booking confirmation.';

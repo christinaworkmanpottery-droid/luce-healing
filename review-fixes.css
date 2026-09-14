@@ -1,0 +1,79 @@
+/* Mobile review fixes: all page content and CTA controls remain in normal flow. */
+.preview-notice{position:relative;z-index:1;padding:10px 18px;background:#392c44;color:white;text-align:center;font:12px/1.5 system-ui}
+.email-first .navbar,.navbar{position:relative!important;top:auto!important;width:100%;z-index:50}
+.email-first .hero{padding:48px 0!important}
+.email-first .nav-container{position:relative;min-height:76px}
+.email-first .nav-book-btn,.email-first .nav-book-btn:hover{color:#fff!important;background:#624373!important}
+.email-first .nav-book-btn::after{display:none}
+.email-first .mobile-admin-link{display:none}
+.email-first .floating-astro-cta{display:none!important}
+.email-first .admin-access{display:block!important;padding:18px;margin:0}
+.email-first .admin-access a{color:#eee;text-decoration:underline;font-size:14px}
+.email-first .service-card{padding:25px;display:flex;flex-direction:column;gap:12px}
+.email-first .service-card h3{font-size:27px}
+.email-first .service-card p{font-size:16px;margin:0 0 12px}
+.email-first .service-card .btn{margin-top:auto}
+.email-first .work-with-me-content{grid-template-columns:1fr 1fr}
+.pet-details{max-width:650px;margin:30px auto 0;padding:18px;border:1px solid #d9cbe1;border-radius:10px}
+.pet-details summary{cursor:pointer;color:#594065;font-size:16px}
+.pet-details img{max-width:300px!important;display:block;margin:20px auto}
+.reading-back{max-width:900px;margin:24px auto 0;padding:0 24px}
+.reading-back a{color:#624373;text-decoration:underline}
+#admin-panel{z-index:1000!important}
+#admin-panel .admin-tabs{display:flex;flex-wrap:wrap;gap:8px}
+#admin-panel .admin-tabs button{color:#513760;background:#f0eaf4;min-height:44px}
+#admin-panel .admin-tabs button.active{background:#624373;color:white}
+.demo-admin-note{font-size:14px!important;background:#eee7f3;padding:12px;color:#403048!important}
+.order-card{border:1px solid #dacde3;border-radius:8px;padding:18px;margin:12px 0;overflow-wrap:anywhere}
+.order-card h4{margin-bottom:12px}.order-card p{margin:6px 0}.order-card details{margin-top:12px}
+@media(max-width:768px){
+ .email-first .hero{padding:32px 0!important}.email-first .hero-text h1{font-size:43px}
+ .email-first .hero-description{font-size:16px}.email-first .hero-visual{max-width:300px}
+ .email-first .portrait{height:350px;object-position:center 38%}
+ .email-first .nav-container{min-height:70px}
+ .email-first .nav-menu,.nav-menu{position:absolute!important;top:100%!important;left:0!important;display:none!important;width:100%;margin:0;background:#fcfafc!important;max-height:none!important;padding:12px 18px 18px!important;box-shadow:0 12px 18px #392c4420}
+ .email-first .nav-menu.active,.nav-menu.active{display:flex!important;gap:8px}
+ .email-first .nav-menu .nav-link{font-size:16px!important;line-height:1.5;padding:12px!important}
+ .email-first .nav-book-btn{margin:0!important}
+ .email-first .mobile-admin-link{display:block;padding:10px;font-size:14px;color:#594065}
+ .email-first .hamburger{width:46px;min-height:46px;flex-shrink:0;gap:5px;align-items:center;justify-content:center}
+ .email-first .hamburger span{width:24px;height:2px;background:#483353;display:block}
+ .email-first section{scroll-margin-top:18px}
+ .email-first .about-content,.email-first .work-with-me-content,.email-first .astrology-content{display:grid!important;grid-template-columns:1fr!important;gap:24px!important}
+ .email-first .about-text p{font-size:16px}.email-first .about-highlights{display:none}
+ .email-first .hero-eyebrow,.email-first .eyebrow{font-size:12px;letter-spacing:1.2px}
+ .email-first .about,.email-first .services,.email-first .pricing,.email-first .work-with-me,.email-first .reviews,.email-first .faq,.email-first .contact,.email-first .astrology-reading{padding:38px 0}
+ .email-first .hero-cta .btn,.email-first .reading-card .btn{font-size:16px}
+ #admin-panel .admin-content{padding:16px!important;width:100%!important;max-width:100%!important}
+ #admin-panel .admin-header{flex-wrap:wrap;gap:12px}#admin-panel .admin-header h2{font-size:26px}
+ #admin-panel .admin-tab-content{overflow-x:auto}#admin-panel table{min-width:560px}
+ #admin-panel .admin-tabs button{padding:10px;font-size:14px}
+ .modal-content{max-width:calc(100vw - 20px)!important;padding:18px!important;max-height:90dvh;overflow:auto}
+ .duration-options,.format-options,.session-type-options{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .form-row{grid-template-columns:1fr!important}
+}
+@media(max-width:768px){.email-first .navbar,.email-first .navbar.scrolled{padding:8px 0}.email-first .scroll-to-top{display:none!important}.admin-header h1{font-size:24px!important}.admin-container{padding:14px!important}.admin-header{padding:14px!important}.admin-panel .admin-card{padding:15px!important}}
+@media(max-width:768px){#admin-blog-list>div>div{flex-direction:column;gap:14px}#admin-blog-list h4{overflow-wrap:anywhere}#admin-panel .admin-tabs{position:static}#admin-panel .admin-header{position:static}#chart-birth-fields input{width:100%;padding:12px;border:1px solid #cfc1d7;border-radius:6px}}
+@media(max-width:768px){#booking-modal .detail-row{gap:15px}#booking-modal .detail-row strong{text-align:right;max-width:65%}#promo-code-booking{min-width:0}#booking-modal input,#booking-modal textarea{font-size:16px}}
+/* Approved purple action treatment, with navigation and inline links kept secondary. */
+.btn.btn-primary,.btn.btn-secondary,.email-first .btn.btn-secondary,.email-first .btn.btn-primary,.submit-btn,button[type="submit"]{background:#624373!important;color:#fff!important;border-color:#624373!important}
+.btn:hover,.submit-btn:hover{background:#50345f!important;color:#fff!important}
+.btn:focus-visible,summary:focus-visible{outline:3px solid #b29ac3;outline-offset:4px}
+.content-reveal{margin:18px 0;padding:0;border:1px solid #d9cbe1;border-radius:10px;background:#faf7fc;overflow:hidden}
+.content-reveal>summary{cursor:pointer;padding:16px 20px;color:#533763;font-weight:600;font-size:16px;min-height:48px}
+.content-reveal[open]>summary{border-bottom:1px solid #ded0e6}
+.content-reveal>section,.content-reveal>.content-body{padding:24px!important}
+.content-reveal>p{padding:0 20px}.content-reveal>p:first-of-type{margin-top:20px}
+.email-first .faq-grid{display:block;max-width:850px;margin:auto}.email-first details.faq-item{margin:10px 0;padding:0;border:1px solid #dfd3e7;border-radius:8px;background:#fff}
+.faq-item>summary{padding:16px 20px;cursor:pointer;color:#493354;font-size:17px;font-weight:600}.faq-item>p{padding:0 20px 18px;margin:0}.faq-grid>.content-reveal>.faq-item{margin:12px}
+.email-first #pricing{padding:20px 0 0!important}.email-first #pricing>.container{padding:0;width:100%}.email-first #pricing .section-header{display:none}
+.email-first #services .offer-footnote{display:none}.email-first #all-readings .section-header{margin-bottom:20px}
+.email-first #work-with-me{padding:24px!important}.email-first #work-with-me .section-header{display:none}
+.gift-entry{display:flex;gap:18px;align-items:center;margin:24px 0 0}.gift-entry span{font-size:15px;color:#66536f}.quick-contact{margin-top:12px;font-size:16px}
+.reviews-more{grid-column:1/-1}.reviews-more>.reviews-grid{padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
+.email-first .about-photo{overflow:hidden;aspect-ratio:4/5;max-width:330px;border-radius:18px;position:relative}
+.email-first .about-img{width:100%;height:100%!important;object-fit:cover;object-position:center 21%;display:block}
+@media(max-width:1050px){.email-first .nav-menu{gap:5px}.email-first .nav-link{font-size:14px;padding:8px}.email-first .nav-logo{font-size:20px}}
+@media(max-width:768px){.email-first .nav-menu.active{max-height:75dvh!important;overflow:auto}.email-first .about-photo{max-width:260px;margin:auto}.gift-entry{align-items:flex-start;flex-direction:column;gap:8px}.email-first #blog{padding:30px 0}.content-reveal>section{padding:20px 14px!important}.email-first .reading-steps{padding:20px 0!important}}
+
+.trust-more{font-size:14px}.trust-more summary{cursor:pointer}.trust-more[open] span{display:block}.contact-details .contact-info{padding:20px}.contact-details{align-self:start}.email-first .contact-layout{align-items:start}

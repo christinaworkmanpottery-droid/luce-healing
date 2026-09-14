@@ -93,6 +93,8 @@ function verifyToken(token) {
   }
 }
 
+const gifts = require('./gifts')({app,pool,stripe,checkAdminPassword,getMailer:()=>smtpTransporter,domain:process.env.DOMAIN || 'https://lucehealing.com'});
+
 // ============================================================================
 // DATABASE INITIALIZATION
 // ============================================================================
@@ -133,6 +135,10 @@ async function initializeDatabase() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS birth_time TEXT, ADD COLUMN IF NOT EXISTS birth_location TEXT, ADD COLUMN IF NOT EXISTS amount_paid INTEGER');
+  await pool.query('ALTER TABLE bookings ALTER COLUMN date DROP NOT NULL, ALTER COLUMN time DROP NOT NULL');
+  await gifts.initialize();
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS availability (
@@ -190,6 +196,8 @@ async function initializeDatabase() {
       active INTEGER DEFAULT 1
     )
   `);
+
+  await pool.query('ALTER TABLE newsletter_subscribers ADD COLUMN IF NOT EXISTS unsubscribe_token TEXT');
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS reviews (
@@ -415,8 +423,9 @@ async function initializeDatabase() {
   // Seed admin password if not set
   const adminPw = await dbGet('SELECT value FROM admin_settings WHERE key = $1', ['admin_password']);
   if (!adminPw) {
-    const defaultHash = hashPassword('luce13');
-    await dbRun('INSERT INTO admin_settings (key, value) VALUES ($1, $2)', ['admin_password', defaultHash]);
+    const initialPassword = process.env.ADMIN_INITIAL_PASSWORD;
+    if (!initialPassword || initialPassword.length < 16) throw new Error('A strong ADMIN_INITIAL_PASSWORD is required when creating the first admin account');
+    await dbRun('INSERT INTO admin_settings (key, value) VALUES ($1, $2)', ['admin_password', hashPassword(initialPassword)]);
   }
 }
 
@@ -425,8 +434,18 @@ async function initializeDatabase() {
 // ============================================================================
 
 function timeToMinutes(timeStr) {
-  const [hours, mins] = timeStr.split(':').map(Number);
-  return hours * 60 + mins;
+  const match=String(timeStr).match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+  if(!match)return NaN;
+  let hours=Number(match[1]);if(match[3])hours=hours%12+(match[3].toUpperCase()==='PM'?12:0);
+  return hours*60+Number(match[2]);
+}
+
+function appointmentTime(date,time) {
+  const utc=Date.parse(date+'T'+minutesToTime(timeToMinutes(time))+':00Z');
+  const zone=new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',timeZoneName:'shortOffset'}).formatToParts(new Date(utc)).find(p=>p.type==='timeZoneName').value;
+  const match=zone.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+  const offset=match?(match[1]==='-'?-1:1)*(Number(match[2])*60+Number(match[3]||0)):0;
+  return new Date(utc-offset*60000);
 }
 
 function minutesToTime(mins) {
@@ -477,7 +496,7 @@ async function getAvailableSlots(dateStr, duration) {
 
   const allBlockedRanges = blockedRanges.concat(recurringRanges);
 
-  const bookings = await dbAll('SELECT time, duration FROM bookings WHERE date = $1 AND status = $2 AND cancelled = 0', [dateStr, 'completed']);
+  const bookings = await dbAll('SELECT time, duration FROM bookings WHERE date = $1 AND status IN ($2,$3) AND cancelled = 0', [dateStr, 'completed', 'confirmed']);
   const bookedRanges = bookings.map(b => {
     const bookStart = timeToMinutes(b.time);
     // 30-min buffer before AND after each session (for energy/space clearing)
@@ -603,20 +622,22 @@ app.get('/api/auth/me', async (req, res) => {
 app.post('/api/booking/checkout', async (req, res) => {
   try {
     if (!stripe) return res.status(500).json({ error: 'Payment system not configured' });
-    const { name, email, phone, date_of_birth, session_type, date, time, duration, is_pack, session_format, promo_code } = req.body;
-    if (!name || !email || !phone || !session_type || !date || !time || !session_format) return res.status(400).json({ error: 'Missing required fields' });
+    const { name, email, phone, date_of_birth, session_type, date, time, duration, is_pack, session_format, promo_code, birth_time, birth_location, notes } = req.body;
+    if (!name || !email || !phone || !session_type || !session_format) return res.status(400).json({ error: 'Missing required fields' });
 
     // Skip availability check for chart readings (they don't need a specific time slot)
     const isChartReading = session_type && session_type.startsWith('chart-');
     if (!isChartReading) {
-      if (!duration) return res.status(400).json({ error: 'Missing required fields' });
+      if (!duration || !date || !time) return res.status(400).json({ error: 'Missing required fields' });
       const slots = await getAvailableSlots(date, parseInt(duration));
       const slotsFormatted = slots.map(slot => to12HourFormat(slot));
       if (!slotsFormatted.includes(time)) return res.status(400).json({ error: 'Selected time slot is no longer available' });
     }
 
+    if (isChartReading && (!date_of_birth || !birth_time || !birth_location)) return res.status(400).json({error:'Please supply your birth date, time and place.'});
     const pricing = getPricingInfo();
-    const durationInt = parseInt(duration);
+    const durationInt = parseInt(duration) || 0;
+    if (!isChartReading && !pricing[durationInt]) return res.status(400).json({error:'Invalid session duration'});
     const isInPerson = session_format === 'in-person';
     let priceAmount;
     let packLabel = is_pack ? ' (3-Pack)' : '';
@@ -673,13 +694,13 @@ app.post('/api/booking/checkout', async (req, res) => {
       line_items: [{
         price_data: {
           currency: 'usd',
-          product_data: { name: productName, description: `Date: ${date}, Time: ${time} PT, Format: ${session_format}` },
+          product_data: { name: productName, description: isChartReading ? 'Written reading delivered by email. Included consultations are arranged separately.' : `Date: ${date}, Time: ${time} PT, Format: ${session_format}` },
           unit_amount: priceAmount
         },
         quantity: 1
       }],
       customer_email: email,
-      metadata: { client_name: name, phone, date_of_birth: date_of_birth || '', session_type, date, time, duration: durationInt, is_pack: is_pack ? 'true' : 'false', session_format, promo_code: validPromoCode || '' },
+      metadata: { client_name: name, email, phone, date_of_birth: date_of_birth || '', birth_time: String(birth_time || '').slice(0,100), birth_location: String(birth_location || '').slice(0,500), notes: String(notes || '').slice(0,500), session_type, date: isChartReading ? '' : date, time: isChartReading ? '' : time, duration: durationInt, is_pack: is_pack ? 'true' : 'false', session_format, promo_code: validPromoCode || '' },
       success_url: `${process.env.DOMAIN || 'http://localhost:3000'}/booking-success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.DOMAIN || 'http://localhost:3000'}/booking-cancel.html`
     });
@@ -711,9 +732,12 @@ app.post('/api/stripe/webhook', async (req, res) => {
     return res.status(400).json({ error: error.message });
   }
 
+  try {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const m = session.metadata;
+    const m = session.metadata || {};
+    if (session.payment_status !== 'paid') return res.json({received:true});
+    if (await gifts.handleWebhook(session)) return res.json({received:true});
 
     // Handle $33 astrology reading orders
     if (m.type === 'astrology_reading') {
@@ -771,18 +795,22 @@ Location: ${m.birth_location}</p>
       console.log(`Forecast order paid: ${m.forecast_type} for ${m.client_name}`);
     } else {
       // Handle booking payments (existing logic)
-      let client = await dbGet('SELECT * FROM clients WHERE email = $1', [m.email]);
+      if (await dbGet('SELECT id FROM bookings WHERE stripe_session_id=$1',[session.id])) return res.json({received:true});
+      const customerEmail=session.customer_email || m.email;
+      if(!customerEmail) throw new Error('Paid session has no customer email');
+      let client = await dbGet('SELECT * FROM clients WHERE email = $1', [customerEmail]);
     if (!client) {
-      await dbRun('INSERT INTO clients (name, email, phone, date_of_birth, sessions_remaining) VALUES ($1, $2, $3, $4, $5)', [m.client_name, m.email, m.phone, m.date_of_birth || null, m.is_pack === 'true' ? 3 : 0]);
+      await dbRun('INSERT INTO clients (name, email, phone, date_of_birth, sessions_remaining) VALUES ($1, $2, $3, $4, $5)', [m.client_name, customerEmail, m.phone, m.date_of_birth || null, m.is_pack === 'true' ? 3 : 0]);
     } else if (m.is_pack === 'true') {
       await dbRun('UPDATE clients SET sessions_remaining = sessions_remaining + 3 WHERE id = $1', [client.id]);
     }
-    await dbRun('INSERT INTO bookings (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status, promo_code) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
-      [m.client_name, m.email, m.phone, m.date_of_birth || null, m.session_type, m.duration, m.date, m.time, m.session_format || 'in-person', m.is_pack === 'true' ? 1 : 0, 'completed', session.id, 'paid', m.promo_code || null]);
+    await dbRun('INSERT INTO bookings (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status, promo_code, birth_time, birth_location, notes, amount_paid) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)',
+      [m.client_name, customerEmail, m.phone, m.date_of_birth || null, m.session_type, m.duration, m.date || null, m.time || null, m.session_format || 'in-person', m.is_pack === 'true' ? 1 : 0, m.session_type.startsWith('chart-') ? 'awaiting-reading' : 'confirmed', session.id, 'paid', m.promo_code || null, m.birth_time || null, m.birth_location || null, m.notes || null, session.amount_total]);
     console.log(`Booking created for ${m.client_name} on ${m.date} at ${m.time}`);
     }
   }
   res.json({ received: true });
+  } catch(error) { console.error('Payment recording failed:',error.message);res.status(500).json({error:'Payment recording failed; webhook will retry.'}); }
 });
 
 // ============================================================================
@@ -855,21 +883,14 @@ app.get('/api/admin/clients', checkAdminPassword, async (req, res) => {
 app.get('/api/admin/dashboard', checkAdminPassword, async (req, res) => {
   try {
     const stats = {};
-    const revenue = await dbGet(`
-      SELECT SUM(
-        CASE
-          WHEN is_pack = 1 AND duration = 15 THEN 12500 WHEN is_pack = 0 AND duration = 15 THEN 4500
-          WHEN is_pack = 1 AND duration = 30 THEN 15000 WHEN is_pack = 0 AND duration = 30 THEN 6000
-          WHEN is_pack = 1 AND duration = 45 THEN 17500 WHEN is_pack = 0 AND duration = 45 THEN 7500
-          WHEN is_pack = 1 AND duration = 60 THEN 25000 WHEN is_pack = 0 AND duration = 60 THEN 10000
-          WHEN is_pack = 1 AND duration = 90 THEN 37500 WHEN is_pack = 0 AND duration = 90 THEN 14500
-          WHEN is_pack = 1 AND duration = 120 THEN 52500 WHEN is_pack = 0 AND duration = 120 THEN 20000
-        END
-      ) as total FROM bookings WHERE status = 'completed'
-    `);
-    stats.total_revenue = (parseFloat(revenue.total) || 0) / 100;
+    const revenue = await dbGet(`SELECT
+      COALESCE((SELECT SUM(amount_paid) FROM bookings WHERE stripe_payment_status='paid'),0) +
+      COALESCE((SELECT SUM(price) FROM astrology_reading_orders WHERE stripe_payment_status='paid'),0) +
+      COALESCE((SELECT SUM(price) FROM forecast_orders WHERE stripe_payment_status='paid'),0) +
+      COALESCE((SELECT SUM(price) FROM reading_gifts WHERE payment_status='paid'),0) AS total`);
+    stats.total_revenue = (Number(revenue.total)||0)/100;
     const today = new Date().toISOString().split('T')[0];
-    const upcoming = await dbGet('SELECT COUNT(*) as count FROM bookings WHERE date >= $1 AND status = $2', [today, 'completed']);
+    const upcoming = await dbGet('SELECT COUNT(*) as count FROM bookings WHERE date >= $1 AND status = $2 AND cancelled=0', [today, 'confirmed']);
     stats.upcoming_bookings = parseInt(upcoming.count);
     const totalClients = await dbGet('SELECT COUNT(*) as count FROM clients');
     stats.total_clients = parseInt(totalClients.count);
@@ -979,7 +1000,7 @@ app.get('/api/blog', async (req, res) => {
 
 app.get('/api/blog/latest', async (req, res) => {
   try {
-    const posts = await dbAll('SELECT id, title, slug, excerpt, created_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC LIMIT 3');
+    const posts = await dbAll('SELECT id, title, slug, excerpt, created_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC LIMIT 1');
     res.json(posts);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -1135,24 +1156,10 @@ app.options('/api/newsletter/subscribe', (req, res) => {
   res.sendStatus(204);
 });
 
-app.post('/api/newsletter/subscribe', async (req, res) => {
-  // Allow cross-origin requests from Christina's other sites
-  const allowedOrigins = ['https://christinaworkmanpottery.com', 'https://esmeandjade.com', 'https://lucehealing.com', 'http://localhost:3000'];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'POST');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-  }
-  try {
-    const { email, name, source } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email required' });
-    const existing = await dbGet('SELECT id FROM newsletter_subscribers WHERE email = $1', [email]);
-    if (existing) return res.json({ success: true, message: 'You are already subscribed!' });
-    await dbRun('INSERT INTO newsletter_subscribers (email, name, active, source) VALUES ($1, $2, 1, $3)', [email, name || '', source || 'luce-healing']);
-    res.json({ success: true, message: 'Thank you for subscribing!' });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
+const newsletterHandlers = require('./newsletter').createNewsletterHandlers({ dbGet, dbAll, dbRun, getTransporter: () => smtpTransporter });
+app.post('/api/newsletter/subscribe', newsletterHandlers.subscribe);
+app.post('/api/newsletter/unsubscribe', newsletterHandlers.unsubscribe);
+app.get('/unsubscribe', (req, res) => res.sendFile(path.join(__dirname, 'unsubscribe.html')));
 
 app.get('/api/admin/newsletter/subscribers', checkAdminPassword, async (req, res) => {
   try {
@@ -1210,75 +1217,7 @@ app.post('/api/admin/email-settings/test', checkAdminPassword, async (req, res) 
 });
 
 // ---- Newsletter Send ----
-app.post('/api/admin/newsletter/send', checkAdminPassword, async (req, res) => {
-  try {
-    const { blogPostId, subject: customSubject } = req.body;
-    
-    let subject, htmlContent, postSlug;
-    
-    if (blogPostId) {
-      const post = await dbGet('SELECT * FROM blog_posts WHERE id = $1', [blogPostId]);
-      if (!post) return res.status(404).json({ error: 'Blog post not found' });
-      subject = customSubject || 'New from Luce Healing: ' + post.title;
-      postSlug = post.slug;
-      htmlContent = `<h3 style="color:#333;margin-top:0">${post.title}</h3>
-        <p style="color:#666;line-height:1.6">${post.excerpt || (post.content || '').substring(0, 300)}</p>`;
-    } else if (customSubject) {
-      subject = customSubject;
-      htmlContent = `<p style="color:#666;line-height:1.6">${req.body.content || ''}</p>`;
-      postSlug = null;
-    } else {
-      return res.status(400).json({ error: 'blogPostId or subject required' });
-    }
-    
-    const subscribers = await dbAll('SELECT email, name FROM newsletter_subscribers WHERE active = 1');
-    if (!subscribers.length) return res.json({ success: true, recipientCount: 0 });
-    
-    const sendId = crypto.randomUUID();
-    
-    await dbRun('INSERT INTO newsletter_sends (send_id, blog_post_id, subject, recipients_count) VALUES ($1, $2, $3, $4)', 
-      [sendId, blogPostId || null, subject, subscribers.length]);
-    
-    if (smtpTransporter) {
-      const smtpUser = await dbGet("SELECT value FROM admin_settings WHERE key = 'smtp_user'");
-      const fromEmail = smtpUser ? smtpUser.value : 'thepottersmudroom@gmail.com';
-      
-      subscribers.forEach(sub => {
-        const emailB64 = Buffer.from(sub.email).toString('base64');
-        const trackOpen = `https://lucehealing.com/api/newsletter/open/${sendId}/${emailB64}`;
-        const trackClick = postSlug 
-          ? `https://lucehealing.com/api/newsletter/click/${sendId}/${emailB64}?url=${encodeURIComponent('https://lucehealing.com/blog/' + postSlug)}`
-          : `https://lucehealing.com/api/newsletter/click/${sendId}/${emailB64}?url=${encodeURIComponent('https://lucehealing.com')}`;
-        
-        const mailHtml = `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-            <div style="background:linear-gradient(135deg,#D4A574 0%,#C49B6A 100%);padding:20px;text-align:center;color:white">
-              <h2 style="margin:0">✨ Luce Healing</h2>
-            </div>
-            <div style="padding:20px;border:1px solid #ddd;border-top:none">
-              ${htmlContent}
-              ${postSlug ? `<div style="text-align:center;margin:20px 0">
-                <a href="${trackClick}" style="background:#D4A574;color:white;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">Read More</a>
-              </div>` : ''}
-            </div>
-            <div style="padding:10px 20px;background:#f5f5f5;font-size:12px;color:#999;text-align:center">
-              <p>Luce Healing © 2026 · <a href="https://lucehealing.com" style="color:#D4A574;text-decoration:none">lucehealing.com</a></p>
-            </div>
-            <img src="${trackOpen}" width="1" height="1" style="display:none" alt="">
-          </div>`;
-        
-        smtpTransporter.sendMail({
-          from: fromEmail,
-          to: sub.email,
-          subject,
-          html: mailHtml
-        }).catch(err => console.error('Newsletter email error:', err.message));
-      });
-    }
-    
-    res.json({ success: true, recipientCount: subscribers.length });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
+app.post('/api/admin/newsletter/send', checkAdminPassword, newsletterHandlers.send);
 
 // Newsletter send history
 app.get('/api/admin/newsletter/history', checkAdminPassword, async (req, res) => {
@@ -1564,7 +1503,8 @@ app.put('/api/client/appointments/:id/reschedule', verifyAuthToken, async (req, 
     const booking = await dbGet('SELECT * FROM bookings WHERE id = $1 AND email = $2', [req.params.id, user.email]);
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
-    const appointmentDate = new Date(booking.date + 'T' + booking.time);
+    if(!booking.date)return res.status(400).json({error:'This reading has no scheduled appointment. Contact Christina to arrange your consultation.'});
+    const appointmentDate = appointmentTime(booking.date,booking.time);
     const now = new Date();
     if ((appointmentDate - now) / (1000 * 60 * 60) < 24) return res.status(400).json({ error: 'Cannot reschedule within 24 hours of appointment' });
 
@@ -1574,7 +1514,7 @@ app.put('/api/client/appointments/:id/reschedule', verifyAuthToken, async (req, 
 
     await dbRun('UPDATE bookings SET status = $1 WHERE id = $2', ['rescheduled', booking.id]);
     await dbRun('INSERT INTO bookings (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status, original_booking_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
-      [booking.client_name, booking.email, booking.phone, booking.date_of_birth, booking.session_type, booking.duration, new_date, new_time, booking.session_format, booking.is_pack, 'completed', booking.stripe_session_id, booking.stripe_payment_status, booking.id]);
+      [booking.client_name, booking.email, booking.phone, booking.date_of_birth, booking.session_type, booking.duration, new_date, new_time, booking.session_format, booking.is_pack, 'confirmed', booking.stripe_session_id, booking.stripe_payment_status, booking.id]);
     const newBooking = await dbGet('SELECT * FROM bookings WHERE email = $1 AND date = $2 AND time = $3', [user.email, new_date, new_time]);
     res.json({ success: true, booking: newBooking });
   } catch (error) {
@@ -1591,7 +1531,8 @@ app.put('/api/client/appointments/:id/cancel', verifyAuthToken, async (req, res)
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
     if (booking.cancelled) return res.status(400).json({ error: 'Already cancelled' });
 
-    const appointmentDate = new Date(booking.date + 'T' + booking.time);
+    if(!booking.date)return res.status(400).json({error:'This reading has no scheduled appointment. Contact Christina to arrange your consultation.'});
+    const appointmentDate = appointmentTime(booking.date,booking.time);
     const now = new Date();
     if ((appointmentDate - now) / (1000 * 60 * 60) < 24) return res.status(400).json({ error: 'Cannot cancel within 24 hours' });
 
@@ -1659,7 +1600,7 @@ app.get('/', async (req, res) => {
     let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
     
     // Replace the "Loading posts..." placeholder with server-rendered links
-    const blogHTML = renderBlogLinksHTML(posts, 'homepage');
+    const blogHTML = renderBlogLinksHTML(posts.slice(0,1), 'homepage');
     html = html.replace(
       '<p style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">Loading posts...</p>',
       blogHTML
@@ -1697,6 +1638,8 @@ app.get('/blog', async (req, res) => {
 // STATIC PAGES
 // ============================================================================
 
+app.get('/book', (req,res)=>res.redirect('/#booking'));
+app.get('/booking', (req,res)=>res.redirect('/#booking'));
 app.get('/booking-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'booking-success.html')); });
 app.get('/booking-cancel.html', (req, res) => { res.sendFile(path.join(__dirname, 'booking-cancel.html')); });
 app.get('/memes-gallery.html', (req, res) => { res.sendFile(path.join(__dirname, 'memes-gallery.html')); });
@@ -1741,6 +1684,7 @@ app.get('/blog/:slug', async (req, res) => {
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23D4A574'>✦</text></svg>">
     <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/review-fixes.css">
     <style>
         .blog-page-container { max-width: 900px; margin: 0 auto; padding: 120px 20px 40px 20px; }
         .blog-post { line-height: 1.8; }
@@ -1778,7 +1722,7 @@ app.get('/blog/:slug', async (req, res) => {
     </script>
 </head>
 <body>
-    <nav class="navbar scrolled" id="navbar"><div class="nav-container"><div class="nav-logo"><a href="/"><img src="/images/logo.jpg" alt="Luce Healing" class="nav-logo-img"> Luce Healing</a></div><ul class="nav-menu"><li><a href="/" class="nav-link">Home</a></li><li><a href="/#about" class="nav-link">About</a></li><li><a href="/#services" class="nav-link">Services</a></li><li><a href="/#blog" class="nav-link">Blog</a></li><li><a href="/#reviews" class="nav-link">Reviews</a></li><li><a href="/#faq" class="nav-link">FAQ</a></li><li><a href="/#contact" class="nav-link">Contact</a></li></ul><div class="hamburger"><span></span><span></span><span></span></div></div></nav>
+    <nav class="navbar scrolled" id="navbar"><div class="nav-container"><div class="nav-logo"><a href="/"><img src="/images/logo.jpg" alt="Luce Healing" class="nav-logo-img"> Luce Healing</a></div><ul class="nav-menu"><li><a href="/" class="nav-link">Home</a></li><li><a href="/#about" class="nav-link">About</a></li><li><a href="/#services" class="nav-link">Services</a></li><li><a href="/blog" class="nav-link">Blog</a></li><li><a href="/#reviews" class="nav-link">Reviews</a></li><li><a href="/#faq" class="nav-link">FAQ</a></li><li><a href="/#contact" class="nav-link">Contact</a></li></ul><div class="hamburger"><span></span><span></span><span></span></div></div></nav>
     <div class="blog-page-container">
         <a href="/blog" class="back-link">← Back to All Posts</a>
         <article class="blog-post">
@@ -1786,6 +1730,11 @@ app.get('/blog/:slug', async (req, res) => {
             <div class="blog-post-meta">${date} · ${readingTime} min read</div>
             <div class="blog-post-body">${post.content}</div>
         </article>
+        <aside style="padding:28px;margin-top:32px;background:#eee7f3;border-radius:12px;text-align:center">
+            <h2 style="color:#392c44">A little light in your inbox.</h2><p style="color:#51465b">Get Christina’s astrology blogs, intuitive reflections, and occasional reading offers by email.</p>
+            <a href="/subscribe" style="display:inline-block;padding:14px 22px;background:#624373;color:white;border-radius:6px">Get the free emails →</a>
+            <p style="font-size:13px;color:#62546d;margin-top:12px">Free to join. Unsubscribe anytime.</p>
+        </aside>
         <div class="share-section">
             <h4>✨ Share This Post</h4>
             <div class="share-buttons">
@@ -1844,6 +1793,7 @@ app.get('/forecast-success.html', (req, res) => { res.sendFile(path.join(__dirna
 app.get('/subscribe', (req, res) => { res.sendFile(path.join(__dirname, 'subscribe.html')); });
 
 // Static file serving (fallback for CSS, images, etc.)
+app.use((req,res,next)=>{if(/^\/(?:server\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
 app.use(express.static(__dirname));
 
 // ============================================================================
