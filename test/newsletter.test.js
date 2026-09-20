@@ -25,7 +25,7 @@ async function harness(){
  const app=express();app.use(express.json());service.register(app,(req,res,next)=>req.query.password==='test-only'?next():res.status(401).json({error:'Unauthorized'}));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  const call=async(p,method='GET',body,ip='192.0.2.1')=>{const r=await fetch(base+p,{method,headers:{'Content-Type':'application/json','x-forwarded-for':ip},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json()};};
- const admin=(p,m='GET',b)=>call('/api/admin/newsletter'+p+'?password=test-only',m,b);
+ const admin=(p,m='GET',b)=>call('/api/admin/newsletter'+p+(p.includes('?')?'&':'?')+'password=test-only',m,b);
  const signup=(email,prefs={wants_newsletter:true,wants_blog:true},extra={})=>call('/api/newsletter/subscribe','POST',{email,name:'Test',...prefs,turnstile_token:'valid-'+(++sequence),...extra},'192.0.2.'+(sequence+1));
  const confirmation=()=>sent.at(-1).text.match(/token=([a-f0-9]{64})/)[1];
  const confirm=secret=>call('/api/newsletter/confirm','POST',{token:secret});
@@ -152,4 +152,32 @@ test('controlled test mode isolates recipients and campaigns, requires explicit 
  await h.admin('/campaigns/'+broad.id+'/cancel','POST',{revision:broad.revision+1});await h.service.tick();assert.equal(h.sent.length,before+3);
  assert.equal((await h.db.query('SELECT status FROM newsletter_campaigns WHERE id=$1',[c.id])).rows[0].status,'scheduled');
  assert((await h.admin('/campaigns')).data.every(row=>row.test_only===false),'production Admin hides test campaigns');
+}finally{await h.close();}});
+
+test('spam archive is reversible, hidden by default, and suppresses every email path',async()=>{const h=await harness();try{
+ const secret=await h.verified('archive@example.com');
+ const row=(await h.db.query("SELECT * FROM newsletter_subscribers WHERE email='archive@example.com'")).rows[0];
+ const originalCount=(await h.admin('/subscribers')).data.length;
+ const before=h.sent.length;
+ assert.equal((await h.call('/api/admin/newsletter/subscribers/'+row.id+'/archive','POST',{archived:true})).status,401);
+ assert.equal((await h.admin('/subscribers/'+row.id+'/archive','POST',{archived:true})).status,200);
+ assert.equal((await h.admin('/subscribers')).data.length,originalCount-1);
+ assert.equal((await h.admin('/subscribers?include_archived=true')).data.find(s=>s.id===row.id).status,'spam');
+ h.advance(86400001);await h.signup(row.email);assert.equal(h.sent.length,before);
+ assert.equal((await h.call('/api/newsletter/preferences','POST',{token:secret,wants_newsletter:true})).status,409);
+ for(const segment of ['newsletter','blog']){const c=await h.draft(segment);await h.admin('/campaigns/'+c.id+'/queue','POST',{revision:c.revision});await h.service.tick();}
+ assert.equal(h.sent.length,before);
+ await h.call('/api/newsletter/unsubscribe','POST',{token:secret});
+ assert.equal((await h.admin('/subscribers')).data.length,originalCount-1);
+ await h.admin('/subscribers/'+row.id+'/archive','POST',{archived:false});
+ let restored=(await h.db.query('SELECT * FROM newsletter_subscribers WHERE id=$1',[row.id])).rows[0];
+ assert.equal(restored.status,'unsubscribed');assert.equal(restored.active,0);assert(restored.verified_at);assert.equal(restored.spam_archived_at,null);
+ // A formerly verified contact is restored pending, never silently opted back in.
+ await h.db.query("UPDATE newsletter_subscribers SET status='verified',active=1,wants_newsletter=true WHERE id=$1",[row.id]);
+ await h.admin('/subscribers/'+row.id+'/archive','POST',{archived:true});await h.admin('/subscribers/'+row.id+'/archive','POST',{archived:false});
+ restored=(await h.db.query('SELECT * FROM newsletter_subscribers WHERE id=$1',[row.id])).rows[0];assert.equal(restored.status,'pending');assert.equal(restored.active,0);
+ await h.call('/api/newsletter/preferences','POST',{token:secret,wants_newsletter:false,wants_blog:false});
+ assert.equal((await h.call('/api/newsletter/preferences','POST',{token:secret,wants_newsletter:true})).status,409);
+ await h.signup(row.email);assert.equal((await h.confirm(h.confirmation())).status,200);
+ assert.equal((await h.db.query('SELECT count(*)::int n FROM newsletter_subscribers')).rows[0].n,originalCount);
 }finally{await h.close();}});

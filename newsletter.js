@@ -26,6 +26,8 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
     await transaction(async c => {
       await c.query(`ALTER TABLE newsletter_subscribers
         ADD COLUMN IF NOT EXISTS status TEXT,
+        ADD COLUMN IF NOT EXISTS spam_archived_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS spam_restore_requires_confirmation BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS wants_newsletter BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS wants_blog BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ,
@@ -128,6 +130,7 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
       // Serialize all signup attempts for the same normalized email without deleting duplicates.
       await c.query('SELECT pg_advisory_xact_lock(hashtext($1))',[email]);
       let row=(await c.query('SELECT * FROM newsletter_subscribers WHERE lower(email)=$1 ORDER BY id LIMIT 1 FOR UPDATE',[email])).rows[0];
+      if((await c.query('SELECT 1 FROM newsletter_subscribers WHERE lower(email)=$1 AND spam_archived_at IS NOT NULL',[email])).rows.length)return null;
       if(row?.status==='bounced' || row?.status==='invalid')return null;
       if(row?.verification_requested_at && now-new Date(row.verification_requested_at)<600000)return null;
       if(!row)row=(await c.query(`INSERT INTO newsletter_subscribers(email,name,active,source,status,unsubscribe_token) VALUES($1,$2,0,'luce-healing','pending',$3) RETURNING *`,[email,String(req.body.name||'').trim().slice(0,120),token()])).rows[0];
@@ -147,8 +150,8 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
     const sub=await transaction(async c=>{
       const row=(await c.query('SELECT * FROM newsletter_subscribers WHERE verification_hash=$1 FOR UPDATE',[hash(req.body.token)])).rows[0];
       if(!row || !row.verification_expires_at || new Date(row.verification_expires_at)<=clock())throw problem('This link has expired or was already used. Please request a new confirmation email.',410);
-      if(['bounced','invalid'].includes(row.status))throw problem('This address cannot receive emails. Please contact Luce Healing.');
-      const result=await c.query(`UPDATE newsletter_subscribers SET status='verified',active=1,verified_at=COALESCE(verified_at,$1),unsubscribed_at=NULL,wants_newsletter=pending_newsletter,wants_blog=pending_blog,verification_hash=NULL,verification_expires_at=NULL,unsubscribe_token=COALESCE(unsubscribe_token,$2) WHERE id=$3 RETURNING unsubscribe_token`,[clock(),token(),row.id]);
+      if(row.spam_archived_at || ['bounced','invalid'].includes(row.status))throw problem('This address cannot receive emails. Please contact Luce Healing.');
+      const result=await c.query(`UPDATE newsletter_subscribers SET status='verified',active=1,spam_restore_requires_confirmation=false,verified_at=COALESCE(verified_at,$1),unsubscribed_at=NULL,wants_newsletter=pending_newsletter,wants_blog=pending_blog,verification_hash=NULL,verification_expires_at=NULL,unsubscribe_token=COALESCE(unsubscribe_token,$2) WHERE id=$3 RETURNING unsubscribe_token`,[clock(),token(),row.id]);
       return result.rows[0];
     });
     res.json({success:true,message:'Your email is confirmed. Welcome to Luce Healing.',preferencesUrl:'/newsletter/preferences?token='+sub.unsubscribe_token});
@@ -168,7 +171,8 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
     const sub=await preferenceRecord(req.method==='GET'?req.query.token:req.body.token);
     if(req.method==='GET')return res.json({status:sub.status,wants_newsletter:sub.wants_newsletter,wants_blog:sub.wants_blog,verified:!!sub.verified_at});
     const n=req.body.wants_newsletter===true,b=req.body.wants_blog===true;
-    if((n||b)&&(!sub.verified_at||['bounced','invalid'].includes(sub.status)))throw problem('Please confirm your email through the signup form before subscribing.',409);
+    if(sub.spam_archived_at)throw problem('This subscription is archived. Please contact Luce Healing.',409);
+    if((n||b)&&(sub.spam_restore_requires_confirmation||!sub.verified_at||['bounced','invalid','pending','legacy_unverified'].includes(sub.status)))throw problem('Please confirm your email through the signup form before subscribing.',409);
     await q(`UPDATE newsletter_subscribers SET wants_newsletter=$1,wants_blog=$2,status=$3,active=$4,unsubscribed_at=$5,verification_hash=NULL,verification_expires_at=NULL WHERE id=$6`,[n,b,n||b?'verified':'unsubscribed',n||b?1:0,n||b?null:clock(),sub.id]);
     res.json({success:true,message:'Your Luce Healing email preferences are saved.'});
   }
@@ -256,8 +260,8 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
         await c.query(`INSERT INTO newsletter_sends(send_id,blog_post_id,subject,recipients_count) VALUES($1,$2,$3,0) ON CONFLICT(send_id) DO NOTHING`,[sendId,campaign.blog_post_id,campaign.subject]);
         await c.query('UPDATE newsletter_campaigns SET send_id=$1 WHERE id=$2',[sendId,campaign.id]);
         if(!campaign.audience_captured) await c.query(`INSERT INTO newsletter_deliveries(campaign_id,subscriber_id,email)
-          SELECT $1,min(id),lower(email) FROM newsletter_subscribers WHERE status='verified' AND active=1 AND verified_at IS NOT NULL AND ${pref}=true
-          AND NOT EXISTS (SELECT 1 FROM newsletter_subscribers suppressed WHERE lower(suppressed.email)=lower(newsletter_subscribers.email) AND suppressed.status IN ('unsubscribed','bounced','invalid'))
+          SELECT $1,min(id),lower(email) FROM newsletter_subscribers WHERE spam_archived_at IS NULL AND status='verified' AND active=1 AND verified_at IS NOT NULL AND ${pref}=true
+          AND NOT EXISTS (SELECT 1 FROM newsletter_subscribers suppressed WHERE lower(suppressed.email)=lower(newsletter_subscribers.email) AND (suppressed.spam_archived_at IS NOT NULL OR suppressed.status IN ('unsubscribed','bounced','invalid')))
           AND ($2::text IS NULL OR lower(email)=$2)
           GROUP BY lower(email) ON CONFLICT(campaign_id,email) DO NOTHING`,[campaign.id,campaign.test_only?testRecipient:null]);
         await c.query('UPDATE newsletter_campaigns SET audience_captured=true WHERE id=$1',[campaign.id]);
@@ -265,8 +269,8 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
       const deliveries=(await q("SELECT * FROM newsletter_deliveries WHERE campaign_id=$1 AND status='pending' ORDER BY id",[campaign.id])).rows;
       for(const delivery of deliveries){
         await q('UPDATE newsletter_campaigns SET heartbeat_at=$1 WHERE id=$2',[clock(),campaign.id]);
-        const sub=await one(`SELECT * FROM newsletter_subscribers WHERE id=$1 AND status='verified' AND active=1 AND verified_at IS NOT NULL AND ${pref}=true
-          AND NOT EXISTS (SELECT 1 FROM newsletter_subscribers suppressed WHERE lower(suppressed.email)=lower(newsletter_subscribers.email) AND suppressed.status IN ('unsubscribed','bounced','invalid'))`,[delivery.subscriber_id]);
+        const sub=await one(`SELECT * FROM newsletter_subscribers WHERE id=$1 AND spam_archived_at IS NULL AND status='verified' AND active=1 AND verified_at IS NOT NULL AND ${pref}=true
+          AND NOT EXISTS (SELECT 1 FROM newsletter_subscribers suppressed WHERE lower(suppressed.email)=lower(newsletter_subscribers.email) AND (suppressed.spam_archived_at IS NOT NULL OR suppressed.status IN ('unsubscribed','bounced','invalid')))`,[delivery.subscriber_id]);
         if(!sub || !recipientAllowed(delivery.email) || (campaign.test_only && delivery.email!==testRecipient)){await q("UPDATE newsletter_deliveries SET status='skipped',detail='Preferences changed before sending',finished_at=$1 WHERE id=$2",[clock(),delivery.id]);continue;}
         if(!sub.unsubscribe_token){sub.unsubscribe_token=token();await q('UPDATE newsletter_subscribers SET unsubscribe_token=$1 WHERE id=$2',[sub.unsubscribe_token,sub.id]);}
         const claimed=await one("UPDATE newsletter_deliveries SET status='delivering',attempted_at=$1 WHERE id=$2 AND status='pending' RETURNING id",[clock(),delivery.id]);
@@ -323,10 +327,24 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
     for(const p of ['/newsletter/confirm','/newsletter/preferences','/unsubscribe'])app.get(p,(req,res)=>res.set('X-Robots-Tag','noindex, nofollow').set('Cache-Control','no-store').sendFile(path.join(__dirname,'unsubscribe.html')));
     const admin=(method,p,fn)=>app[method]('/api/admin/newsletter'+p,checkAdminPassword,wrap(fn));
     admin('get','/status',async(req,res)=>{let sender;try{sender=await mailer();}catch(_){}res.json({turnstileConfigured:ready(),senderConfigured:!!sender,sender:sender?.from.address||null,deliveryMode:deliveryMode(),testRecipient:deliveryMode()==='test'?testRecipient:null,workerEnabled:deliveryMode()==='live'&&env.NEWSLETTER_WORKER_ENABLED==='true',scheduleNote:'Saved times use your device time zone. Due work is processed about every 30 seconds while the service is running; after downtime it resumes when the service starts.'});});
-    admin('get','/subscribers',async(req,res)=>res.json((await q('SELECT id,email,name,subscribed_at,active,status,verified_at,unsubscribed_at,wants_newsletter,wants_blog,last_delivery_status,last_delivery_at FROM newsletter_subscribers ORDER BY subscribed_at DESC,id DESC')).rows));
+    admin('get','/subscribers',async(req,res)=>res.json((await q(`SELECT id,email,name,subscribed_at,active,CASE WHEN spam_archived_at IS NOT NULL THEN 'spam' ELSE status END AS status,spam_archived_at,verified_at,unsubscribed_at,wants_newsletter,wants_blog,last_delivery_status,last_delivery_at FROM newsletter_subscribers WHERE spam_archived_at IS NULL OR $1=true ORDER BY subscribed_at DESC,id DESC`,[req.query.include_archived==='true'])).rows));
+    admin('post','/subscribers/:id/archive',async(req,res)=>{
+      if(typeof req.body.archived!=='boolean')throw problem('Choose archive or restore.');
+      await transaction(async c=>{
+        const row=(await c.query('SELECT email FROM newsletter_subscribers WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
+        if(!row)throw problem('Subscriber not found.',404);
+        if(req.body.archived){
+          await c.query(`UPDATE newsletter_subscribers SET spam_archived_at=COALESCE(spam_archived_at,$1),verification_hash=NULL,verification_expires_at=NULL WHERE lower(email)=lower($2)`,[clock(),row.email]);
+        }else{
+          // Restore visibility without silently restoring marketing consent.
+          await c.query(`UPDATE newsletter_subscribers SET spam_archived_at=NULL,spam_restore_requires_confirmation=true,active=0,status=CASE WHEN status IN ('unsubscribed','bounced','invalid') THEN status ELSE 'pending' END,wants_newsletter=false,wants_blog=false,verification_hash=NULL,verification_expires_at=NULL,verification_requested_at=NULL WHERE lower(email)=lower($1) AND spam_archived_at IS NOT NULL`,[row.email]);
+        }
+      });
+      res.json({success:true});
+    });
     admin('delete','/:id',async(req,res)=>{await q("UPDATE newsletter_subscribers SET active=0,status='unsubscribed',wants_newsletter=false,wants_blog=false,verification_hash=NULL,verification_expires_at=NULL,unsubscribed_at=$1 WHERE lower(email)=(SELECT lower(email) FROM newsletter_subscribers WHERE id=$2)",[clock(),req.params.id]);res.json({success:true});});
     admin('get','/export',async(req,res)=>{
-      const rows=(await q('SELECT email,name,status,wants_newsletter,wants_blog,subscribed_at,verified_at,unsubscribed_at FROM newsletter_subscribers ORDER BY subscribed_at DESC')).rows;
+      const rows=(await q(`SELECT email,name,CASE WHEN spam_archived_at IS NOT NULL THEN 'spam' ELSE status END AS status,wants_newsletter,wants_blog,subscribed_at,verified_at,unsubscribed_at FROM newsletter_subscribers ORDER BY subscribed_at DESC`)).rows;
       const cell=x=>'"'+String(x??'').replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';
       res.type('text/csv').attachment('luce-newsletter-subscribers.csv').send(['Email,Name,Status,Newsletters,Blog emails,Signup date,Verified date,Unsubscribed date',...rows.map(r=>Object.values(r).map(cell).join(','))].join('\r\n'));
     });
