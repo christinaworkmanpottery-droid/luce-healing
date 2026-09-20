@@ -1947,6 +1947,7 @@ async function startServer() {
     }
   }
 
+  membershipService.start();
   app.listen(PORT, async () => {
     console.log(`Luce Healing server running on port ${PORT}`);
     console.log(`DATABASE_URL set: ${!!process.env.DATABASE_URL}`);
