@@ -27,6 +27,7 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
       await c.query(`ALTER TABLE newsletter_subscribers
         ADD COLUMN IF NOT EXISTS status TEXT,
         ADD COLUMN IF NOT EXISTS spam_archived_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS archive_reason TEXT,
         ADD COLUMN IF NOT EXISTS spam_restore_requires_confirmation BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS wants_newsletter BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS wants_blog BOOLEAN NOT NULL DEFAULT false,
@@ -39,6 +40,13 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
         ADD COLUMN IF NOT EXISTS pending_blog BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS last_delivery_status TEXT,
         ADD COLUMN IF NOT EXISTS last_delivery_at TIMESTAMPTZ`);
+      // Christina's approved administrative cleanup: only the 50 reviewed legacy IDs.
+      // Transactional marker prevents re-archiving a record restored later by Admin.
+      if(origin==='https://lucehealing.com' && env.NODE_ENV==='production'){
+        const applied=await c.query(`INSERT INTO admin_settings(key,value) VALUES('newsletter_legacy_archive_20260920','applied') ON CONFLICT(key) DO NOTHING RETURNING key`);
+        if(applied.rows.length)await c.query(`UPDATE newsletter_subscribers SET spam_archived_at=COALESCE(spam_archived_at,NOW()),archive_reason='administrative_cleanup',verification_hash=NULL,verification_expires_at=NULL
+          WHERE id=ANY($1::int[]) AND lower(email)<>'info@christinaworkman.com' AND subscribed_at<'2026-09-20' AND verified_at IS NULL AND status IN ('legacy_unverified','unsubscribed')`,[[...Array.from({length:22},(_,i)=>i+1),...Array.from({length:27},(_,i)=>i+24),52]]);
+      }
       // Preserve every historical row and its original active/source/name/date fields.
       await c.query("UPDATE newsletter_subscribers SET status = CASE WHEN active = 0 THEN 'unsubscribed' ELSE 'legacy_unverified' END WHERE status IS NULL");
       await c.query("ALTER TABLE newsletter_subscribers ALTER COLUMN status SET DEFAULT 'pending'");
@@ -327,7 +335,7 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
     for(const p of ['/newsletter/confirm','/newsletter/preferences','/unsubscribe'])app.get(p,(req,res)=>res.set('X-Robots-Tag','noindex, nofollow').set('Cache-Control','no-store').sendFile(path.join(__dirname,'unsubscribe.html')));
     const admin=(method,p,fn)=>app[method]('/api/admin/newsletter'+p,checkAdminPassword,wrap(fn));
     admin('get','/status',async(req,res)=>{let sender;try{sender=await mailer();}catch(_){}res.json({turnstileConfigured:ready(),senderConfigured:!!sender,sender:sender?.from.address||null,deliveryMode:deliveryMode(),testRecipient:deliveryMode()==='test'?testRecipient:null,workerEnabled:deliveryMode()==='live'&&env.NEWSLETTER_WORKER_ENABLED==='true',scheduleNote:'Saved times use your device time zone. Due work is processed about every 30 seconds while the service is running; after downtime it resumes when the service starts.'});});
-    admin('get','/subscribers',async(req,res)=>res.json((await q(`SELECT id,email,name,subscribed_at,active,CASE WHEN spam_archived_at IS NOT NULL THEN 'spam' ELSE status END AS status,spam_archived_at,verified_at,unsubscribed_at,wants_newsletter,wants_blog,last_delivery_status,last_delivery_at FROM newsletter_subscribers WHERE spam_archived_at IS NULL OR $1=true ORDER BY subscribed_at DESC,id DESC`,[req.query.include_archived==='true'])).rows));
+    admin('get','/subscribers',async(req,res)=>res.json((await q(`SELECT id,email,name,subscribed_at,active,CASE WHEN spam_archived_at IS NOT NULL THEN CASE WHEN archive_reason='administrative_cleanup' THEN 'archived' ELSE 'spam' END ELSE status END AS status,spam_archived_at,verified_at,unsubscribed_at,wants_newsletter,wants_blog,last_delivery_status,last_delivery_at FROM newsletter_subscribers WHERE spam_archived_at IS NULL OR $1=true ORDER BY subscribed_at DESC,id DESC`,[req.query.include_archived==='true'])).rows));
     admin('post','/subscribers/:id/archive',async(req,res)=>{
       if(typeof req.body.archived!=='boolean')throw problem('Choose archive or restore.');
       await transaction(async c=>{
@@ -337,14 +345,14 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
           await c.query(`UPDATE newsletter_subscribers SET spam_archived_at=COALESCE(spam_archived_at,$1),verification_hash=NULL,verification_expires_at=NULL WHERE lower(email)=lower($2)`,[clock(),row.email]);
         }else{
           // Restore visibility without silently restoring marketing consent.
-          await c.query(`UPDATE newsletter_subscribers SET spam_archived_at=NULL,spam_restore_requires_confirmation=true,active=0,status=CASE WHEN status IN ('unsubscribed','bounced','invalid') THEN status ELSE 'pending' END,wants_newsletter=false,wants_blog=false,verification_hash=NULL,verification_expires_at=NULL,verification_requested_at=NULL WHERE lower(email)=lower($1) AND spam_archived_at IS NOT NULL`,[row.email]);
+          await c.query(`UPDATE newsletter_subscribers SET spam_archived_at=NULL,archive_reason=NULL,spam_restore_requires_confirmation=true,active=0,status=CASE WHEN status IN ('unsubscribed','bounced','invalid') THEN status ELSE 'pending' END,wants_newsletter=false,wants_blog=false,verification_hash=NULL,verification_expires_at=NULL,verification_requested_at=NULL WHERE lower(email)=lower($1) AND spam_archived_at IS NOT NULL`,[row.email]);
         }
       });
       res.json({success:true});
     });
     admin('delete','/:id',async(req,res)=>{await q("UPDATE newsletter_subscribers SET active=0,status='unsubscribed',wants_newsletter=false,wants_blog=false,verification_hash=NULL,verification_expires_at=NULL,unsubscribed_at=$1 WHERE lower(email)=(SELECT lower(email) FROM newsletter_subscribers WHERE id=$2)",[clock(),req.params.id]);res.json({success:true});});
     admin('get','/export',async(req,res)=>{
-      const rows=(await q(`SELECT email,name,CASE WHEN spam_archived_at IS NOT NULL THEN 'spam' ELSE status END AS status,wants_newsletter,wants_blog,subscribed_at,verified_at,unsubscribed_at FROM newsletter_subscribers ORDER BY subscribed_at DESC`)).rows;
+      const rows=(await q(`SELECT email,name,CASE WHEN spam_archived_at IS NOT NULL THEN CASE WHEN archive_reason='administrative_cleanup' THEN 'archived' ELSE 'spam' END ELSE status END AS status,wants_newsletter,wants_blog,subscribed_at,verified_at,unsubscribed_at FROM newsletter_subscribers ORDER BY subscribed_at DESC`)).rows;
       const cell=x=>'"'+String(x??'').replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';
       res.type('text/csv').attachment('luce-newsletter-subscribers.csv').send(['Email,Name,Status,Newsletters,Blog emails,Signup date,Verified date,Unsubscribed date',...rows.map(r=>Object.values(r).map(cell).join(','))].join('\r\n'));
     });

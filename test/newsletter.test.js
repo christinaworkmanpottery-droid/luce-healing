@@ -181,3 +181,18 @@ test('spam archive is reversible, hidden by default, and suppresses every email 
  await h.signup(row.email);assert.equal((await h.confirm(h.confirmation())).status,200);
  assert.equal((await h.db.query('SELECT count(*)::int n FROM newsletter_subscribers')).rows[0].n,originalCount);
 }finally{await h.close();}});
+
+test('approved administrative cleanup archives only reviewed legacy IDs once without emailing',async()=>{const h=await harness();try{
+ await h.db.query("INSERT INTO newsletter_subscribers(id,email,status,active) VALUES(51,'info@christinaworkman.com','unsubscribed',0),(53,'new@example.com','pending',0)");
+ await h.db.query("UPDATE newsletter_subscribers SET subscribed_at='2026-03-25' WHERE id IN (1,2)");
+ h.env.NODE_ENV='production';h.env.NEWSLETTER_BASE_URL='https://lucehealing.com';
+ const service=createNewsletterService({pool:h.pool,env:h.env,getTransporter:()=>{throw Error('Must not send');}});
+ await service.initialize();
+ const all=(await h.admin('/subscribers?include_archived=true')).data;
+ assert.equal(all.find(s=>s.id===1).status,'archived');assert.equal(all.find(s=>s.id===2).status,'archived');
+ assert.equal(all.find(s=>s.id===51).status,'unsubscribed');assert.equal(all.find(s=>s.id===53).status,'pending');
+ assert.equal((await h.admin('/subscribers')).data.length,2);assert.equal(h.sent.length,0);
+ await h.admin('/subscribers/1/archive','POST',{archived:false});await service.initialize();
+ assert.equal((await h.admin('/subscribers')).data.find(s=>s.id===1).status,'pending');
+ assert.equal((await h.db.query('SELECT count(*)::int n FROM newsletter_subscribers')).rows[0].n,4);
+}finally{await h.close();}});
