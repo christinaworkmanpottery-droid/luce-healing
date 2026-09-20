@@ -10,6 +10,10 @@ const problem = (message, status = 400) => Object.assign(new Error(message), {st
 
 function createNewsletterService({pool, getTransporter, env = process.env, fetcher = global.fetch, clock = () => new Date()}) {
   const origin = (env.NEWSLETTER_BASE_URL || 'https://lucehealing.com').replace(/\/$/, '');
+  // No newsletter mail is authorized by default. Controlled tests have one fixed recipient.
+  const testRecipient = 'info@christinaworkman.com';
+  const deliveryMode = () => ['test','live'].includes(env.NEWSLETTER_DELIVERY_MODE) ? env.NEWSLETTER_DELIVERY_MODE : 'locked';
+  const recipientAllowed = email => deliveryMode()==='live' || (deliveryMode()==='test' && email===testRecipient);
   const q = (sql, values = []) => pool.query(sql, values);
   const one = async (sql, values) => (await q(sql, values)).rows[0];
   const wrap = fn => async (req,res) => {try {await fn(req,res);} catch(e) {if(!e.status) console.error('[Luce newsletter]',e.code || e.name);res.status(e.status || 500).json({error:e.status ? e.message : 'Unable to complete this request. Please try again.'});}};
@@ -46,6 +50,7 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         started_at TIMESTAMPTZ, finished_at TIMESTAMPTZ, heartbeat_at TIMESTAMPTZ,
         send_id TEXT UNIQUE, audience_captured BOOLEAN NOT NULL DEFAULT false, error TEXT, revision INTEGER NOT NULL DEFAULT 1)`);
+      await c.query('ALTER TABLE newsletter_campaigns ADD COLUMN IF NOT EXISTS test_only BOOLEAN NOT NULL DEFAULT false');
       await c.query(`CREATE TABLE IF NOT EXISTS newsletter_deliveries (
         id SERIAL PRIMARY KEY, campaign_id INTEGER NOT NULL REFERENCES newsletter_campaigns(id),
         subscriber_id INTEGER NOT NULL, email TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
@@ -95,7 +100,15 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
     const from=String(row?.value || '').trim().toLowerCase();
     const expected=String(env.NEWSLETTER_FROM || 'lucehealing13@gmail.com').toLowerCase();
     if(!transport || from!==expected || !(from==='lucehealing13@gmail.com' || /^[^@]+@lucehealing\.com$/.test(from))) throw problem('A Luce Healing email sender must be configured before sending.',503);
-    return {transport,from:{name:'Christina at Luce Healing',address:from}};
+    return {transport:{
+      verify:()=>transport.verify(),
+      sendMail:mail=>{
+        // Final guard covers confirmation mail and campaign mail, even with an old delivery ledger.
+        if(!recipientAllowed(mail.to) || mail.cc || mail.bcc || mail.envelope)
+          throw problem('Newsletter delivery is locked for this recipient.',503);
+        return transport.sendMail(mail);
+      }
+    },from:{name:'Christina at Luce Healing',address:from}};
   }
   function shell(body,footer='') {
     return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f3eef6;color:#392c44"><div style="max-width:640px;margin:auto;font:17px/1.7 Georgia,serif;background:white"><header style="padding:24px;background:#624373;color:white;font-size:26px;text-align:center">Luce Healing</header><main style="padding:24px;overflow-wrap:anywhere">${body}</main><footer style="padding:24px;font:13px/1.6 Arial,sans-serif;color:#62546d">${footer}<p><a href="${origin}">Luce Healing</a> · Christina Workman</p></footer></div></body></html>`;
@@ -105,6 +118,7 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
     if(!await protect(req))return res.json(genericSignup);
     const email=typeof req.body.email==='string'?req.body.email.trim().toLowerCase():'';
     if(!validEmail(email))throw problem('Please enter a valid email address.');
+    if(!recipientAllowed(email))throw problem('Newsletter signup is temporarily paused while we finish testing. Please try again later.',503);
     const wantsNewsletter=req.body.wants_newsletter===true,wantsBlog=req.body.wants_blog===true;
     if(!wantsNewsletter&&!wantsBlog)throw problem('Choose at least one type of email.');
     await limit('signup-email:'+email,3,86400000);
@@ -199,11 +213,12 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
     res.json(row);
   }
   async function queueCampaign(req,res) {
-    if(env.NEWSLETTER_WORKER_ENABLED!=='true')throw problem('Newsletter sending is not enabled in this environment.',503);
+    const testing=deliveryMode()==='test' && req.body.controlled_test===true;
+    if(!testing && (deliveryMode()!=='live' || env.NEWSLETTER_WORKER_ENABLED!=='true'))throw problem('Newsletter sending is not enabled in this environment.',503);
     await mailer();
     const at=req.body.scheduled_at?scheduleDate(req.body.scheduled_at):clock();
-    const row=await one(`UPDATE newsletter_campaigns SET status='scheduled',scheduled_at=$1,updated_at=$2,error=NULL,revision=revision+1
-      WHERE id=$3 AND revision=$4 AND status IN ('draft','scheduled','canceled') RETURNING *`,[at,clock(),req.params.id,req.body.revision]);
+    const row=await one(`UPDATE newsletter_campaigns SET status='scheduled',scheduled_at=$1,updated_at=$2,error=NULL,revision=revision+1,test_only=$5
+      WHERE id=$3 AND revision=$4 AND status IN ('draft','scheduled','canceled') AND (test_only=false OR $5=true) RETURNING *`,[at,clock(),req.params.id,req.body.revision,testing]);
     if(!row)throw problem('This newsletter changed or has already started. Refresh its status.',409);
     res.json(row);
   }
@@ -243,7 +258,8 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
         if(!campaign.audience_captured) await c.query(`INSERT INTO newsletter_deliveries(campaign_id,subscriber_id,email)
           SELECT $1,min(id),lower(email) FROM newsletter_subscribers WHERE status='verified' AND active=1 AND verified_at IS NOT NULL AND ${pref}=true
           AND NOT EXISTS (SELECT 1 FROM newsletter_subscribers suppressed WHERE lower(suppressed.email)=lower(newsletter_subscribers.email) AND suppressed.status IN ('unsubscribed','bounced','invalid'))
-          GROUP BY lower(email) ON CONFLICT(campaign_id,email) DO NOTHING`,[campaign.id]);
+          AND ($2::text IS NULL OR lower(email)=$2)
+          GROUP BY lower(email) ON CONFLICT(campaign_id,email) DO NOTHING`,[campaign.id,campaign.test_only?testRecipient:null]);
         await c.query('UPDATE newsletter_campaigns SET audience_captured=true WHERE id=$1',[campaign.id]);
       });
       const deliveries=(await q("SELECT * FROM newsletter_deliveries WHERE campaign_id=$1 AND status='pending' ORDER BY id",[campaign.id])).rows;
@@ -251,7 +267,7 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
         await q('UPDATE newsletter_campaigns SET heartbeat_at=$1 WHERE id=$2',[clock(),campaign.id]);
         const sub=await one(`SELECT * FROM newsletter_subscribers WHERE id=$1 AND status='verified' AND active=1 AND verified_at IS NOT NULL AND ${pref}=true
           AND NOT EXISTS (SELECT 1 FROM newsletter_subscribers suppressed WHERE lower(suppressed.email)=lower(newsletter_subscribers.email) AND suppressed.status IN ('unsubscribed','bounced','invalid'))`,[delivery.subscriber_id]);
-        if(!sub){await q("UPDATE newsletter_deliveries SET status='skipped',detail='Preferences changed before sending',finished_at=$1 WHERE id=$2",[clock(),delivery.id]);continue;}
+        if(!sub || !recipientAllowed(delivery.email) || (campaign.test_only && delivery.email!==testRecipient)){await q("UPDATE newsletter_deliveries SET status='skipped',detail='Preferences changed before sending',finished_at=$1 WHERE id=$2",[clock(),delivery.id]);continue;}
         if(!sub.unsubscribe_token){sub.unsubscribe_token=token();await q('UPDATE newsletter_subscribers SET unsubscribe_token=$1 WHERE id=$2',[sub.unsubscribe_token,sub.id]);}
         const claimed=await one("UPDATE newsletter_deliveries SET status='delivering',attempted_at=$1 WHERE id=$2 AND status='pending' RETURNING id",[clock(),delivery.id]);
         if(!claimed)continue;
@@ -278,20 +294,21 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
     }catch(e){await q("UPDATE newsletter_campaigns SET status='interrupted',error=$1,revision=revision+1 WHERE id=$2",[e.status?e.message:'Sending stopped; review recipient results before continuing.',campaign.id]);}
   }
   let ticking=false,timer;
-  async function tick() {
-    if(ticking||env.NEWSLETTER_WORKER_ENABLED!=='true')return;
+  async function tick(controlledTest=false) {
+    const testing=deliveryMode()==='test';
+    if(ticking || (testing ? controlledTest!==true : deliveryMode()!=='live' || env.NEWSLETTER_WORKER_ENABLED!=='true'))return;
     ticking=true;
     try{
       await q('DELETE FROM newsletter_rate_limits WHERE expires_at < $1',[clock()]);
-      await q("UPDATE blog_posts SET published=1,publish_at=NULL,updated_at=NOW() WHERE publish_at <= $1 AND published=0",[clock()]);
-      await q("UPDATE newsletter_campaigns SET status='interrupted',error='Worker stopped during sending. Review results; pending recipients may be resumed.',revision=revision+1 WHERE status='sending' AND heartbeat_at < $1",[new Date(clock().getTime()-900000)]);
-      await q("UPDATE newsletter_deliveries SET status='unknown',detail='Worker stopped before result was recorded; do not resend automatically.' WHERE status='delivering' AND campaign_id IN (SELECT id FROM newsletter_campaigns WHERE status='interrupted')");
+      if(!testing)await q("UPDATE blog_posts SET published=1,publish_at=NULL,updated_at=NOW() WHERE publish_at <= $1 AND published=0",[clock()]);
+      await q("UPDATE newsletter_campaigns SET status='interrupted',error='Worker stopped during sending. Review results; pending recipients may be resumed.',revision=revision+1 WHERE status='sending' AND heartbeat_at < $1 AND test_only=$2",[new Date(clock().getTime()-900000),testing]);
+      await q("UPDATE newsletter_deliveries SET status='unknown',detail='Worker stopped before result was recorded; do not resend automatically.' WHERE status='delivering' AND campaign_id IN (SELECT id FROM newsletter_campaigns WHERE status='interrupted' AND test_only=$1)",[testing]);
       const campaign=await one(`UPDATE newsletter_campaigns SET status='sending',started_at=COALESCE(started_at,$1),heartbeat_at=$1,revision=revision+1
-        WHERE id=(SELECT id FROM newsletter_campaigns WHERE status='scheduled' AND scheduled_at<=$1 ORDER BY scheduled_at,id LIMIT 1 FOR UPDATE SKIP LOCKED) AND status='scheduled' RETURNING *`,[clock()]);
+        WHERE id=(SELECT id FROM newsletter_campaigns WHERE status='scheduled' AND test_only=$2 AND scheduled_at<=$1 ORDER BY scheduled_at,id LIMIT 1 FOR UPDATE SKIP LOCKED) AND status='scheduled' RETURNING *`,[clock(),testing]);
       if(campaign)await processCampaign(campaign);
     }finally{ticking=false;}
   }
-  function start(){if(timer||env.NEWSLETTER_WORKER_ENABLED!=='true')return;timer=setInterval(()=>tick().catch(e=>console.error('[Luce newsletter worker]',e.code||e.name)),30000);timer.unref();tick().catch(e=>console.error('[Luce newsletter worker]',e.code||e.name));}
+  function start(){if(timer||deliveryMode()!=='live'||env.NEWSLETTER_WORKER_ENABLED!=='true')return;timer=setInterval(()=>tick().catch(e=>console.error('[Luce newsletter worker]',e.code||e.name)),30000);timer.unref();tick().catch(e=>console.error('[Luce newsletter worker]',e.code||e.name));}
   function stop(){clearInterval(timer);timer=null;}
   function register(app,checkAdminPassword){
     app.use(['/newsletter','/api/newsletter','/api/admin/newsletter'],(req,res,next)=>{res.set('X-Robots-Tag','noindex, nofollow').set('Cache-Control','no-store').set('Referrer-Policy','no-referrer');next();});
@@ -305,7 +322,7 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
     app.post('/api/newsletter/preferences',wrap(preferences));
     for(const p of ['/newsletter/confirm','/newsletter/preferences','/unsubscribe'])app.get(p,(req,res)=>res.set('X-Robots-Tag','noindex, nofollow').set('Cache-Control','no-store').sendFile(path.join(__dirname,'unsubscribe.html')));
     const admin=(method,p,fn)=>app[method]('/api/admin/newsletter'+p,checkAdminPassword,wrap(fn));
-    admin('get','/status',async(req,res)=>{let sender;try{sender=await mailer();}catch(_){}res.json({turnstileConfigured:ready(),senderConfigured:!!sender,sender:sender?.from.address||null,workerEnabled:env.NEWSLETTER_WORKER_ENABLED==='true',scheduleNote:'Saved times use your device time zone. Due work is processed about every 30 seconds while the service is running; after downtime it resumes when the service starts.'});});
+    admin('get','/status',async(req,res)=>{let sender;try{sender=await mailer();}catch(_){}res.json({turnstileConfigured:ready(),senderConfigured:!!sender,sender:sender?.from.address||null,deliveryMode:deliveryMode(),testRecipient:deliveryMode()==='test'?testRecipient:null,workerEnabled:deliveryMode()==='live'&&env.NEWSLETTER_WORKER_ENABLED==='true',scheduleNote:'Saved times use your device time zone. Due work is processed about every 30 seconds while the service is running; after downtime it resumes when the service starts.'});});
     admin('get','/subscribers',async(req,res)=>res.json((await q('SELECT id,email,name,subscribed_at,active,status,verified_at,unsubscribed_at,wants_newsletter,wants_blog,last_delivery_status,last_delivery_at FROM newsletter_subscribers ORDER BY subscribed_at DESC,id DESC')).rows));
     admin('delete','/:id',async(req,res)=>{await q("UPDATE newsletter_subscribers SET active=0,status='unsubscribed',wants_newsletter=false,wants_blog=false,verification_hash=NULL,verification_expires_at=NULL,unsubscribed_at=$1 WHERE lower(email)=(SELECT lower(email) FROM newsletter_subscribers WHERE id=$2)",[clock(),req.params.id]);res.json({success:true});});
     admin('get','/export',async(req,res)=>{
@@ -314,11 +331,15 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
       res.type('text/csv').attachment('luce-newsletter-subscribers.csv').send(['Email,Name,Status,Newsletters,Blog emails,Signup date,Verified date,Unsubscribed date',...rows.map(r=>Object.values(r).map(cell).join(','))].join('\r\n'));
     });
     admin('get','/campaigns',async(req,res)=>res.json((await q(`SELECT c.*,COALESCE((SELECT json_object_agg(status,n) FROM (SELECT status,count(*) n FROM newsletter_deliveries WHERE campaign_id=c.id GROUP BY status) counts),'{}'::json) AS delivery_counts FROM newsletter_campaigns c ORDER BY created_at DESC,id DESC LIMIT 100`)).rows));
+    admin('post','/controlled-test/tick',async(req,res)=>{
+      if(deliveryMode()!=='test')throw problem('Controlled testing is disabled.',403);
+      await tick(true);res.json({success:true,testRecipient});
+    });
     admin('post','/campaigns',saveCampaign);
     admin('put','/campaigns/:id',saveCampaign);
     admin('post','/campaigns/:id/queue',queueCampaign);
     admin('post','/campaigns/:id/cancel',async(req,res)=>{const row=await one("UPDATE newsletter_campaigns SET status='canceled',revision=revision+1,updated_at=$1 WHERE id=$2 AND revision=$3 AND status IN ('draft','scheduled') RETURNING *",[clock(),req.params.id,req.body.revision]);if(!row)throw problem('This send has already started or changed. Refresh its status.',409);res.json(row);});
-    admin('post','/campaigns/:id/resume',async(req,res)=>{await mailer();if(env.NEWSLETTER_WORKER_ENABLED!=='true')throw problem('Sending is disabled.',503);const row=await one("UPDATE newsletter_campaigns SET status='scheduled',scheduled_at=$1,error=NULL,revision=revision+1 WHERE id=$2 AND revision=$3 AND status='interrupted' RETURNING *",[clock(),req.params.id,req.body.revision]);if(!row)throw problem('Only an interrupted send can resume its never-attempted recipients.',409);res.json(row);});
+    admin('post','/campaigns/:id/resume',async(req,res)=>{await mailer();if(deliveryMode()!=='live'||env.NEWSLETTER_WORKER_ENABLED!=='true')throw problem('Sending is disabled.',503);const row=await one("UPDATE newsletter_campaigns SET status='scheduled',scheduled_at=$1,error=NULL,revision=revision+1 WHERE id=$2 AND revision=$3 AND status='interrupted' AND test_only=false RETURNING *",[clock(),req.params.id,req.body.revision]);if(!row)throw problem('Only an interrupted send can resume its never-attempted recipients.',409);res.json(row);});
     admin('get','/campaigns/:id/deliveries',async(req,res)=>res.json((await q('SELECT email,status,attempted_at,finished_at,detail FROM newsletter_deliveries WHERE campaign_id=$1 ORDER BY id',[req.params.id])).rows));
     admin('post','/preview',async(req,res)=>{const x=campaignInput(req.body);res.json(await emailContent({subject:x.subject,content:x.content,segment:x.segment,blog_post_id:x.blogId}));});
     // The old one-step broadcast must not bypass drafts, preferences or verification.

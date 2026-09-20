@@ -33,3 +33,35 @@ Seven isolated PostgreSQL-compatible integration tests cover: nondestructive/ide
 An additional private application fixture loads the current 43 published articles and asserts preservation of their titles, content, excerpts, slugs and publication flags after migration. Local DOM integration exercises the actual Admin JavaScript against the isolated API. The cloud browser could not access the local preview, so visual mobile review remains a launch gate; mobile CSS uses scoped styles, wrapping controls and 44px touch targets. The separate sample-data HTML preview is a UI demonstration, not a deployed backend and cannot send real mail.
 
 SEO titles/descriptions/canonicals/schema, blog routing/sitemap, payments, gift logic, bookings and customer storage are not modified. Signup preference controls and the newsletter/Admin publishing controls are the only intended visible changes.
+
+## Prepared no-additional-cost controlled deployment (awaiting Christina's approval)
+
+Use the existing Luce Render service, domain, Turnstile widget and authenticated Gmail sender. No additional service or paid plan. This is a real deployment of the reviewed code to the live service, with general newsletter activation held back.
+
+Preparation complete: added server-enforced `NEWSLETTER_DELIVERY_MODE` (`locked` by default; explicit `test` or `live` only), a fixed test recipient `info@christinaworkman.com`, and durable `test_only` campaign flags. All nine isolated tests passed, including two new restriction tests. No live configuration, code deployment or mail was changed by this preparation.
+
+Before the explicitly approved deployment:
+- Record current SEO deployment `4295ec9a28b09f36cdaed83e43319050927ffe30` as the rollback target and check for intervening source changes.
+- Record subscriber counts/status and published article count without exporting private contact data. The existing migration preserves historical records and marks unverifiable legacy subscriptions, rather than deleting or mailing them.
+- Save `NEWSLETTER_DELIVERY_MODE=test`, `NEWSLETTER_WORKER_ENABLED=false`, and `NEWSLETTER_FROM=lucehealing13@gmail.com` on the existing service using Save only. Preserve existing environment variables. Confirm existing Turnstile keys, allowed hostnames, and sender; do not expose secrets.
+- Deploy the exact approved review commit only after approval. Immediately verify authenticated newsletter status reports test mode, the fixed recipient, and worker disabled. If not, stop before any test signup/send. Missing or invalid mode defaults to fully locked.
+
+Enforced safeguards:
+- Confirmation/resend mail and campaign mail pass a final transport guard. Only the exact test address is permitted in test mode; CC, BCC and custom envelopes are prohibited. Other signups receive a temporary-pause response before subscriber records are created/modified.
+- Normal Admin send/schedule/resume actions are disabled. An authenticated queue request must explicitly contain `controlled_test:true`, permanently marking that campaign `test_only`.
+- No automatic worker runs in test mode, even if the worker flag is accidentally true. Only authenticated POST `/api/admin/newsletter/controlled-test/tick` executes due test campaigns. It ignores normal campaigns and does not auto-publish blogs.
+- Audience selection and each delivery both enforce the test recipient, plus normal verified/active/preference/unsubscribe rules. Historical and pending subscribers remain excluded. Existing pending ledger entries cannot bypass the recipient guard.
+- Later live-mode operation cannot execute, resume, or convert a test-only campaign into a general campaign.
+- These restrictions apply only to newsletter mail. Existing booking/purchase/contact transactional functionality is preserved.
+
+Controlled test sequence after approval:
+1. Use actual signup on lucehealing.com with Managed Turnstile and the designated test address. Confirm Cloudflare hostname/action validation and pending/inactive storage.
+2. Queue an explicitly marked test newsletter before verification; execute the test runner and confirm zero marketing recipients.
+3. Christina opens the genuine verification email link and presses Confirm; verify activation and single-use token behavior. No real Cloudflare success is mocked or bypassed.
+4. Send one explicitly marked newsletter to the verified test address; confirm arrival and Luce branding. Use an existing published article for a test blog campaign; do not publish or edit a test article on the public blog.
+5. Open the actual preferences link, disable blog delivery while retaining newsletters; confirm blog test is suppressed. Enable blog preference, then confirm a test blog email arrives only at the designated inbox.
+6. Open the actual unsubscribe link and confirm. Execute subsequent newsletter and blog test campaigns; both must produce zero recipients and no SMTP attempts. Confirm retained subscriber history.
+7. Check honeypot and missing/invalid-token rejection without creating records or emails. Exercise rate limiting last so the test does not block earlier signup steps. No bulk reconfirmation or other subscriber mail.
+8. Cancel any remaining test campaigns and leave test mode/worker-off restrictions in place. Report results and await a separate explicit approval before setting `NEWSLETTER_DELIVERY_MODE=live` and enabling the worker.
+
+Customer-visible limitation: ordinary newsletter signup is temporarily paused during the controlled test window. The website otherwise uses its existing design and functionality. Passing these isolated tests does not yet establish real Cloudflare success or real clickable-link behavior; those remain the controlled post-deployment gate.

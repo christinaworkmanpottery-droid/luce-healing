@@ -12,7 +12,7 @@ async function harness(){
  CREATE TABLE newsletter_sends(id SERIAL PRIMARY KEY,send_id TEXT UNIQUE,blog_post_id INTEGER,subject TEXT,sent_at TIMESTAMP DEFAULT NOW(),recipients_count INTEGER DEFAULT 0);
  INSERT INTO newsletter_subscribers(email,name,active) VALUES('legacy@example.com','Preserved historical subscriber',1),('optedout@example.com','Unsubscribed historical subscriber',0);
  INSERT INTO blog_posts(title,slug,content,excerpt) VALUES('Original article','original-article','<h2>Original article body</h2><p>Keep this article intact.</p>','An existing article');`);
- const env={TURNSTILE_SITE_KEY:'private-test-site',TURNSTILE_SECRET_KEY:'private-test-secret',TURNSTILE_HOSTNAMES:'localhost',NEWSLETTER_BASE_URL:'http://localhost',NEWSLETTER_WORKER_ENABLED:'true',NEWSLETTER_TRUST_PROXY_HOPS:'1'};
+ const env={NEWSLETTER_DELIVERY_MODE:'live',TURNSTILE_SITE_KEY:'private-test-site',TURNSTILE_SECRET_KEY:'private-test-secret',TURNSTILE_HOSTNAMES:'localhost',NEWSLETTER_BASE_URL:'http://localhost',NEWSLETTER_WORKER_ENABLED:'true',NEWSLETTER_TRUST_PROXY_HOPS:'1'};
  const transporter={verify:async()=>{if(mode==='offline')throw Error('offline');},sendMail:async mail=>{sent.push(mail);if(mode==='timeout'&&!mail.subject.startsWith('Confirm'))throw Object.assign(Error('timeout'),{code:'ETIMEDOUT'});if(mode==='bounce'&&!mail.subject.startsWith('Confirm'))throw Object.assign(Error('no mailbox'),{command:'RCPT TO',responseCode:550});return {accepted:[mail.to],messageId:'local-'+sent.length};}};
  const fetcher=async(url,options)=>{
   assert.equal(url,'https://challenges.cloudflare.com/turnstile/v0/siteverify');
@@ -106,4 +106,49 @@ test('failures are honest, uncertain sends are not retried, and explicit permane
  h.setMode('timeout');h.advance(300001);await h.service.tick();assert.equal((await h.admin('/campaigns')).data[0].status,'partial');assert.equal((await h.admin('/campaigns/'+c.id+'/deliveries')).data[0].status,'unknown');await h.service.tick();assert.equal(h.sent.length,before+1);
  h.setMode('bounce');c=await h.draft();await h.admin('/campaigns/'+c.id+'/queue','POST',{revision:c.revision});await h.service.tick();assert.equal((await h.db.query("SELECT status FROM newsletter_subscribers WHERE email='failure@example.com'")).rows[0].status,'bounced');
  await h.db.query("UPDATE admin_settings SET value='wrong-brand@example.com' WHERE key='smtp_user'");assert.equal((await h.signup('other@example.com')).status,503);
+}finally{await h.close();}});
+
+test('delivery defaults to locked and cannot be enabled by the worker flag alone',async()=>{const h=await harness();try{
+ await h.verified('info@christinaworkman.com');let c=await h.draft();await h.admin('/campaigns/'+c.id+'/queue','POST',{revision:c.revision});const before=h.sent.length;
+ for(const mode of [undefined,'typo','locked']){
+  h.env.NEWSLETTER_DELIVERY_MODE=mode;
+  assert.equal((await h.signup('info@christinaworkman.com')).status,503);
+  assert.equal((await h.admin('/campaigns/'+c.id+'/queue','POST',{revision:c.revision,controlled_test:true})).status,503);
+  assert.equal((await h.admin('/controlled-test/tick','POST',{})).status,403);
+  await h.service.tick();await h.service.tick(true);assert.equal(h.sent.length,before);
+ }
+ assert.equal((await h.admin('/campaigns')).data[0].status,'scheduled');
+}finally{await h.close();}});
+
+test('controlled test mode isolates recipients and campaigns, requires explicit admin execution, and never releases tests to live sends',async()=>{const h=await harness();try{
+ await h.verified('other@example.com');const broad=await h.draft();await h.admin('/campaigns/'+broad.id+'/queue','POST',{revision:broad.revision});
+ h.env.NEWSLETTER_DELIVERY_MODE='test';h.env.NEWSLETTER_WORKER_ENABLED='false';const before=h.sent.length;
+ assert.equal((await h.signup('blocked@example.com')).status,503);
+ assert.equal((await h.db.query("SELECT id FROM newsletter_subscribers WHERE email='blocked@example.com'")).rows.length,0);
+ await h.signup('info@christinaworkman.com',{wants_newsletter:true,wants_blog:false});assert.equal(h.sent.length,before+1);assert.equal(h.sent.at(-1).to,'info@christinaworkman.com');
+ const confirmation=h.confirmation();let c=await h.draft();
+ assert.equal((await h.admin('/campaigns/'+c.id+'/queue','POST',{revision:c.revision})).status,503);
+ assert.equal((await h.admin('/campaigns/'+c.id+'/queue','POST',{revision:c.revision,controlled_test:true})).status,200);
+ assert.equal((await h.call('/api/admin/newsletter/controlled-test/tick','POST',{})).status,401);
+ await h.service.tick();assert.equal(h.sent.length,before+1);
+ await h.admin('/controlled-test/tick','POST',{});assert.equal(h.sent.length,before+1,'pending test subscriber must not receive marketing');
+ const confirmed=await h.confirm(confirmation);assert.equal(confirmed.status,200);const prefToken=confirmed.data.preferencesUrl.split('token=')[1];
+ const sendTest=async segment=>{const d=await h.draft(segment);assert.equal((await h.admin('/campaigns/'+d.id+'/queue','POST',{revision:d.revision,controlled_test:true})).status,200);await h.admin('/controlled-test/tick','POST',{});return d;};
+ await sendTest('newsletter');assert.equal(h.sent.length,before+2);await sendTest('blog');assert.equal(h.sent.length,before+2,'blog preference is still required');
+ await h.call('/api/newsletter/preferences','POST',{token:prefToken,wants_newsletter:true,wants_blog:true});await sendTest('blog');assert.equal(h.sent.length,before+3);
+ await h.call('/api/newsletter/unsubscribe','POST',{token:prefToken});await sendTest('newsletter');await sendTest('blog');assert.equal(h.sent.length,before+3,'unsubscribed test address must be suppressed');
+ assert(h.sent.slice(before).every(m=>m.to==='info@christinaworkman.com'));
+ assert.equal((await h.db.query('SELECT status FROM newsletter_campaigns WHERE id=$1',[broad.id])).rows[0].status,'scheduled','normal campaigns remain untouched');
+ // Even a pre-existing delivery ledger for another address cannot escape the test restriction.
+ c=await h.draft();await h.admin('/campaigns/'+c.id+'/queue','POST',{revision:c.revision,controlled_test:true});
+ await h.db.query('UPDATE newsletter_campaigns SET audience_captured=true WHERE id=$1',[c.id]);
+ await h.db.query("INSERT INTO newsletter_deliveries(campaign_id,subscriber_id,email) SELECT $1,id,email FROM newsletter_subscribers WHERE email='other@example.com'",[c.id]);
+ await h.admin('/controlled-test/tick','POST',{});assert.equal(h.sent.length,before+3);
+ assert.equal((await h.admin('/campaigns/'+c.id+'/deliveries')).data[0].status,'skipped');
+ // Test-only schedules remain excluded even after a later explicitly approved live activation.
+ c=await h.draft();c=(await h.admin('/campaigns/'+c.id+'/queue','POST',{revision:c.revision,controlled_test:true})).data;
+ h.env.NEWSLETTER_DELIVERY_MODE='live';h.env.NEWSLETTER_WORKER_ENABLED='true';
+ assert.equal((await h.admin('/campaigns/'+c.id+'/queue','POST',{revision:c.revision})).status,409);
+ await h.admin('/campaigns/'+broad.id+'/cancel','POST',{revision:broad.revision+1});await h.service.tick();assert.equal(h.sent.length,before+3);
+ assert.equal((await h.db.query('SELECT status FROM newsletter_campaigns WHERE id=$1',[c.id])).rows[0].status,'scheduled');
 }finally{await h.close();}});

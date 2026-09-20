@@ -38,7 +38,7 @@
  async function load(){
   if(!password())return;
   const [config,rows,posts]=await Promise.all([api('newsletter/status'),api('newsletter/subscribers'),api('blog')]);
-  el('nl-config').textContent=(config.turnstileConfigured?'Signup protection configured. ':'Turnstile keys still needed. ')+(config.senderConfigured?'Luce sender: '+config.sender+'. ':'Luce email sender must be configured. ')+(config.workerEnabled?'Scheduling enabled.':'Sending and scheduling are paused in this environment.');
+  el('nl-config').textContent=(config.deliveryMode==='test'?'CONTROLLED TEST: only '+config.testRecipient+' can receive email. Broad sends are locked. ':config.deliveryMode==='locked'?'Newsletter email is locked. ':'')+(config.turnstileConfigured?'Signup protection configured. ':'Turnstile keys still needed. ')+(config.senderConfigured?'Luce sender: '+config.sender+'. ':'Luce email sender must be configured. ')+(config.workerEnabled?'Scheduling enabled.':'Sending and scheduling are paused in this environment.');
   subscribers=rows;subscribersView();
   const chosen=el('nl-blog').value;el('nl-blog').innerHTML='<option value="">Write a standalone blog update</option>'+posts.filter(p=>p.published).map(p=>`<option value="${p.id}">${escape(p.title)}</option>`).join('');el('nl-blog').value=chosen;
   await loadCampaigns();
