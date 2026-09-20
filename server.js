@@ -113,6 +113,8 @@ function verifyToken(token) {
 }
 
 const gifts = require('./gifts')({app,pool,stripe,checkAdminPassword,getMailer:()=>smtpTransporter,domain:process.env.DOMAIN || 'https://lucehealing.com'});
+const newsletterService = require('./newsletter').createNewsletterService({pool,getTransporter:()=>smtpTransporter});
+newsletterService.register(app,checkAdminPassword);
 
 // ============================================================================
 // DATABASE INITIALIZATION
@@ -446,6 +448,7 @@ async function initializeDatabase() {
     if (!initialPassword || initialPassword.length < 16) throw new Error('A strong ADMIN_INITIAL_PASSWORD is required when creating the first admin account');
     await dbRun('INSERT INTO admin_settings (key, value) VALUES ($1, $2)', ['admin_password', hashPassword(initialPassword)]);
   }
+  await newsletterService.initialize();
 }
 
 // ============================================================================
@@ -1034,12 +1037,9 @@ app.get('/api/blog/:slug', async (req, res) => {
 
 app.post('/api/admin/blog', checkAdminPassword, async (req, res) => {
   try {
-    const { title, slug, content, excerpt, published } = req.body;
-    if (!title || !slug || !content) return res.status(400).json({ error: 'Missing required fields' });
-    await dbRun('INSERT INTO blog_posts (title, slug, content, excerpt, published) VALUES ($1, $2, $3, $4, $5)', [title, slug, content, excerpt || '', published ? 1 : 0]);
-    const post = await dbGet('SELECT * FROM blog_posts WHERE slug = $1', [slug]);
+    const post = await newsletterService.saveBlog(req.body);
     res.json(post);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 });
 
 // ============================================================================
@@ -1083,17 +1083,14 @@ app.delete('/api/admin/forecast-updates/:id', checkAdminPassword, async (req, re
 
 app.put('/api/admin/blog/:id', checkAdminPassword, async (req, res) => {
   try {
-    const { title, slug, content, excerpt, published } = req.body;
-    if (!title || !slug || !content) return res.status(400).json({ error: 'Missing required fields' });
-    await dbRun('UPDATE blog_posts SET title = $1, slug = $2, content = $3, excerpt = $4, published = $5, updated_at = NOW() WHERE id = $6', [title, slug, content, excerpt || '', published ? 1 : 0, req.params.id]);
-    const post = await dbGet('SELECT * FROM blog_posts WHERE id = $1', [req.params.id]);
+    const post = await newsletterService.saveBlog(req.body, req.params.id);
     res.json(post);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 });
 
 app.delete('/api/admin/blog/:id', checkAdminPassword, async (req, res) => {
   try {
-    await dbRun('DELETE FROM blog_posts WHERE id = $1', [req.params.id]);
+    await newsletterService.deleteBlog(req.params.id);
     res.json({ success: true });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -1163,51 +1160,6 @@ app.delete('/api/admin/contact-messages/:id', checkAdminPassword, async (req, re
 // NEWSLETTER ENDPOINTS
 // ============================================================================
 
-// CORS preflight for newsletter subscribe (cross-site)
-app.options('/api/newsletter/subscribe', (req, res) => {
-  const allowedOrigins = ['https://christinaworkmanpottery.com', 'https://esmeandjade.com', 'https://lucehealing.com', 'http://localhost:3000'];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'POST');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-  }
-  res.sendStatus(204);
-});
-
-const newsletterHandlers = require('./newsletter').createNewsletterHandlers({ dbGet, dbAll, dbRun, getTransporter: () => smtpTransporter });
-app.post('/api/newsletter/subscribe', newsletterHandlers.subscribe);
-app.post('/api/newsletter/unsubscribe', newsletterHandlers.unsubscribe);
-app.get('/unsubscribe', (req, res) => res.sendFile(path.join(__dirname, 'unsubscribe.html')));
-
-app.get('/api/admin/newsletter/subscribers', checkAdminPassword, async (req, res) => {
-  try {
-    const subscribers = await dbAll('SELECT * FROM newsletter_subscribers WHERE active = 1 ORDER BY subscribed_at DESC');
-    res.json(subscribers);
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-app.get('/api/admin/newsletter/export', checkAdminPassword, async (req, res) => {
-  try {
-    const subscribers = await dbAll('SELECT email, name, subscribed_at FROM newsletter_subscribers WHERE active = 1 ORDER BY subscribed_at DESC');
-    let csv = 'Email,Name,Subscribed Date\n';
-    subscribers.forEach(sub => {
-      const date = new Date(sub.subscribed_at).toISOString().split('T')[0];
-      csv += `"${sub.email}","${sub.name || ''}","${date}"\n`;
-    });
-    res.header('Content-Type', 'text/csv');
-    res.header('Content-Disposition', 'attachment; filename="newsletter-subscribers.csv"');
-    res.send(csv);
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-app.delete('/api/admin/newsletter/:id', checkAdminPassword, async (req, res) => {
-  try {
-    await dbRun('UPDATE newsletter_subscribers SET active = 0 WHERE id = $1', [req.params.id]);
-    res.json({ success: true });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
 // ---- Newsletter Email Settings ----
 app.get('/api/admin/email-settings', checkAdminPassword, async (req, res) => {
   try {
@@ -1236,7 +1188,7 @@ app.post('/api/admin/email-settings/test', checkAdminPassword, async (req, res) 
 });
 
 // ---- Newsletter Send ----
-app.post('/api/admin/newsletter/send', checkAdminPassword, newsletterHandlers.send);
+// Campaign sending is registered by newsletterService; legacy broadcasts are disabled.
 
 // Newsletter send history
 app.get('/api/admin/newsletter/history', checkAdminPassword, async (req, res) => {
@@ -1998,6 +1950,7 @@ async function startServer() {
       const smtpUser = await dbGet("SELECT value FROM admin_settings WHERE key = 'smtp_user'");
       const smtpPass = await dbGet("SELECT value FROM admin_settings WHERE key = 'smtp_pass'");
       if (smtpUser && smtpPass) setupSmtp(smtpUser.value, smtpPass.value);
+      newsletterService.start();
     } catch(e) { /* not configured yet */ }
   });
 }

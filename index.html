@@ -963,7 +963,7 @@
 <textarea id="blog-content" placeholder="Write your blog post here..." required="" rows="10" style="font-family: monospace;"></textarea>
 </div>
 <div class="form-group">
-<label><input checked="" id="blog-published" type="checkbox"/> Publish</label>
+<label><input checked="" id="blog-published" type="checkbox"/> Publish</label><div class="luce-blog-options"><label for="blog-publish-at">Publish later (optional)</label><input id="blog-publish-at" type="datetime-local"><p style="font-size:14px">Uses your device time zone. Leave blank to publish or save a draft now. Clear a scheduled time and uncheck Publish to cancel scheduled publication.</p><label><input id="blog-email" type="checkbox">Email this article to verified blog subscribers when it publishes</label><p style="font-size:14px">Unchecked means no email. Newsletter-only subscribers will not receive this article.</p></div>
 </div>
 <button class="btn btn-primary" style="width: 100%;" type="submit">Save Post</button>
 </form>
@@ -973,23 +973,7 @@
 <!-- Newsletter Tab -->
 <div class="admin-tab-content" id="admin-newsletter">
 <div class="admin-card">
-<h3>Newsletter Subscribers</h3>
-<button class="btn btn-secondary" onclick="exportNewsletterCSV()" style="margin-bottom: 20px;">📥 Export CSV</button>
-<div id="admin-newsletter-list" style="display: grid; gap: 10px;">
-<p style="color: #999;">Loading subscribers...</p>
-</div>
-</div>
-<div class="admin-card" style="margin-top: 20px;">
-<h3>📨 Send Newsletter</h3>
-<p style="color: #666; margin-bottom: 15px;">Select a published blog post to send as a newsletter to all subscribers.</p>
-<div class="form-group" style="margin-bottom:15px">
-<label style="font-weight:600;margin-bottom:5px;display:block">Blog Post</label>
-<select id="newsletterBlogSelect" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1em">
-<option value="">— Select a post —</option>
-</select>
-</div>
-<button class="btn btn-primary" onclick="sendLuceNewsletter()">Send to All Subscribers</button>
-<div id="newsletter-send-result" style="margin-top:10px"></div>
+<div data-newsletter-admin></div>
 </div>
 <div class="admin-card" style="margin-top: 20px;">
 <h3>📊 Newsletter History</h3>
@@ -2922,7 +2906,9 @@
                     document.getElementById('blog-slug').value = post.slug;
                     document.getElementById('blog-excerpt').value = post.excerpt || '';
                     document.getElementById('blog-content').value = post.content;
-                    document.getElementById('blog-published').checked = post.published;
+                    document.getElementById('blog-published').checked = !!post.published;
+                    document.getElementById('blog-email').checked = !!post.publish_at && !!post.email_on_publish;
+                    document.getElementById('blog-publish-at').value = post.publish_at ? new Date(new Date(post.publish_at)-new Date(post.publish_at).getTimezoneOffset()*60000).toISOString().slice(0,16) : '';
                 }
             } catch (e) {
                 alert('Error loading post');
@@ -2944,7 +2930,9 @@
                         slug: document.getElementById('blog-slug').value,
                         excerpt: document.getElementById('blog-excerpt').value,
                         content: document.getElementById('blog-content').value,
-                        published: document.getElementById('blog-published').checked
+                        published: document.getElementById('blog-published').checked,
+                        email_blog: document.getElementById('blog-email').checked,
+                        publish_at: document.getElementById('blog-publish-at').value ? new Date(document.getElementById('blog-publish-at').value).toISOString() : null
                     })
                 });
                 const data = await response.json();
@@ -2978,7 +2966,7 @@
                                     <h4 style="margin: 0 0 5px 0;">${post.title}</h4>
                                     <small style="color: #666;">/${post.slug}</small>
                                     <br>
-                                    <small style="color: #999;">${new Date(post.created_at).toLocaleDateString()} | ${post.published ? '✓ Published' : '○ Draft'} | 👁 ${post.view_count || 0} views</small>
+                                    <small style="color: #999;">${new Date(post.created_at).toLocaleDateString()} | ${post.publish_at ? 'Scheduled: '+new Date(post.publish_at).toLocaleString() : post.published ? '✓ Published' : '○ Draft'} | 👁 ${post.view_count || 0} views</small>
                                 </div>
                                 <div style="display: flex; gap: 8px;">
                                     <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;" onclick="openBlogEditor(${post.id})">Edit</button>
@@ -3695,6 +3683,6 @@
         btn.textContent = 'Send Message';
     }
     </script>
-<script src="/newsletter-signup.js"></script><script src="/business-functions.js"></script>
+<link rel="stylesheet" href="/newsletter-admin.css"><script src="/newsletter-signup.js"></script><script src="/newsletter-admin.js"></script><script src="/business-functions.js"></script>
 <script src="/compact-home.js"></script></body>
 </html>

@@ -77,8 +77,7 @@
     </div>
 
     <div id="newsletterTab" class="hidden">
-        <h2>Newsletter Subscribers</h2>
-        <div id="subscriberInfo">Loading...</div>
+        <div data-newsletter-admin></div>
     </div>
 </div>
 
@@ -133,7 +132,7 @@ async function loadPosts() {
             <div class="post-card">
                 <h3>${esc(p.title)}</h3>
                 <div class="post-meta">
-                    <span class="${p.published ? 'status-published' : 'status-draft'}">${p.published ? '✅ Published' : '📝 Draft'}</span>
+                    <span class="${p.published ? 'status-published' : 'status-draft'}">${p.publish_at ? 'Scheduled: '+new Date(p.publish_at).toLocaleString() : p.published ? '✅ Published' : '📝 Draft'}</span>
                     · ${new Date(p.created_at).toLocaleDateString()} · /${esc(p.slug)}
                 </div>
                 <div class="btn-group">
@@ -196,7 +195,7 @@ function openEditor(post=null) {
                 <input type="text" id="edExcerpt" value="${esc(post?.excerpt || '')}">
                 <label>Content (HTML)</label>
                 <textarea id="edContent">${esc(post?.content || '')}</textarea>
-                <label class="checkbox-label"><input type="checkbox" id="edPublished" ${post?.published ? 'checked' : ''}> Published</label>
+                <label class="checkbox-label"><input type="checkbox" id="edPublished" ${post?.published ? 'checked' : ''}> Published</label><div class="luce-blog-options"><label for="edPublishAt">Publish later (optional, your device time zone)</label><input type="datetime-local" id="edPublishAt" value="${post?.publish_at ? new Date(new Date(post.publish_at)-new Date(post.publish_at).getTimezoneOffset()*60000).toISOString().slice(0,16) : ''}"><label><input type="checkbox" id="edEmail" ${post?.publish_at && post?.email_on_publish ? 'checked' : ''}> Email verified blog subscribers when published</label><p>Unchecked means no email. Clear the scheduled time and uncheck Published to cancel scheduled publication.</p></div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
@@ -223,7 +222,9 @@ async function savePost(id) {
         slug,
         excerpt: document.getElementById('edExcerpt').value || content.replace(/<[^>]*>/g, '').substring(0, 200),
         content,
-        published: document.getElementById('edPublished').checked ? 1 : 0
+        published: document.getElementById('edPublished').checked,
+        email_blog: document.getElementById('edEmail').checked,
+        publish_at: document.getElementById('edPublishAt').value ? new Date(document.getElementById('edPublishAt').value).toISOString() : null
     };
     try {
         if (id) {
@@ -238,15 +239,8 @@ async function savePost(id) {
 }
 
 async function publishPost(id) {
-    if (!confirm('Publish this post?')) return;
-    try {
-        const posts = await getPosts();
-        const p = posts.find(x => x.id === id);
-        if (!p) return;
-        await api('blog/' + id, 'PUT', { title: p.title, slug: p.slug, content: p.content, excerpt: p.excerpt, published: 1 });
-        showToast('Published!');
-        loadPosts();
-    } catch(e) { showToast(e.message, 'error'); }
+    try { const p = (await getPosts()).find(x => x.id === id); if (p) openEditor({...p, published: 1}); }
+    catch(e) { showToast(e.message, 'error'); }
 }
 
 async function unpublishPost(id) {
@@ -278,5 +272,5 @@ async function loadNewsletter() {
 
 function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 </script>
-</body>
+<link rel="stylesheet" href="/newsletter-admin.css"><script src="/newsletter-admin.js"></script></body>
 </html>
