@@ -45,6 +45,8 @@ app.use(cors());
 // Webhook raw body MUST come before express.json() — Stripe signature verification
 // requires the original raw bytes, not a parsed object
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/membership/stripe/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/admin/membership', express.json({ limit: '512kb' }));
 app.use(express.json());
 // NOTE: express.static moved after SEO routes to allow server-rendering blog links
 
@@ -115,6 +117,8 @@ function verifyToken(token) {
 const gifts = require('./gifts')({app,pool,stripe,checkAdminPassword,getMailer:()=>smtpTransporter,domain:process.env.DOMAIN || 'https://lucehealing.com'});
 const newsletterService = require('./newsletter').createNewsletterService({pool,getTransporter:()=>smtpTransporter});
 newsletterService.register(app,checkAdminPassword);
+const membershipService = require('./private-membership/service').createMembership({pool,getMailer:()=>smtpTransporter});
+membershipService.register(app,checkAdminPassword);
 
 // ============================================================================
 // DATABASE INITIALIZATION
@@ -449,6 +453,7 @@ async function initializeDatabase() {
     await dbRun('INSERT INTO admin_settings (key, value) VALUES ($1, $2)', ['admin_password', hashPassword(initialPassword)]);
   }
   await newsletterService.initialize();
+  await membershipService.initialize();
 }
 
 // ============================================================================
