@@ -1813,7 +1813,7 @@ app.get('/subscribe', (req, res) => { res.sendFile(path.join(__dirname, 'subscri
 // Always read published articles at request time; never serve the old static sitemap.
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const posts = await dbAll('SELECT slug, created_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
+    const posts = await dbAll('SELECT slug, created_at, updated_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
     res.type('application/xml').send(seo.sitemap(posts));
   } catch (e) {
     console.error('[SITEMAP ERROR]', e.message);
