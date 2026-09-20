@@ -151,4 +151,5 @@ test('controlled test mode isolates recipients and campaigns, requires explicit 
  assert.equal((await h.admin('/campaigns/'+c.id+'/queue','POST',{revision:c.revision})).status,409);
  await h.admin('/campaigns/'+broad.id+'/cancel','POST',{revision:broad.revision+1});await h.service.tick();assert.equal(h.sent.length,before+3);
  assert.equal((await h.db.query('SELECT status FROM newsletter_campaigns WHERE id=$1',[c.id])).rows[0].status,'scheduled');
+ assert((await h.admin('/campaigns')).data.every(row=>row.test_only===false),'production Admin hides test campaigns');
 }finally{await h.close();}});

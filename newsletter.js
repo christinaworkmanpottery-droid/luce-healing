@@ -330,7 +330,7 @@ function createNewsletterService({pool, getTransporter, env = process.env, fetch
       const cell=x=>'"'+String(x??'').replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';
       res.type('text/csv').attachment('luce-newsletter-subscribers.csv').send(['Email,Name,Status,Newsletters,Blog emails,Signup date,Verified date,Unsubscribed date',...rows.map(r=>Object.values(r).map(cell).join(','))].join('\r\n'));
     });
-    admin('get','/campaigns',async(req,res)=>res.json((await q(`SELECT c.*,COALESCE((SELECT json_object_agg(status,n) FROM (SELECT status,count(*) n FROM newsletter_deliveries WHERE campaign_id=c.id GROUP BY status) counts),'{}'::json) AS delivery_counts FROM newsletter_campaigns c ORDER BY created_at DESC,id DESC LIMIT 100`)).rows));
+    admin('get','/campaigns',async(req,res)=>res.json((await q(`SELECT c.*,COALESCE((SELECT json_object_agg(status,n) FROM (SELECT status,count(*) n FROM newsletter_deliveries WHERE campaign_id=c.id GROUP BY status) counts),'{}'::json) AS delivery_counts FROM newsletter_campaigns c WHERE c.test_only=false OR $1=true ORDER BY created_at DESC,id DESC LIMIT 100`,[deliveryMode()==='test'])).rows));
     admin('post','/controlled-test/tick',async(req,res)=>{
       if(deliveryMode()!=='test')throw problem('Controlled testing is disabled.',403);
       await tick(true);res.json({success:true,testRecipient});

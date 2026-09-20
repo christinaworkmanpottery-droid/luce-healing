@@ -65,3 +65,11 @@ Controlled test sequence after approval:
 8. Cancel any remaining test campaigns and leave test mode/worker-off restrictions in place. Report results and await a separate explicit approval before setting `NEWSLETTER_DELIVERY_MODE=live` and enabling the worker.
 
 Customer-visible limitation: ordinary newsletter signup is temporarily paused during the controlled test window. The website otherwise uses its existing design and functionality. Passing these isolated tests does not yet establish real Cloudflare success or real clickable-link behavior; those remain the controlled post-deployment gate.
+
+## Final production activation approval
+
+Christina explicitly approved general activation after the real verification/confirmation, newsletter and blog inbox delivery, preference update/blog suppression, unsubscribe link/suppression, honeypot, invalid-token and rate-limit checks. Only info@christinaworkman.com was emailed during controlled tests; both campaign emails were confirmed received.
+
+Activation configuration: NEWSLETTER_DELIVERY_MODE=live, NEWSLETTER_WORKER_ENABLED=true. Production Turnstile keys and the approved Luce Gmail credentials are preserved. No paid service was created. Before activation, the database contained 51 subscriber records, 43 published articles, two attempted deliveries (both the designated test inbox), zero queued general campaigns, and zero scheduled blog publications.
+
+Cleanup retains test campaign/delivery records for history and permanent send exclusion, but hides test campaigns from the production Admin campaign and legacy send-history lists. Any unfinished test campaigns are canceled. General campaigns require a deliberate future Admin send/schedule action; activation does not queue one. Missing/invalid delivery mode still fails closed. The focused test for controlled recipient isolation, future-live exclusion and production-list hiding passed before release.

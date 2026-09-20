@@ -1193,7 +1193,7 @@ app.post('/api/admin/email-settings/test', checkAdminPassword, async (req, res) 
 // Newsletter send history
 app.get('/api/admin/newsletter/history', checkAdminPassword, async (req, res) => {
   try {
-    const sends = await dbAll('SELECT ns.*, bp.title, bp.slug FROM newsletter_sends ns LEFT JOIN blog_posts bp ON ns.blog_post_id = bp.id ORDER BY ns.sent_at DESC LIMIT 20');
+    const sends = await dbAll('SELECT ns.*, bp.title, bp.slug FROM newsletter_sends ns LEFT JOIN blog_posts bp ON ns.blog_post_id = bp.id WHERE NOT EXISTS (SELECT 1 FROM newsletter_campaigns c WHERE c.send_id=ns.send_id AND c.test_only=true) ORDER BY ns.sent_at DESC LIMIT 20');
     res.json(sends);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
