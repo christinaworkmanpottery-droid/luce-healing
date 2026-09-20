@@ -11,6 +11,7 @@ if (!stripeKey) {
 }
 const stripe = stripeKey ? require('stripe')(stripeKey) : null;
 
+const seo = require('./seo');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -46,6 +47,24 @@ app.use(cors());
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 // NOTE: express.static moved after SEO routes to allow server-rendering blog links
+
+// SEO headers precede every route, including gift redemption and static files.
+app.use((req, res, next) => {
+  if (/^\/(?:api(?:\/|$)|admin(?:\.|\/|$)|account(?:\/|$)|members?(?:\/|$)|login(?:\/|$)|unsubscribe(?:\.|\/|$)|(?:booking|reading|forecast)-(?:success|cancel)(?:\.|\/|$))/.test(req.path) ||
+      (req.path.replace(/\.html$/, '') === '/gift' && (req.query.token || req.query.session_id))) {
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+  // These are source/draft artifacts, not published articles.
+  if (/^\/(?:seo\.js|blog-draft-[^/]*|blog-post-[^/]*|images\/luce-one-question-card\.html)$/.test(req.path)) {
+    return res.status(404).set('X-Robots-Tag', 'noindex').send('Not found');
+  }
+  const aliases = {'/index.html':'/', '/blog.html':'/blog', '/reading.html':'/reading', '/forecast.html':'/forecast', '/subscribe.html':'/subscribe', '/gift.html':'/gift'};
+  if ((req.method === 'GET' || req.method === 'HEAD') && aliases[req.path]) {
+    const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+    return res.redirect(301, aliases[req.path] + query);
+  }
+  next();
+});
 
 // ============================================================================
 // DATABASE HELPER FUNCTIONS (PostgreSQL)
@@ -1565,11 +1584,11 @@ function renderBlogLinksHTML(posts, mode = 'full') {
       const excerpt = (post.excerpt || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       return `
         <article class="blog-card">
-          <h3><a href="/blog/${post.slug}" style="color: #333; text-decoration: none;">${title}</a></h3>
+          <h3><a href="${seo.postPath(post.slug)}" style="color: #333; text-decoration: none;">${title}</a></h3>
           <p class="blog-excerpt">${excerpt}</p>
           <div class="blog-meta">
             <small>${date}</small>
-            <a href="/blog/${post.slug}" style="color: #D4A574; text-decoration: none; font-weight: 500;">Read More →</a>
+            <a href="${seo.postPath(post.slug)}" style="color: #D4A574; text-decoration: none; font-weight: 500;">Read More →</a>
           </div>
         </article>
       `;
@@ -1583,10 +1602,10 @@ function renderBlogLinksHTML(posts, mode = 'full') {
     const excerpt = (post.excerpt || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `
       <div class="blog-list-item">
-        <h2><a href="/blog/${post.slug}" style="color: #333; text-decoration: none;">${title}</a></h2>
+        <h2><a href="${seo.postPath(post.slug)}" style="color: #333; text-decoration: none;">${title}</a></h2>
         <small style="color: #999;">${date}</small>
         <p>${excerpt}</p>
-        <a href="/blog/${post.slug}" style="color: #D4A574; text-decoration: none; font-weight: 500;">Read Full Post →</a>
+        <a href="${seo.postPath(post.slug)}" style="color: #D4A574; text-decoration: none; font-weight: 500;">Read Full Post →</a>
       </div>
     `;
   }).join('\n');
@@ -1649,14 +1668,22 @@ app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'admin.html'
 app.get('/blog/:slug', async (req, res) => {
   try {
     const post = await dbGet('SELECT * FROM blog_posts WHERE slug = $1 AND published = 1', [req.params.slug]);
-    if (!post) return res.sendFile(path.join(__dirname, 'blog.html'));
+    if (!post) return res.status(404).set('X-Robots-Tag', 'noindex').send('Article not found. <a href="/blog">View published articles</a>');
     // Track view
     try { await dbRun('UPDATE blog_posts SET view_count = COALESCE(view_count,0) + 1 WHERE slug = $1', [req.params.slug]); } catch(e) {}
     // Server-render the blog post into HTML for SEO
     const date = post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-    const escapedTitle = (post.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const escapedExcerpt = (post.excerpt || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const postUrl = `https://lucehealing.com/blog/${post.slug}`;
+    const metadata = seo.metadata(post);
+    const escapedTitle = seo.escape(post.title);
+    const escapedSeoTitle = seo.escape(metadata.title);
+    const escapedExcerpt = seo.escape(metadata.description);
+    const postUrl = metadata.url;
+    let relatedHTML = '';
+    try {
+      const candidates = await dbAll('SELECT title, slug, excerpt FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
+      const related = seo.related(post, candidates);
+      if (related.length) relatedHTML = '<section aria-label="Related articles"><h2>Continue exploring</h2><ul>' + related.map(p => `<li><a href="${seo.postPath(p.slug)}">${seo.escape(p.title)}</a></li>`).join('') + '</ul></section>';
+    } catch (e) { console.error('[RELATED ARTICLES]', e.message); }
     const wordCount = (post.content || '').replace(/<[^>]+>/g, '').split(/\s+/).length;
     const readingTime = Math.max(1, Math.ceil(wordCount / 200));
     const html = `<!DOCTYPE html>
@@ -1664,9 +1691,9 @@ app.get('/blog/:slug', async (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${escapedTitle} - Luce Healing</title>
+    <title>${escapedSeoTitle} | Luce Healing</title>
     <meta name="description" content="${escapedExcerpt}">
-    <meta property="og:title" content="${escapedTitle}">
+    <meta property="og:title" content="${escapedSeoTitle}">
     <meta property="og:description" content="${escapedExcerpt}">
     <meta property="og:type" content="article">
     <meta property="og:url" content="${postUrl}">
@@ -1674,12 +1701,12 @@ app.get('/blog/:slug', async (req, res) => {
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="${escapedTitle}">
+    <meta name="twitter:title" content="${escapedSeoTitle}">
     <meta name="twitter:description" content="${escapedExcerpt}">
     <meta name="twitter:image" content="https://lucehealing.com/images/og-image.jpg">
     <meta property="og:site_name" content="Luce Healing">
     <meta property="article:author" content="Christina Workman">
-    <meta property="article:published_time" content="${post.created_at || ''}">
+    <meta property="article:published_time" content="${seo.isoDate(post.created_at) || ''}">
     <link rel="canonical" href="${postUrl}">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' fill='%23D4A574'>✦</text></svg>">
@@ -1688,11 +1715,12 @@ app.get('/blog/:slug', async (req, res) => {
     <style>
         .blog-page-container { max-width: 900px; margin: 0 auto; padding: 120px 20px 40px 20px; }
         .blog-post { line-height: 1.8; }
-        .blog-post h1 { font-size: 2.5em; margin-bottom: 10px; color: #333; }
+        .blog-post h1, .blog-post .seo-heading-h1 { font-size: 2.5em; margin-bottom: 10px; color: #333; }
         .blog-post-meta { color: #999; margin-bottom: 30px; font-size: 0.95em; }
         .blog-post p, .blog-post ul, .blog-post ol { color: #555; margin-bottom: 15px; }
         .blog-post h2 { font-size: 1.8em; margin-top: 30px; margin-bottom: 15px; color: #333; }
-        .blog-post h3 { font-size: 1.3em; margin-top: 20px; margin-bottom: 12px; color: #333; }
+        .blog-post h3, .blog-post .seo-heading-h3 { font-size: 1.3em; margin-top: 20px; margin-bottom: 12px; color: #333; }
+        .blog-post .seo-heading-h1 { font-size: 2.5em; margin-top: 0.67em; margin-bottom: 10px; color: #333; }
         .blog-post ul, .blog-post ol { margin-left: 25px; }
         .blog-post li { margin-bottom: 10px; }
         .back-link { display: inline-block; margin-bottom: 30px; color: #D4A574; text-decoration: none; font-weight: 500; }
@@ -1708,18 +1736,7 @@ app.get('/blog/:slug', async (req, res) => {
         .share-btn.x { background: #000; }
         .share-btn.copy { background: #D4A574; cursor: pointer; border: none; }
     </style>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Article",
-      "headline": "${escapedTitle}",
-      "description": "${escapedExcerpt}",
-      "author": { "@type": "Person", "name": "Christina Workman" },
-      "publisher": { "@type": "Organization", "name": "Luce Healing", "url": "https://lucehealing.com" },
-      "datePublished": "${post.created_at || ''}",
-      "url": "${postUrl}"
-    }
-    </script>
+    <script type="application/ld+json">${seo.json(metadata.schema)}</script>
 </head>
 <body>
     <nav class="navbar scrolled" id="navbar"><div class="nav-container"><div class="nav-logo"><a href="/"><img src="/images/logo.jpg" alt="Luce Healing" class="nav-logo-img"> Luce Healing</a></div><ul class="nav-menu"><li><a href="/" class="nav-link">Home</a></li><li><a href="/#about" class="nav-link">About</a></li><li><a href="/#services" class="nav-link">Services</a></li><li><a href="/blog" class="nav-link">Blog</a></li><li><a href="/#reviews" class="nav-link">Reviews</a></li><li><a href="/#faq" class="nav-link">FAQ</a></li><li><a href="/#contact" class="nav-link">Contact</a></li></ul><div class="hamburger"><span></span><span></span><span></span></div></div></nav>
@@ -1728,7 +1745,8 @@ app.get('/blog/:slug', async (req, res) => {
         <article class="blog-post">
             <h1>${escapedTitle}</h1>
             <div class="blog-post-meta">${date} · ${readingTime} min read</div>
-            <div class="blog-post-body">${post.content}</div>
+            <div class="blog-post-body">${seo.headings(post.content)}</div>
+            ${relatedHTML}
         </article>
         <aside style="padding:28px;margin-top:32px;background:#eee7f3;border-radius:12px;text-align:center">
             <h2 style="color:#392c44">A little light in your inbox.</h2><p style="color:#51465b">Get Christina’s astrology blogs, intuitive reflections, and occasional reading offers by email.</p>
@@ -1779,7 +1797,7 @@ app.get('/blog/:slug', async (req, res) => {
     res.send(html);
   } catch(e) {
     console.error('[BLOG SSR ERROR]', e.message);
-    res.sendFile(path.join(__dirname, 'blog.html'));
+    res.status(503).set('Retry-After', '300').send('This article is temporarily unavailable. Please try again shortly.');
   }
 });
 
@@ -1791,6 +1809,17 @@ app.get('/reading-success.html', (req, res) => { res.sendFile(path.join(__dirnam
 app.get('/forecast-success', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
 app.get('/forecast-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
 app.get('/subscribe', (req, res) => { res.sendFile(path.join(__dirname, 'subscribe.html')); });
+
+// Always read published articles at request time; never serve the old static sitemap.
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const posts = await dbAll('SELECT slug, created_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
+    res.type('application/xml').send(seo.sitemap(posts));
+  } catch (e) {
+    console.error('[SITEMAP ERROR]', e.message);
+    res.status(503).set('Retry-After', '300').send('Sitemap temporarily unavailable');
+  }
+});
 
 // Static file serving (fallback for CSS, images, etc.)
 app.use((req,res,next)=>{if(/^\/(?:server\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
@@ -1924,24 +1953,6 @@ app.get('/api/admin/forecast-orders', checkAdminPassword, async (req, res) => {
 app.get('/llms.txt', (req, res) => {
   res.set('Content-Type', 'text/plain; charset=utf-8');
   res.sendFile(path.join(__dirname, 'llms.txt'));
-});
-
-// Dynamic sitemap with blog posts
-app.get('/sitemap.xml', async (req, res) => {
-  try {
-    const posts = await dbAll("SELECT slug, created_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC");
-    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-    xml += '  <url><loc>https://lucehealing.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n';
-    xml += '  <url><loc>https://lucehealing.com/blog</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n';
-    xml += '  <url><loc>https://lucehealing.com/forecast</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>\n';
-    posts.forEach(p => {
-      const date = p.created_at ? p.created_at.split('T')[0].split(' ')[0] : '';
-      xml += `  <url><loc>https://lucehealing.com/blog/${p.slug}</loc>${date ? '<lastmod>' + date + '</lastmod>' : ''}<changefreq>monthly</changefreq><priority>0.7</priority></url>\n`;
-    });
-    xml += '</urlset>';
-    res.set('Content-Type', 'application/xml');
-    res.send(xml);
-  } catch(e) { console.error('[SITEMAP ERROR]', e.message); res.status(500).set('Content-Type', 'application/xml').send('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>https://lucehealing.com/</loc><priority>1.0</priority></url>\n  <url><loc>https://lucehealing.com/blog</loc><priority>0.8</priority></url>\n</urlset>'); }
 });
 
 app.get('/api/booking/session/:sessionId', async (req, res) => {

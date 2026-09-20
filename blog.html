@@ -3,16 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Healing Blog — Energy Healing, Astrology & Spiritual Self-Care | Luce Healing</title>
-    <meta name="description" content="Weekly articles on energy healing, astrology forecasts, ritual baths, crystal healing, grounding techniques, and manifestation. Written by Christina Workman, Certified Reiki Master in Marina del Rey, CA.">
-    <meta name="keywords" content="energy healing blog, astrology blog, spiritual self-care, ritual bath recipes, crystal healing guide, grounding techniques, manifestation tips, reiki blog, weekly astrology, moon rituals, new moon ritual, full moon ritual, chakra healing, spiritual guidance blog">
-    <meta property="og:title" content="Healing Blog — Energy Healing, Astrology & Spiritual Self-Care | Luce Healing">
-    <meta property="og:description" content="Weekly articles on energy healing, astrology, ritual baths, crystals, and manifestation from Christina Workman.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://lucehealing.com/blog">
-    <meta property="og:image" content="https://lucehealing.com/images/og-image.jpg">
-    <link rel="canonical" href="https://lucehealing.com/blog">
-    
+    <title>Astrology &amp; Healing Blog | Weekly Forecasts | Luce Healing</title>
+
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
 
     <!-- Structured Data: Blog / WebPage -->
@@ -34,8 +26,7 @@
     </script>
 
     <!-- Google Analytics 4 -->
-    
-    
+
     <!-- Microsoft Clarity — replace CLARITY_ID with your project ID -->
     <!-- <script type="text/javascript">(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", "CLARITY_ID");</script> -->
 
@@ -43,8 +34,7 @@
     <link rel="stylesheet" href="/styles.css">
 
     <!-- Google Analytics 4 -->
-    
-    
+
     <!-- Microsoft Clarity — replace CLARITY_ID with your project ID -->
     <!-- <script type="text/javascript">(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", "CLARITY_ID");</script> -->
 
@@ -156,7 +146,20 @@
             color: #b8934d;
         }
     </style>
-<link rel="stylesheet" href="/review-fixes.css"></head>
+<link rel="stylesheet" href="/review-fixes.css">
+<meta name="description" content="Explore weekly astrology, zodiac and moon insights, energy healing, self-healing and personal growth articles by Christina Workman at Luce Healing.">
+<link rel="canonical" href="https://lucehealing.com/blog">
+<meta property="og:title" content="Astrology &amp; Healing Blog | Weekly Forecasts | Luce Healing">
+<meta property="og:description" content="Explore weekly astrology, zodiac and moon insights, energy healing, self-healing and personal growth articles by Christina Workman at Luce Healing.">
+<meta property="og:url" content="https://lucehealing.com/blog">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Luce Healing">
+<meta property="og:image" content="https://lucehealing.com/images/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Astrology &amp; Healing Blog | Weekly Forecasts | Luce Healing">
+<meta name="twitter:description" content="Explore weekly astrology, zodiac and moon insights, energy healing, self-healing and personal growth articles by Christina Workman at Luce Healing.">
+<meta name="twitter:image" content="https://lucehealing.com/images/og-image.jpg">
+</head>
 <body>
     <!-- Navigation -->
     <nav class="navbar scrolled" id="navbar">
@@ -195,10 +198,10 @@
         <!-- Blog List View -->
         <div id="blog-list-view">
             <div style="text-align: center; margin-bottom: 40px;">
-                <h1>From the Light: Healing Insights</h1>
+                <h1>From the Light: Astrology &amp; Healing Insights</h1>
                 <p style="color: #666; font-size: 1.05em;">Wisdom, tools, and guidance for your healing journey</p>
             </div>
-            
+
             <div id="blog-list" class="blog-list">
                 <p style="text-align: center; color: #999;">Loading posts...</p>
             </div>
@@ -248,12 +251,12 @@
                 const response = await fetch('/api/blog');
                 const posts = await response.json();
                 const container = document.getElementById('blog-list');
-                
+
                 if (!posts.length) {
                     container.innerHTML = '<div class="no-posts">No blog posts yet. Check back soon!</div>';
                     return;
                 }
-                
+
                 let html = '';
                 posts.forEach(post => {
                     const date = new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -280,17 +283,17 @@
                     document.getElementById('blog-list-view').innerHTML = '<div class="no-posts">Post not found</div>';
                     return;
                 }
-                
+
                 const post = await response.json();
                 const date = new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                
+
                 document.getElementById('single-post').style.display = 'block';
                 document.getElementById('blog-list-view').style.display = 'none';
-                
+
                 document.getElementById('post-title').textContent = post.title;
                 document.getElementById('post-meta').textContent = date;
                 document.getElementById('post-body').innerHTML = post.content;
-                
+
                 document.title = `${post.title} - Luce Healing Blog`;
             } catch (e) {
                 console.error('Error loading post:', e);
