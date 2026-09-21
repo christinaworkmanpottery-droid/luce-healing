@@ -1765,6 +1765,7 @@ app.get('/reading-success', (req, res) => { res.sendFile(path.join(__dirname, 'r
 app.get('/reading-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'reading-success.html')); });
 app.get('/forecast-success', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
 app.get('/forecast-success.html', (req, res) => { res.sendFile(path.join(__dirname, 'forecast-success.html')); });
+app.get('/astrology-membership', (req, res) => { res.sendFile(path.join(__dirname, 'astrology-membership.html')); });
 app.get('/subscribe', (req, res) => { res.sendFile(path.join(__dirname, 'subscribe.html')); });
 
 // Always read published articles at request time; never serve the old static sitemap.
