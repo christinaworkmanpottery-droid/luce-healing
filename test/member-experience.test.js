@@ -1,0 +1,12 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const {JSDOM}=require('jsdom');
+const source=fs.readFileSync(require.resolve('../private-membership/member.js'),'utf8');
+const signs=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+async function render(path,isTest=false){
+ const dom=new JSDOM('<div id="membership-mode"></div><div id="feedback"></div><main id="app"></main>',{url:'https://lucehealing.com'+path,runScripts:'outside-only'});
+ dom.window.fetch=async url=>({ok:true,json:async()=>url.endsWith('/config')?{private:false,purchasingEnabled:true,testCheckoutEnabled:true,foundingOfferOpen:true,signs,latestMonth:'2026-10'}:url.endsWith('/me')?{name:'Member',email:'member@example.com',verified:true,is_test:isTest,status:'active',access:true,portal_available:true}:url.endsWith('/horoscopes')?[{month:'2026-10',title:'October 2026',demo:false,content:{General:'General October reading',...Object.fromEntries(signs.map(s=>[s,s+' reading']))}}]:null});
+ dom.window.eval(source);await new Promise(r=>setTimeout(r,20));return dom;
+}
+test('regular active member sees normal account without testing controls even with preview config enabled',async()=>{const d=await render('/members/account');try{const text=d.window.document.body.textContent;assert.doesNotMatch(text,/Private payment test|Test Join|sandbox|test account|private preview/);assert.match(text,/Billing management opens securely in Stripe/);assert.ok(d.window.document.querySelector('#portal'));}finally{d.window.close()}});
+test('test account retains clearly identified sandbox controls',async()=>{const d=await render('/members/account',true);try{assert.match(d.window.document.body.textContent,/Private payment test/);assert.match(d.window.document.body.textContent,/Stripe’s sandbox/);}finally{d.window.close()}});
+test('regular member receives October general reading first followed by twelve expandable signs',async()=>{const d=await render('/members');try{const panels=[...d.window.document.querySelectorAll('#readings details')];assert.equal(panels.length,13);assert.match(panels[0].textContent,/General October reading/);assert.deepEqual(panels.slice(1).map(p=>p.querySelector('summary').textContent),signs);assert.doesNotMatch(d.window.document.body.textContent,/DEMONSTRATION CONTENT/);}finally{d.window.close()}});
