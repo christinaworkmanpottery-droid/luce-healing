@@ -760,6 +760,7 @@ app.post('/api/stripe/webhook', async (req, res) => {
   }
 
   try {
+  if (await membershipService.handleLiveEvent(event)) return res.json({received:true});
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const m = session.metadata || {};
