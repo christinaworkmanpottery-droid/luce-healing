@@ -54,3 +54,13 @@ Read this file and PR #2 first. Keep the approved prices: founding $2.95/month w
 The last user-facing next step was to open the existing Stripe dashboard on their own iPhone and provide a screenshot of the account/menu area with keys and codes hidden. Guide the Stripe-side test configuration there if cloud authentication remains unavailable. Signing in on the user's own phone does not authenticate the cloud browser. Do not repeat the same Google/passkey loop, request recovery codes to remove two-step verification, or ask for passwords/API secrets in chat. Secret settings must go directly into the appropriate secure service UI.
 
 Once access/configuration is resolved, complete the outstanding implementation and hosted tests above, then report exact results and remaining launch steps. A separate explicit approval is still required before enabling real membership purchases. The broad permission to continue setup/testing did not enable live purchasing.
+
+## Resumed on iPhone — September 20 late evening Pacific
+
+User resumed manual Stripe configuration in the existing Luce Healing dashboard. Screenshots show Sandbox, one Astrology Membership product and all three correct recurring USD prices, with zero active subscriptions. User copied these exact IDs into chat:
+
+- MEMBERSHIP_TEST_PRICE_FOUNDING=price_1UI0C13UJLd7oGH5bvTKeWi8 ($2.95/month)
+- MEMBERSHIP_TEST_PRICE_MONTHLY=price_1UI0Ge3UJLd7oGH5m1kbj41w ($3.95/month)
+- MEMBERSHIP_TEST_PRICE_ANNUAL=price_1UI0Hl3UJLd7oGH5p1xZ5sYg ($37.92/year)
+
+These IDs are recorded, not yet configured in Render or verified through the API. Do not recreate the product or prices. No secret was supplied. The sandbox key, membership webhook, portal configuration, controlled deployment and hosted tests remain outstanding. Confirm the key and all objects belong to this same sandbox before testing. Existing live Stripe settings must remain intact. Live membership purchasing remains disabled.
