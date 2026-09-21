@@ -64,3 +64,15 @@ User resumed manual Stripe configuration in the existing Luce Healing dashboard.
 - MEMBERSHIP_TEST_PRICE_ANNUAL=price_1UI0Hl3UJLd7oGH5p1xZ5sYg ($37.92/year)
 
 These IDs are recorded, not yet configured in Render or verified through the API. Do not recreate the product or prices. No secret was supplied. The sandbox key, membership webhook, portal configuration, controlled deployment and hosted tests remain outstanding. Confirm the key and all objects belong to this same sandbox before testing. Existing live Stripe settings must remain intact. Live membership purchasing remains disabled.
+
+## Updated manual setup checkpoint — September 21, 2026
+
+User resumed and confirmed all six required Render test settings saved with Save only: MEMBERSHIP_STRIPE_TEST_KEY (presence confirmed), all three test price IDs listed above, MEMBERSHIP_STRIPE_TEST_WEBHOOK_SECRET, and MEMBERSHIP_PORTAL_TEST_CONFIGURATION=bpc_1UI18k3UJLd7oGH5vo3OQIvQ. Values have not been API-validated. No secrets were posted in chat.
+
+Webhook Luce Membership Test is Active in the existing Luce sandbox at https://luce-healing.onrender.com/api/membership/stripe/webhook; Your account, Snapshot, API version 2026-02-25.clover, seven specified events. No delivery test completed.
+
+Default test portal saved: cancellations at billing-period end enabled, plan switching and quantity changes off. Payment-method updates instructed before save; verify configuration through API. No no-code portal link needed.
+
+Test-checkout enable and founding-offer controls are still unset. Draft implementation remains unmerged/undeployed. Next: check compatibility with configured API version, verify saved environment and sandbox objects, enable controlled test checkout only, deploy controlled draft and perform hosted checkout/webhook/portal tests. Public registration adaptation and real-purchase approval remain outstanding. Existing live Stripe configuration must remain unchanged.
+
+A previous checkpoint write failed due to Work credit approval failure. User has now reloaded credits and asked to continue. Do not repeat manual Stripe setup.
