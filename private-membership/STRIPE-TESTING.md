@@ -76,3 +76,9 @@ Default test portal saved: cancellations at billing-period end enabled, plan swi
 Test-checkout enable and founding-offer controls are still unset. Draft implementation remains unmerged/undeployed. Next: check compatibility with configured API version, verify saved environment and sandbox objects, enable controlled test checkout only, deploy controlled draft and perform hosted checkout/webhook/portal tests. Public registration adaptation and real-purchase approval remain outstanding. Existing live Stripe configuration must remain unchanged.
 
 A previous checkpoint write failed due to Work credit approval failure. User has now reloaded credits and asked to continue. Do not repeat manual Stripe setup.
+
+## Controlled deployment completed — September 21 07:24 UTC
+
+Render authenticated again through secure Google sign-in. Browser verified all six MEMBERSHIP setting names. Added MEMBERSHIP_TEST_CHECKOUT_ENABLED=true and MEMBERSHIP_FOUNDING_OFFER_OPEN=true using Save only, preserving existing variables. Deployed exact commit 1508206903472f11c2ecc9251de83801da476477 from draft branch via Render specific-commit deployment. Render deployment dep-daodmvoae00c73c4a4l0 reports live, finished 2026-09-21T07:24:20Z. Auto-deploy remains off; PR unmerged. Local 10 membership/navigation tests passed again. Code supports subscription-item billing periods and invoice parent subscription details.
+
+Hosted /members opened with private preview gate already satisfied but member login absent. Secure member sign-in request was rejected by automatic browser review because login form was below visible viewport (account creation visible). No credential prompt was shown or submitted. Attempt to scroll to login timed out. Actual hosted checkout, webhook delivery, cancellation and rejoin remain untested. Do not claim end-to-end success. Real purchasing remains disabled.
