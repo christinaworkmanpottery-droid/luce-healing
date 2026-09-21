@@ -1,5 +1,19 @@
 # Astrology Membership Stripe checkpoint
 
+## Latest stopping point — September 21, 2026, after midnight Pacific
+
+Christina explicitly stopped for the night until she starts writing horoscopes. Do not continue development, deployment, authentication or activation until she resumes. This section supersedes earlier historical next-step instructions below.
+
+- Completed: existing sandbox product, all three recurring prices, webhook, portal, corrected test secret and test flags saved; exact deployed commit 1508206903472f11c2ecc9251de83801da476477, deployment dep-daoe4pjtqb8s73evtje0. Stripe API verified prices and portal. User completed test checkout, portal cancellation and confirmed website access/cancellation display. Do not make her repeat setup or those checks.
+- Public membership information page is live. Paid public signup and real membership purchases remain disabled. Draft PR #2 remains unmerged; auto-deploy remains off.
+- October 2026 will be the first real horoscope month; skip September. Christina will write all 12 in Admin → Monthly Horoscopes, save drafts, then publish October early for founding-member launch. Do NOT schedule October for October 1 midnight; she explicitly chose early publication instead. Publishing content does not enable purchases.
+- Approved exact note: “October’s horoscopes are available early to welcome our founding members. Starting in November, new horoscopes will be published on the 1st of each month, Pacific Time.”
+- Note saved in astrology-membership.html on feature/membership-stripe-test-checkout, commit 9402d9cb3d18ec92a07f85581d0d664eea3df16f. Not deployed: text must not claim availability before actual October content exists. User was told it is saved in launch draft.
+- Use “Pacific Time” exactly. Existing scheduler uses America/Los_Angeles and handles daylight saving. No new recurring auto-publication behavior or November schedule was created by adding this text; each completed month must be scheduled in Admin.
+- At last database check only demonstration month 2099-01 existed. No October content was created by the assistant.
+- Remaining technical work after resume: implement production registration/verification/login and payment-gated member access; isolate real vs test members and Stripe objects; inspect/reuse live membership product/prices/portal/webhook configuration; complete remaining focused payment/access/expiry/rejoin checks; publish the approved note with actual October content ready. Request final activation approval only after concrete preparation and verification. Do not enable purchases while paused.
+- All repo-backed work and checkpoints are saved to GitHub. No secrets belong in this document. Existing bookings, newsletter, admin and other payment flows must be preserved.
+
 This branch reuses the existing Stripe client passed by server.js. It adds private test Checkout only. No real purchasing or public member registration is enabled, and no live credentials or existing payment routes are replaced.
 
 ## Configuration required for hosted testing
