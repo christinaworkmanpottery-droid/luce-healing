@@ -117,7 +117,7 @@ function verifyToken(token) {
 const gifts = require('./gifts')({app,pool,stripe,checkAdminPassword,getMailer:()=>smtpTransporter,domain:process.env.DOMAIN || 'https://lucehealing.com'});
 const newsletterService = require('./newsletter').createNewsletterService({pool,getTransporter:()=>smtpTransporter});
 newsletterService.register(app,checkAdminPassword);
-const membershipService = require('./private-membership/service').createMembership({pool,getMailer:()=>smtpTransporter});
+const membershipService = require('./private-membership/service').createMembership({pool,getMailer:()=>smtpTransporter,stripeClient:stripe});
 membershipService.register(app,checkAdminPassword);
 
 // ============================================================================
@@ -1966,3 +1966,4 @@ startServer().catch(error => {
   console.error('Failed to start server:', error);
   process.exit(1);
 });
+
