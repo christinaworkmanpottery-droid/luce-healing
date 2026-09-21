@@ -89,3 +89,21 @@ test('Pacific scheduling handles winter, summer, nonexistent and repeated clock 
  assert.equal(scheduleInstant('2026-11-01T01:30','later').toISOString(),'2026-11-01T09:30:00.000Z');
  assert.throws(()=>scheduleInstant('2026-02-30T00:00'),/valid/);
 });
+
+test('Chicago lookup auto-selects and Save details & calculate persists a chart; ambiguous and empty searches clear selection',async()=>{
+ const {JSDOM}=require('jsdom'),fs=require('fs');const h=await harness();let dom;
+ try{await h.verify();dom=new JSDOM(fs.readFileSync('private-membership/member.html','utf8'),{url:'https://lucehealing.com/members/chart',runScripts:'outside-only'});
+ dom.window.fetch=async(url,opts={})=>{const r=await h.call(url,opts.method||'GET',opts.body?JSON.parse(opts.body):undefined);return {ok:r.status<400,status:r.status,json:async()=>r.data};};
+ dom.window.eval(fs.readFileSync('private-membership/member.js','utf8'));const d=dom.window.document;
+ for(let i=0;i<100&&!d.getElementById('birth-form');i++)await new Promise(r=>setTimeout(r,10));
+ const el=id=>d.getElementById(id);el('unknown-time').checked=false;el('unknown-time').onchange();el('unknown-place').checked=false;el('unknown-place').onchange();el('birth-date').value='1977-09-02';el('birth-time').value='09:28';
+ const search=async q=>{el('place-search').value=q;el('place-search').oninput();await el('place-find').onclick();};
+ await search('Chicago, Illinois, USA');assert.equal(el('place-results').value,'4887398');assert.match(el('selected-place').textContent,/Chicago, Illinois, United States/);
+ await el('birth-form').onsubmit();assert.match(el('feedback').textContent,/saved and placements calculated/);assert.equal(el('placements').querySelectorAll('article').length,7);assert.match(el('placements').textContent,/Rising in Libra/);
+ const saved=await h.call('/api/membership/chart');assert.equal(saved.data.profile.place.id,'4887398');assert.equal(saved.data.chart.placements.length,7);
+ for(const q of ['Chicago, Illinois, US','Chicago, Illinois, United States','Chicago']){await search(q);assert.equal(el('place-results').value,'4887398');}
+ await search('Springfield, USA');assert.equal(el('place-results').value,'');assert(el('place-results').options.length>2);el('place-results').value='4250542';el('place-results').onchange();assert.match(el('selected-place').textContent,/Springfield, Illinois, United States/);
+ await search('zzzznonexistentcity');assert.equal(el('place-results').value,'');assert.equal(el('selected-place').textContent,'');await el('birth-form').onsubmit();assert.match(el('feedback').textContent,/Choose your birthplace/);
+ assert.equal((await h.call('/api/membership/chart','GET',null,{cookies:{}})).status,404);assert.equal((await h.call('/api/membership/checkout','POST',{})).status,403);
+ }finally{dom?.window.close();await h.close();}
+});
