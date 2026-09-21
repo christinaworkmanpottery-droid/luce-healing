@@ -26,10 +26,31 @@ Account verification currently provides the existing seven-day admin preview. Th
 
 ## Still required before launch approval
 
-1. Confirm the Render workspace containing Luce Healing, inspect configuration presence without disclosing secrets, and fill only missing same-account test settings.
+1. Render workspace and existing setting names are now confirmed below. Fill only the missing same-account Stripe test settings; do not repeat workspace discovery.
 2. Deploy this branch to the controlled preview and complete actual Stripe test-mode signup, checkout, webhook activation, sign-out/sign-in, portal cancellation, paid-period expiry and rejoin tests. Use Stripe test cards only.
 3. Adapt the public registration/login/email flow so verification alone grants no paid access, remove the designated-test-email restriction only for production accounts, and make the public Join buttons use that flow. Keep a separate default-off live purchase gate.
 4. Reuse the existing Stripe account's live client and webhook setup; verify live recurring price IDs, portal cancellation configuration, production event routing and isolation from preview/test members. These are not configured in this branch.
 5. Verify launch gates and present results for explicit approval before enabling live purchasing.
 
-Current blocker: Render connector requires a user-confirmed workspace; available names are My Workspace and The potters mud room. No Render settings, Stripe objects, real customer data or production deployment were changed in this checkpoint.
+## Saved stopping point — September 20, 2026 Pacific / September 21 UTC
+
+User explicitly paused work until tomorrow after more than six hours. Do not perform further setup, deployment or authentication until they resume. All implementation work is saved in draft PR #2:
+https://github.com/christinaworkmanpottery-droid/luce-healing/pull/2
+
+- Branch: feature/membership-stripe-test-checkout. Implementation commit on GitHub: 07016f5410a02c131ec3044917b047ae04df3ebf.
+- Local checkout (if still available): /workspace/scratch/5511c2dcf007/luce-healing. Local equivalent implementation commit fd31911. GitHub connector performed upload because command-line git push lacked credentials.
+- All 10 membership/navigation tests passed after npm ci; Stripe API calls were simulated. No real Stripe Checkout, webhook delivery or portal test has completed.
+- User confirmed Render workspace My Workspace, ID tea-d6it66sr85hc73c5qs2g. Service luce-healing, ID srv-d6upv8euk2gs738ceod0, matches this repository. Do not confuse it with luce-app or The Potter's Mud Room.
+- Render browser sign-in succeeded. The live service was on main commit 9e83b5804d9b100842fb9e275369c8a2d93c42a4, with auto-deploy off. PR #2 remains unmerged and undeployed.
+- Render Environment UI showed existing STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET. Only names were inspected; secrets were not revealed. No MEMBERSHIP_* variables were present, and no linked environment group was listed. Therefore the test key, three test price IDs, test webhook secret, test portal configuration and test-enable/offer controls listed above still need setup. Existing Stripe product inventory could not be inspected.
+- Google sign-in and phone approval succeeded for the Stripe login, but Stripe itself then required passkey verification. Cloud browser does not support passkeys. Try another way led to a backup-code recovery form that explicitly says it temporarily removes two-step authentication. No backup code was requested or entered, and security settings were not changed.
+- The prior automatic sign-in metadata rejection was resolved by a user-authorized secure retry; the current blocker is Stripe's own passkey requirement, not Render workspace selection or an incorrect password.
+- No Render settings, Stripe objects, real customer data, payment credentials or production deployment were changed. No real charges or customer emails were sent in this work.
+
+## Resume without repeating work
+
+Read this file and PR #2 first. Keep the approved prices: founding $2.95/month while continuously active, regular $3.95/month, annual $37.92/year. Cancellation preserves access through the paid period; rejoining after the founding offer ends uses the then-current regular price. Reuse the existing Luce Stripe account and payment integration. No new paid services, duplicate Stripe account or unrelated site changes.
+
+The last user-facing next step was to open the existing Stripe dashboard on their own iPhone and provide a screenshot of the account/menu area with keys and codes hidden. Guide the Stripe-side test configuration there if cloud authentication remains unavailable. Signing in on the user's own phone does not authenticate the cloud browser. Do not repeat the same Google/passkey loop, request recovery codes to remove two-step verification, or ask for passwords/API secrets in chat. Secret settings must go directly into the appropriate secure service UI.
+
+Once access/configuration is resolved, complete the outstanding implementation and hosted tests above, then report exact results and remaining launch steps. A separate explicit approval is still required before enabling real membership purchases. The broad permission to continue setup/testing did not enable live purchasing.
