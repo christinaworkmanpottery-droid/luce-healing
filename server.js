@@ -68,6 +68,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Shared public navigation covers rendered articles, clean page routes, and HTML aliases.
+require('./public-navigation').install(app, __dirname);
+
 // ============================================================================
 // DATABASE HELPER FUNCTIONS (PostgreSQL)
 // ============================================================================
@@ -1781,7 +1784,7 @@ app.get('/sitemap.xml', async (req, res) => {
 });
 
 // Static file serving (fallback for CSS, images, etc.)
-app.use((req,res,next)=>{if(/^\/(?:server\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
+app.use((req,res,next)=>{if(/^\/(?:server\.js|public-navigation\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
 app.use(express.static(__dirname));
 
 // ============================================================================
