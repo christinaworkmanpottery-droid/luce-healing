@@ -77,7 +77,7 @@
         <div id="postsList">Loading...</div>
     </div>
 
-    <div id="membershipTab" class="hidden"><div data-membership-admin></div></div>
+    <div id="membershipTab" class="hidden"><div data-complimentary-admin></div><div data-membership-admin></div></div>
     <div id="newsletterTab" class="hidden">
         <div data-newsletter-admin></div>
     </div>
@@ -123,7 +123,7 @@ function switchTab(tab) {
     document.getElementById('blogTab').classList.toggle('hidden', tab !== 'blog');
     document.getElementById('newsletterTab').classList.toggle('hidden', tab !== 'newsletter');
     document.getElementById('membershipTab').classList.toggle('hidden', tab !== 'membership');
-    if (tab === 'membership') window.loadMembershipAdmin?.();
+    if (tab === 'membership') { window.loadMembershipAdmin?.(); window.loadComplimentaryAdmin?.(); }
     if (tab === 'newsletter') loadNewsletter();
 }
 
@@ -276,5 +276,5 @@ async function loadNewsletter() {
 
 function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 </script>
-<link rel="stylesheet" href="/newsletter-admin.css"><script src="/newsletter-admin.js"></script><script src="/membership-admin.js"></script></body>
+<link rel="stylesheet" href="/newsletter-admin.css"><script src="/newsletter-admin.js"></script><script src="/membership-admin.js"></script><script src="/complimentary-admin.js"></script></body>
 </html>
