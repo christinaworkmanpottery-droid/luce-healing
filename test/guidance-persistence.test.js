@@ -26,7 +26,7 @@ async function editor(h,storage={},failFetch=()=>false){
  d.window.eval("const adminPassword='admin-test';");d.window.eval(fs.readFileSync('membership-admin.js','utf8'));await d.window.loadMembershipAdmin();return d;
 }
 const values={General:'[TEST] General overview\n\n'+('Long guidance — tips, crystals, Unicode ♀, and line breaks.\n'.repeat(120)),...Object.fromEntries(signs.map(s=>[s,'[TEST] '+s+'\n'+('Detailed disposable test text with tips and crystals.\n'.repeat(100))]))};
-function fill(d,title='[TEST] Persistence verification'){const doc=d.window.document;doc.querySelector('#mb-kind').value='special';doc.querySelector('#mb-title').value=title;doc.querySelector('#mb-month').value='2026-09';doc.querySelector('#mb-subtitle').value='[TEST] Subtitle — retained exactly';for(const [k,v] of Object.entries(values)){const el=doc.querySelector('#mb-'+k);el.value=v;el.dispatchEvent(new d.window.Event('input',{bubbles:true}));}}
+function fill(d,title='[TEST] Persistence verification'){const doc=d.window.document;if(doc.querySelector('#mb-editor').hidden)doc.querySelector('#mb-new').click();doc.querySelector('#mb-kind').value='special';doc.querySelector('#mb-title').value=title;doc.querySelector('#mb-month').value='2026-09';doc.querySelector('#mb-subtitle').value='[TEST] Subtitle — retained exactly';for(const [k,v] of Object.entries(values)){const el=doc.querySelector('#mb-'+k);el.value=v;el.dispatchEvent(new d.window.Event('input',{bubbles:true}));}}
 const storage=d=>Object.fromEntries(Array.from({length:d.window.localStorage.length},(_,i)=>{const k=d.window.localStorage.key(i);return [k,d.window.localStorage.getItem(k)];}));
 test('legacy new-month collision reproduces; independent collection saves, reopens, publishes, edits and deletes through real API/database',async()=>{
  const h=await harness();let d;try{
@@ -36,11 +36,11 @@ test('legacy new-month collision reproduces; independent collection saves, reope
  const prior=JSON.stringify((await h.db.query("SELECT * FROM luce_horoscopes WHERE month='2026-09'")).rows[0]);
  const collision=await h.admin('horoscopes/2026-09','PUT',{title:'[TEST] Legacy new special guidance',content:values});assert.equal(collision.status,409);
  d=await editor(h);fill(d);await d.window.document.querySelector('#mb-save').onclick();
- assert.match(d.window.document.querySelector('#mb-action-message').textContent,/saved and verified/);
+ assert.match(d.window.document.querySelector('#mb-action-message').textContent,/Saved successfully/);
  let rows=(await h.admin('horoscopes')).data,record=rows.find(x=>x.title==='[TEST] Persistence verification');assert(record);assert.match(record.month,/^collection-/);assert.equal(record.collection_type,'special');assert.deepEqual(record.draft,values);assert.equal(record.published,null);
  const id=record.month;d.window.close();d=await editor(h);d.window.document.querySelector(`[data-open-month="${id}"]`).click();
  for(const [k,v] of Object.entries(values))assert.equal(d.window.document.querySelector('#mb-'+k).value,v);assert.equal(d.window.document.querySelector('#mb-subtitle').value,'[TEST] Subtitle — retained exactly');
- await d.window.document.querySelector('#mb-publish').onclick();assert.match(d.window.document.querySelector('#mb-action-message').textContent,/Published and verified/);
+ await d.window.document.querySelector('#mb-publish').onclick();assert.match(d.window.document.querySelector('#mb-action-message').textContent,/Published successfully/);
  record=(await h.admin('collections/'+id)).data;assert.deepEqual(record.published,values);
  let members=(await h.call('/api/membership/horoscopes')).data;assert.deepEqual(members.find(x=>x.month===id).content,values);assert.equal(members.find(x=>x.month===id).collection_type,'special');
  assert.equal((await h.call('/api/membership/reading?month='+id)).status,200);
@@ -61,7 +61,7 @@ test('failed save and reload retain every field; independent read-back failure n
  const recovery=storage(d);assert.equal(Object.keys(recovery).length,1);d.window.close();fail=false;let failRead=true;d=await editor(h,recovery,(url,opts)=>failRead&&opts.method==='GET'&&url.includes('/collections/'));
  d.window.document.querySelector('[data-recover]').click();for(const [k,v] of Object.entries(values))assert.equal(d.window.document.querySelector('#mb-'+k).value,v);
  await d.window.document.querySelector('#mb-save').onclick();assert.match(d.window.document.querySelector('#mb-action-message').textContent,/Not completed/);assert.equal(Object.keys(storage(d)).length,1);
- failRead=false;await d.window.document.querySelector('#mb-save').onclick();assert.match(d.window.document.querySelector('#mb-action-message').textContent,/saved and verified/);assert.equal(Object.keys(storage(d)).length,0);
+ failRead=false;await d.window.document.querySelector('#mb-save').onclick();assert.match(d.window.document.querySelector('#mb-action-message').textContent,/Saved successfully/);assert.equal(Object.keys(storage(d)).length,0);
  const record=(await h.admin('horoscopes')).data.find(x=>x.title==='[TEST] Persistence verification');const data={title:record.title,display_month:record.display_month,subtitle:record.subtitle,collection_type:'special',featured:false,demo:false,content:values,revision:record.revision-1};assert.equal((await h.admin('collections/'+record.month,'PUT',data)).status,409);
  const bad={...data,revision:record.revision,subtitle:'x'.repeat(501),content:{...values,General:'MUST NOT SAVE'}};assert.equal((await h.admin('collections/'+record.month,'PUT',bad)).status,400);assert.deepEqual((await h.admin('collections/'+record.month)).data.draft,values);
  const workingFetch=d.window.fetch;d.window.fetch=async(url,opts)=>{if(url.includes('/publish?'))throw Error('Simulated publish failure');return workingFetch(url,opts);};
@@ -69,5 +69,25 @@ test('failed save and reload retain every field; independent read-back failure n
  assert.deepEqual((await h.admin('collections/'+record.month)).data.draft,values);assert.equal((await h.admin('collections/'+record.month)).data.published,null);
  for(const [k,v] of Object.entries(values))assert.equal(d.window.document.querySelector('#mb-'+k).value,v);
 
+ }finally{d?.window.close();await h.close();}
+});
+test('separate list/editor screens, blank new guidance, correct record month and Pacific scheduling',async()=>{
+ const h=await harness();let d;try{
+ const first=(await h.admin('collections/collection-12345678-1234-4123-8123-123456789abc','PUT',{title:'September 26 Full Moon',display_month:'2026-09',subtitle:'Full Moon',collection_type:'special',content:values,demo:false,featured:false})).data;
+ d=await editor(h);const doc=d.window.document;
+ assert.equal(doc.querySelector('#mb-editor').hidden,true);assert.equal(doc.querySelector('#mb-existing'),null);
+ doc.querySelector('[data-open-month="collection-12345678-1234-4123-8123-123456789abc"]').click();
+ assert.equal(doc.querySelector('#mb-list').hidden,true);assert.equal(doc.querySelector('#mb-heading').textContent,'Editing: September 26 Full Moon');assert.equal(doc.querySelector('#mb-month').value,'2026-09');
+ assert.deepEqual([...doc.querySelectorAll('#mb-primary button')].map(b=>b.textContent),['Save Draft','Publish Now','Schedule']);
+ doc.querySelector('#mb-back').click();doc.querySelector('#mb-new').click();
+ for(const id of ['title','month','subtitle','publish-time','General',...signs])assert.equal(doc.querySelector('#mb-'+id).value,'',id+' should start blank');assert.equal(doc.querySelector('#mb-status').value,'draft');
+ assert.equal(doc.querySelector('#mb-scheduling').hidden,true);doc.querySelector('#mb-open-schedule').click();assert.equal(doc.querySelector('#mb-scheduling').hidden,false);
+ fill(d,'Scheduled Venus Guidance');doc.querySelector('#mb-publish-time').value='2026-10-01T09:00';await doc.querySelector('#mb-schedule').onclick();
+ assert.match(doc.querySelector('#mb-action-message').textContent,/Scheduled successfully/);
+ let row=(await h.admin('horoscopes')).data.find(r=>r.title==='Scheduled Venus Guidance');assert.equal(row.scheduled_at,'2026-10-01T16:00:00.000Z');assert.deepEqual(row.draft,values);assert.equal(row.published,null);assert.notEqual(row.month,first.month);
+ assert.equal(doc.querySelector('#mb-cancel-schedule').disabled,false);
+ d.window.close();d=await editor(h);d.window.document.querySelector(`[data-open-month="${row.month}"]`).click();assert.equal(d.window.document.querySelector('#mb-publish-time').value,'2026-10-01T09:00');assert.equal(d.window.document.querySelector('#mb-scheduling').hidden,true);
+ await d.window.document.querySelector('#mb-save').onclick();row=(await h.admin('collections/'+row.month)).data;assert.equal(row.scheduled_at,null);assert.deepEqual(row.draft,values);
+ assert.deepEqual((await h.admin('collections/'+first.month)).data,first);
  }finally{d?.window.close();await h.close();}
 });
