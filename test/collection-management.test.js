@@ -47,8 +47,23 @@ test('metadata updates preserve every content snapshot; early publishing, featur
  assert.equal(row.draft.BoundaryScripts,original.BoundaryScripts);assert.deepEqual(row.draft.Other,original.Other);
  let older=(await h.admin('horoscopes/2026-09','PUT',{title:'September 2026 Horoscopes',content})).data;
  older=(await h.admin('horoscopes/2026-09/details','PATCH',{...details,title:'September 2026 Horoscopes',display_month:'2026-09',revision:older.revision})).data;
- assert.equal((await h.call('/api/membership/horoscopes')).data[0].month,'2026-09');
+ assert.equal((await h.call('/api/membership/config')).data.latestMonth,'2026-09');
  assert.equal((await h.admin('horoscopes')).data.filter(x=>x.featured_at).length,1);
  assert.equal(h.sent.length,1);
+ }finally{await h.close();}
+});
+test('organization migration preserves reading snapshots and does not override a later featured selection',async()=>{
+ const h=await harness();try{
+ const content={General:'Boundary scripts unchanged',...Object.fromEntries(signs.map(s=>[s,'Exact '+s]))};
+ for(const [month,title] of [['2026-09','For the September 26, 2026 Full Moon at 3°37′ Aries'],['2026-10','October 2026 Monthly Horoscopes']]){const r=await h.admin('horoscopes/'+month,'PUT',{title,content});await h.admin('horoscopes/'+month+'/publish','POST',{revision:r.data.revision});}
+ const before=(await h.db.query('SELECT month,draft,published,published_at FROM luce_horoscopes ORDER BY month')).rows;
+ await h.db.query("DELETE FROM luce_membership_migrations WHERE name='special-guidance-and-october-feature-2026-09-24'");
+ await h.service.initialize();
+ assert.deepEqual((await h.db.query('SELECT month,draft,published,published_at FROM luce_horoscopes ORDER BY month')).rows,before);
+ let rows=(await h.admin('horoscopes')).data;
+ assert.equal(rows.find(x=>x.month==='2026-09').collection_type,'special');assert(rows.find(x=>x.month==='2026-10').featured_at);
+ await h.db.query("UPDATE luce_horoscopes SET featured_at=NULL WHERE month='2026-10'");await h.service.initialize();
+ assert.equal((await h.admin('horoscopes')).data.find(x=>x.month==='2026-10').featured_at,null);
+ const special=(await h.admin('horoscopes')).data.find(x=>x.month==='2026-09');const r=await h.admin('horoscopes/2026-09/details','PATCH',{revision:special.revision,title:special.title,display_month:special.month,status:'published',featured:true,collection_type:'special'});assert.equal(r.status,200);assert.equal(r.data.featured_at,null);assert.deepEqual(r.data.published,content);
  }finally{await h.close();}
 });

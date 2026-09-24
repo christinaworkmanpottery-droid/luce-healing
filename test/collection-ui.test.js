@@ -13,3 +13,21 @@ test('metadata-only Admin save excludes content and retains unsaved editor text'
  d.window.fetch=async(url,opts)=>{let result;if(opts.method==='PATCH'){payload=JSON.parse(opts.body);rows[0]={...rows[0],...payload,revision:2};result=rows[0];}else result=url.includes('/status?')?{}:url.includes('/members?')?[]:rows;return {ok:true,json:async()=>result};};
  try{d.window.eval(fs.readFileSync('membership-admin.js','utf8'));await d.window.loadMembershipAdmin();const doc=d.window.document;doc.querySelector('[data-open-month="2026-10"]').click();assert.equal(doc.querySelector('#mb-month').disabled,false);assert.equal(doc.querySelector('#mb-status').value,'published');doc.querySelector('#mb-General').value='Unsaved reading edits';doc.querySelector('#mb-title').value='My October title';doc.querySelector('#mb-subtitle').value='Edited subtitle';doc.querySelector('#mb-featured').checked=true;await doc.querySelector('#mb-details').onclick();assert.equal(payload.title,'My October title');assert.equal(payload.featured,true);assert.equal(payload.content,undefined);assert.equal(doc.querySelector('#mb-General').value,'Unsaved reading edits');assert.deepEqual(rows[0].published,content);assert.match(doc.querySelector('#mb-collections').textContent,/My October title/);}finally{d.window.close();}
 });
+test('monthly archive follows publication dates; special guidance stays separate when the featured month changes',async()=>{
+ const rows=[
+ {...months[0],featured_at:'2026-09-24T00:00:00Z',collection_type:'monthly'},
+ {...months[1],featured_at:null,collection_type:'special',published_at:'2026-09-25T00:00:00Z'},
+ {...months[0],month:'2026-11',title:'November Horoscopes',featured_at:null,published_at:'2026-09-20T00:00:00Z'},
+ {...months[0],month:'2026-08',title:'August Horoscopes',featured_at:null,published_at:'2026-09-22T00:00:00Z'}
+ ];
+ let d=await member('/members',rows);try{
+ const doc=d.window.document;assert.equal(doc.querySelector('#month-label').textContent,'October 2026 Horoscopes');
+ const archive=[...doc.querySelectorAll('summary')].find(x=>x.textContent==='Previous Months').parentElement;
+ assert.deepEqual([...archive.querySelectorAll('button')].map(x=>x.textContent),['August Horoscopes','November Horoscopes']);
+ assert.match(doc.querySelector('#special-guidance').textContent,/Full Moon boundary scripts/);
+ await doc.querySelector('#special-guidance button').onclick({preventDefault(){}});
+ assert.match(doc.querySelector('#readings').textContent,/Full Moon boundary scripts — keep exactly/);
+ }finally{d.window.close();}
+ rows[0].featured_at=null;rows[2].featured_at='2026-09-26T00:00:00Z';d=await member('/members',rows);
+ try{assert.equal(d.window.document.querySelector('#month-label').textContent,'November Horoscopes');const archive=[...d.window.document.querySelectorAll('summary')].find(x=>x.textContent==='Previous Months').parentElement;assert.deepEqual([...archive.querySelectorAll('button')].map(x=>x.textContent),['August Horoscopes','October 2026 Horoscopes']);}finally{d.window.close();}
+});
