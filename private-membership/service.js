@@ -52,6 +52,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   await q('ALTER TABLE luce_horoscopes ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS scheduled_draft JSONB, ADD COLUMN IF NOT EXISTS scheduled_title TEXT, ADD COLUMN IF NOT EXISTS scheduled_demo BOOLEAN');
   await q("ALTER TABLE luce_horoscopes ADD COLUMN IF NOT EXISTS display_month TEXT, ADD COLUMN IF NOT EXISTS subtitle TEXT NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS featured_at TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS collection_hidden BOOLEAN NOT NULL DEFAULT false");
   await q("ALTER TABLE luce_horoscopes ADD COLUMN IF NOT EXISTS collection_type TEXT NOT NULL DEFAULT 'monthly'");
+  await q(`CREATE TABLE IF NOT EXISTS luce_horoscope_history(id BIGSERIAL PRIMARY KEY,collection_id TEXT NOT NULL,revision INTEGER NOT NULL,snapshot JSONB NOT NULL,saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(collection_id,revision))`);
   await q('CREATE TABLE IF NOT EXISTS luce_membership_migrations(name TEXT PRIMARY KEY)');
   await tx(async c=>{
    const applied=await c.query("INSERT INTO luce_membership_migrations(name) VALUES('special-guidance-and-october-feature-2026-09-24') ON CONFLICT DO NOTHING RETURNING name");
@@ -197,7 +198,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   app.get('/api/membership/chart',needPreview,wrap(async(req,res)=>{const m=await needMember(req);res.json({profile:m.birth_profile||null,chart:m.birth_chart||null});}));
   app.put('/api/membership/chart',needPreview,wrap(async(req,res)=>{const m=await needMember(req);await limit('chart:'+m.id,60);const result=chart.calculate(req.body);await q('UPDATE luce_members SET birth_profile=$1,birth_chart=$2 WHERE id=$3',[JSON.stringify(result.profile),JSON.stringify(result),m.id]);res.json({profile:result.profile,chart:result});}));
   app.delete('/api/membership/chart',needPreview,wrap(async(req,res)=>{const m=await needMember(req);await q('UPDATE luce_members SET birth_profile=NULL,birth_chart=NULL WHERE id=$1',[m.id]);res.json({success:true});}));
-  app.get('/api/membership/reading',needPreview,wrap(async(req,res)=>{await tick();const m=await reconcile(await needMember(req));if(!access(m))throw fail('Your membership does not currently include content access.',403);if(!/^\d{4}-\d{2}$/.test(String(req.query.month||'')))throw fail('Choose a published month.');const month=await one('SELECT month,published_title AS title,published AS content,published_demo AS demo FROM luce_horoscopes WHERE month=$1 AND published IS NOT NULL AND collection_hidden=false',[req.query.month]);if(!month||month.demo&&!m.is_test)throw fail('No published horoscope is available for this month.',404);res.json({month:month.month,title:month.title,demo:month.demo,groups:chart.matchingReading(m.birth_chart,month)});}));
+  app.get('/api/membership/reading',needPreview,wrap(async(req,res)=>{await tick();const m=await reconcile(await needMember(req));if(!access(m))throw fail('Your membership does not currently include content access.',403);if(!/^(?:\d{4}-\d{2}|collection-[a-f0-9-]{36})$/.test(String(req.query.month||'')))throw fail('Choose a published month.');const month=await one('SELECT month,published_title AS title,published AS content,published_demo AS demo FROM luce_horoscopes WHERE month=$1 AND published IS NOT NULL AND collection_hidden=false',[req.query.month]);if(!month||month.demo&&!m.is_test)throw fail('No published horoscope is available for this month.',404);res.json({month:month.month,title:month.title,demo:month.demo,groups:chart.matchingReading(m.birth_chart,month)});}));
   app.post('/api/membership/portal',needPreview,wrap(async(req,res)=>{const m=await needMember(req),stripe=clientFor(m),portal=portalFor(m);if(!m.verified_at)throw fail('Confirm your email first.',403);if(!stripe||!m.stripe_customer_id||!portal)throw fail('Billing management is not available for this account.',409);const config=await stripe.billingPortal.configurations.retrieve(portal);if(config.livemode===m.is_test||config.active===false||!config.features?.subscription_cancel?.enabled||config.features.subscription_cancel.mode!=='at_period_end'||config.features?.subscription_update?.enabled)throw fail('Membership billing settings need attention.',409);const result=await stripe.billingPortal.sessions.create({customer:m.stripe_customer_id,configuration:config.id,return_url:origin+'/members/account'});res.json({url:result.url});}));
   app.post('/api/membership/stripe/webhook',wrap(async(req,res)=>{if(!stripe||!env.MEMBERSHIP_STRIPE_TEST_WEBHOOK_SECRET)throw fail('Sandbox webhook is not configured.',503);let event;try{event=stripe.webhooks.constructEvent(req.body,req.headers['stripe-signature'],env.MEMBERSHIP_STRIPE_TEST_WEBHOOK_SECRET);}catch(_){throw fail('Invalid webhook signature.',400);}if(event.livemode!==false)throw fail('Live membership events are disabled.',403);if(await one('SELECT id FROM luce_member_events WHERE id=$1',[event.id]))return res.json({received:true});const obj=event.data.object;let sub;if(event.type==='checkout.session.completed'&&obj.mode==='subscription'&&obj.subscription)sub=await stripe.subscriptions.retrieve(typeof obj.subscription==='string'?obj.subscription:obj.subscription.id);if(event.type.startsWith('customer.subscription.'))sub=event.type==='customer.subscription.deleted'?obj:await stripe.subscriptions.retrieve(obj.id);if(['invoice.paid','invoice.payment_failed','invoice.payment_action_required'].includes(event.type)){const id=obj.subscription||obj.parent?.subscription_details?.subscription;if(id)sub=await stripe.subscriptions.retrieve(typeof id==='string'?id:id.id);}if(sub)await syncSubscription(sub);await q('INSERT INTO luce_member_events(id,event_type) VALUES($1,$2) ON CONFLICT DO NOTHING',[event.id,event.type]);res.json({received:true});}));
   const admin=(method,url,fn)=>app[method]('/api/admin/membership'+url,checkAdmin,wrap(fn));
@@ -208,7 +209,57 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   admin('get','/members',async(req,res)=>res.json((await q('SELECT * FROM luce_members ORDER BY created_at DESC')).rows.map(m=>({...publicMember(m),created_at:m.created_at}))));
   admin('post','/members/:id/preview',async(req,res)=>{const allowed=['preview','past_due','expired','canceled'];if(!allowed.includes(req.body.status))throw fail('Choose a preview state.');const m=await one('SELECT * FROM luce_members WHERE id=$1',[req.params.id]);if(!m?.is_test||m.stripe_subscription_id)throw fail('Only unbilled preview accounts can be simulated.',409);await q('UPDATE luce_members SET status=$1,access_until=$2 WHERE id=$3',[req.body.status,req.body.status==='preview'?later(7*86400000):now(),m.id]);res.json({success:true});});
   admin('get','/horoscopes',async(req,res)=>{await tick();res.json((await q('SELECT * FROM luce_horoscopes ORDER BY demo,published_at DESC NULLS LAST,updated_at DESC,month DESC')).rows);});
-  admin('put','/horoscopes/:month',async(req,res)=>{const month=req.params.month;if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw fail('Choose a valid month.');const title=String(req.body.title||'').trim().slice(0,180);if(!title)throw fail('Enter a title.');const draft={};for(const sign of signs){if(typeof req.body.content?.[sign]!=='string'||req.body.content[sign].length>20000)throw fail('Each sign needs text of up to 20,000 characters.');draft[sign]=req.body.content[sign];}const old=await one('SELECT revision,draft FROM luce_horoscopes WHERE month=$1',[month]);for(const [key,value] of Object.entries(old?.draft||{})){if(!(key in draft))draft[key]=value;}const general=req.body.content?.General;if(general!==undefined&&(typeof general!=='string'||general.length>20000))throw fail('The general reading must be text of up to 20,000 characters.');draft.General=general===undefined?(old?.draft?.General||''):general;let saved;if(old){saved=await one('UPDATE luce_horoscopes SET title=$1,draft=$2,demo=$3,scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1,updated_at=$4 WHERE month=$5 AND revision=$6 RETURNING *',[title,JSON.stringify(draft),!!req.body.demo,now(),month,req.body.revision]);}else{saved=await one('INSERT INTO luce_horoscopes(month,title,draft,demo) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING *',[month,title,JSON.stringify(draft),!!req.body.demo]);}if(!saved)throw fail('This month changed. Reload before saving.',409);res.json(saved);});
+  admin('get','/collections/:id',async(req,res)=>{
+   const row=await one('SELECT * FROM luce_horoscopes WHERE month=$1',[req.params.id]);
+   if(!row)throw fail('Collection not found.',404);
+   res.set('Cache-Control','no-store').json(row);
+  });
+  // A new collection has a stable UUID key, independent of its display month.
+  // Save the complete draft and metadata atomically; never publish as a side effect.
+  admin('put','/collections/:id',async(req,res)=>{
+   const id=req.params.id,b=req.body;
+   if(!/^(?:\d{4}-(?:0[1-9]|1[0-2])|collection-[a-f0-9-]{36})$/.test(id))throw fail('Invalid collection ID.');
+   const title=typeof b.title==='string'?b.title.trim():'';
+   if(!title||title.length>180)throw fail('Enter a title of up to 180 characters.');
+   if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(b.display_month||''))throw fail('Choose a valid month and year.');
+   if(!['monthly','special'].includes(b.collection_type))throw fail('Choose a collection section.');
+   if(typeof b.subtitle!=='string'||b.subtitle.length>500)throw fail('Use a subtitle of up to 500 characters.');
+   if(typeof b.demo!=='boolean'||typeof b.featured!=='boolean')throw fail('Choose the collection settings.');
+   const content={};for(const key of ['General',...signs]){
+    if(typeof b.content?.[key]!=='string'||b.content[key].length>20000)throw fail(key+' must contain at most 20,000 characters.');
+    content[key]=b.content[key];
+   }
+   const saved=await tx(async c=>{
+    // Also serializes new IDs and featured selection. No partial metadata writes.
+    await c.query('LOCK TABLE luce_horoscopes IN SHARE ROW EXCLUSIVE MODE');
+    const old=(await c.query('SELECT * FROM luce_horoscopes WHERE month=$1',[id])).rows[0];
+    if(old&&old.revision!==b.revision)throw fail('This collection changed in another session. Your text is retained. Reopen the saved collection before merging your edits.',409);
+    if(!old&&b.revision!=null)throw fail('The saved collection is no longer available. Your text is retained.',409);
+    const draft={...(old?.draft||{}),...content},featured=b.featured&&b.collection_type==='monthly';
+    if(old)await c.query('INSERT INTO luce_horoscope_history(collection_id,revision,snapshot) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[id,old.revision,JSON.stringify(old)]);
+    let row;
+    if(old)row=(await c.query(`UPDATE luce_horoscopes SET title=$2,draft=$3,demo=$4,display_month=$5,subtitle=$6,collection_type=$7,
+     featured_at=CASE WHEN $8 THEN COALESCE(featured_at,$9::timestamptz) ELSE NULL END,
+     scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1,updated_at=$9 WHERE month=$1 RETURNING *`,
+     [id,title,JSON.stringify(draft),b.demo,b.display_month,b.subtitle,b.collection_type,featured,now()])).rows[0];
+    else row=(await c.query(`INSERT INTO luce_horoscopes(month,title,draft,demo,display_month,subtitle,collection_type,featured_at,updated_at)
+     VALUES($1,$2,$3,$4,$5,$6,$7,CASE WHEN $8 THEN $9::timestamptz ELSE NULL END,$9) RETURNING *`,
+     [id,title,JSON.stringify(draft),b.demo,b.display_month,b.subtitle,b.collection_type,featured,now()])).rows[0];
+    if(featured)await c.query('UPDATE luce_horoscopes SET featured_at=NULL,revision=revision+1 WHERE month<>$1 AND featured_at IS NOT NULL',[id]);
+    await c.query('INSERT INTO luce_horoscope_history(collection_id,revision,snapshot) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[id,row.revision,JSON.stringify(row)]);
+    return row;
+   });
+   res.set('Cache-Control','no-store').json(saved);
+  });
+  admin('delete','/collections/:id',async(req,res)=>{
+   await tx(async c=>{
+    const row=(await c.query('SELECT * FROM luce_horoscopes WHERE month=$1 FOR UPDATE',[req.params.id])).rows[0];
+    if(!row||row.revision!==req.body.revision||row.title!==req.body.title)throw fail('Collection changed. Reopen it before deleting.',409);
+    await c.query('INSERT INTO luce_horoscope_history(collection_id,revision,snapshot) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[row.month,row.revision,JSON.stringify(row)]);
+    await c.query('DELETE FROM luce_horoscopes WHERE month=$1',[row.month]);
+   });res.json({deleted:true});
+  });
+  admin('put','/horoscopes/:month',async(req,res)=>{const month=req.params.month;if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw fail('Choose a valid month.');const title=String(req.body.title||'').trim().slice(0,180);if(!title)throw fail('Enter a title.');const draft={};for(const sign of signs){if(typeof req.body.content?.[sign]!=='string'||req.body.content[sign].length>20000)throw fail('Each sign needs text of up to 20,000 characters.');draft[sign]=req.body.content[sign];}const old=await one('SELECT revision,draft FROM luce_horoscopes WHERE month=$1',[month]);if(old&&req.body.revision==null)throw fail('Another collection already uses this month. This draft was NOT saved. Keep your text and use the updated New collection editor.',409);for(const [key,value] of Object.entries(old?.draft||{})){if(!(key in draft))draft[key]=value;}const general=req.body.content?.General;if(general!==undefined&&(typeof general!=='string'||general.length>20000))throw fail('The general reading must be text of up to 20,000 characters.');draft.General=general===undefined?(old?.draft?.General||''):general;let saved;if(old){saved=await one('UPDATE luce_horoscopes SET title=$1,draft=$2,demo=$3,scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1,updated_at=$4 WHERE month=$5 AND revision=$6 RETURNING *',[title,JSON.stringify(draft),!!req.body.demo,now(),month,req.body.revision]);}else{saved=await one('INSERT INTO luce_horoscopes(month,title,draft,demo) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING *',[month,title,JSON.stringify(draft),!!req.body.demo]);}if(!saved)throw fail('This month changed. Reload before saving.',409);res.json(saved);});
   // Collection metadata is independent of reading snapshots and the stable internal key.
   admin('patch','/horoscopes/:month/details',async(req,res)=>{
    const row=await one('SELECT * FROM luce_horoscopes WHERE month=$1',[req.params.month]);
@@ -266,7 +317,17 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
    const result=await one('UPDATE luce_horoscopes SET scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1,updated_at=$1 WHERE month=$2 AND revision=$3 AND scheduled_at IS NOT NULL RETURNING *',[now(),req.params.month,req.body.revision]);
    if(!result)throw fail('This schedule changed or has already published. Refresh its status.',409);res.json(result);
   });
-  admin('post','/horoscopes/:month/publish',async(req,res)=>{const row=await one('SELECT * FROM luce_horoscopes WHERE month=$1',[req.params.month]);if(!row||signs.some(s=>!row.draft[s]?.trim()))throw fail('Add content for all 12 signs before publishing.');const result=await one('UPDATE luce_horoscopes SET collection_hidden=false,published=draft,published_title=title,published_demo=demo,published_at=$1,scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1 WHERE month=$2 AND revision=$3 RETURNING *',[now(),req.params.month,req.body.revision]);if(!result)throw fail('This month changed. Reload before publishing.',409);res.json(result);});
+  admin('post','/horoscopes/:month/publish',async(req,res)=>{
+   const result=await tx(async c=>{
+    const row=(await c.query('SELECT * FROM luce_horoscopes WHERE month=$1 FOR UPDATE',[req.params.month])).rows[0];
+    if(!row||row.revision!==req.body.revision)throw fail('This collection changed. Your draft is retained; reopen it before publishing.',409);
+    if(signs.some(s=>!row.draft[s]?.trim()))throw fail('Add content for all 12 signs before publishing. Your draft is saved.');
+    await c.query('INSERT INTO luce_horoscope_history(collection_id,revision,snapshot) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[row.month,row.revision,JSON.stringify(row)]);
+    const saved=(await c.query('UPDATE luce_horoscopes SET collection_hidden=false,published=draft,published_title=title,published_demo=demo,published_at=$1,scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1,updated_at=$1 WHERE month=$2 RETURNING *',[now(),row.month])).rows[0];
+    await c.query('INSERT INTO luce_horoscope_history(collection_id,revision,snapshot) VALUES($1,$2,$3)',[saved.month,saved.revision,JSON.stringify(saved)]);
+    return saved;
+   });res.set('Cache-Control','no-store').json(result);
+  });
   admin('post','/horoscopes/:month/unpublish',async(req,res)=>{const result=await one('UPDATE luce_horoscopes SET collection_hidden=true,scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1 WHERE month=$1 AND revision=$2 RETURNING *',[req.params.month,req.body.revision]);if(!result)throw fail('This month changed. Reload first.',409);res.json(result);});
  }
  return {initialize,register,handleLiveEvent,access,syncSubscription,signs,tick,start,stop};
