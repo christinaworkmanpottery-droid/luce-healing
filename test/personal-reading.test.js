@@ -81,9 +81,9 @@ test('published guidance is scoped separately and source/timing audit failures b
    const body=JSON.parse(options.body);calls++;
    if(calls===1){assert.match(body.messages[0].content,/ongoing does not mean newly entering this week/);assert.match(body.messages[0].content,/Never infer a member's natal houses/);}
    const review={grounded:true,cohesive:true,accurate_placements:true,source_boundaries:true,timing_preserved:true,[failed]:false};
-   return {ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify(calls===1?generated():review)}}]})};
+   return {ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify(calls%2?generated():review)}}]})};
   }});
-  await assert.rejects(provider.generate(context),/another attempt/);assert.equal(calls,2);
+  await assert.rejects(provider.generate(context),/another attempt/);assert.equal(calls,6);
  }
 });
 test('member page generates once, displays escaped cohesive text, and reopens saved reading',async()=>{
@@ -170,4 +170,17 @@ test('generation error and retry stay beside the button; extra explanation is co
   const d=dom.window.document,b=d.querySelector('#generate-reading');assert.equal(b.textContent,'Create my reading');assert(d.querySelector('#personal-month').parentElement.hidden);assert(!d.querySelector('.reading-about').open);
   await b.onclick({preventDefault(){}});assert.equal(posts,1);assert.equal(b.disabled,false);assert.equal(b.textContent,'Try again');assert.match(d.querySelector('#personal-result #reading-status').textContent,/couldn’t finish/);assert.equal(d.querySelector('#feedback').textContent,'');
  }finally{dom.window.close();}
+});
+
+test('provider revises rejected drafts using concrete feedback and rechecks them',async()=>{
+ const context=contextFor(savedChart,{month:'2026-10',published:{General:source,Aries:source,Taurus:source}},[]);
+ const requests=[];const issue='Remove the guaranteed event next Tuesday.';
+ const provider=createOpenAIProvider({env:{OPENAI_API_KEY:'fake'},fetcher:async(_url,options)=>{
+  const b=JSON.parse(options.body);requests.push(b);const draft=b.response_format.json_schema.name==='personal_monthly_reading';
+  const value=draft?generated():{grounded:true,cohesive:true,accurate_placements:true,source_boundaries:true,timing_preserved:requests.length>2,issues:requests.length>2?[]:[issue]};
+  return {ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify(value)}}]})};
+ }});
+ const result=await provider.generate(context);assert.ok(result.text);assert.equal(requests.length,4);
+ const revision=JSON.parse(requests[2].messages[1].content);assert.ok(revision.corrections.includes(issue));assert.ok(revision.previousDraft.paragraphs.length);
+ assert.equal(requests[0].reasoning_effort,'low');assert.equal(requests[0].temperature,undefined);
 });
