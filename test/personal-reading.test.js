@@ -46,9 +46,24 @@ test('missing published General or reliable placements prevents generation',()=>
 });
 test('OpenAI adapter uses strict schema, no storage and rejects unsupported prose or refusal',async()=>{
  const context=contextFor(savedChart,{month:'2026-10',published:{General:source,Aries:source,Taurus:source}},[]);let requests=[];
- const fetcher=async(_url,options)=>{requests.push(JSON.parse(options.body));return {ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify(requests.length%2?generated():{grounded:true,cohesive:true,accurate_placements:true})}}]})}};
+ const fetcher=async(_url,options)=>{requests.push(JSON.parse(options.body));return {ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify(requests.length%2?generated():{grounded:true,cohesive:true,accurate_placements:true,source_boundaries:true,timing_preserved:true})}}]})}};
  const provider=createOpenAIProvider({env:{OPENAI_API_KEY:'fake'},fetcher});const result=await provider.generate(context);assert.ok(result.text);assert.equal(requests.length,2);assert.equal(requests[0].store,false);assert.equal(requests[0].response_format.json_schema.strict,true);
  const refuses=createOpenAIProvider({env:{OPENAI_API_KEY:'fake'},fetcher:async()=>({ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{refusal:'no'}}]})})});await assert.rejects(refuses.generate(context),/could not be completed/);
+});
+test('published guidance is scoped separately and source/timing audit failures block a reading',async()=>{
+ const context=contextFor(savedChart,{month:'2026-10',published:{General:source,Aries:source,Taurus:source}},[]);
+ assert.equal(context.sources[0].publishedForMonth,'2026-10');
+ assert.match(context.sources[0].interpretationScope,/Collective/);assert.match(context.sources[1].interpretationScope,/not the member/);
+ for(const failed of ['grounded','accurate_placements','source_boundaries','timing_preserved']){
+  let calls=0;
+  const provider=createOpenAIProvider({env:{OPENAI_API_KEY:'fake'},fetcher:async(_url,options)=>{
+   const body=JSON.parse(options.body);calls++;
+   if(calls===1){assert.match(body.messages[0].content,/ongoing does not mean newly entering this week/);assert.match(body.messages[0].content,/Never infer a member's natal houses/);}
+   const review={grounded:true,cohesive:true,accurate_placements:true,source_boundaries:true,timing_preserved:true,[failed]:false};
+   return {ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify(calls===1?generated():review)}}]})};
+  }});
+  await assert.rejects(provider.generate(context),/another attempt/);assert.equal(calls,2);
+ }
 });
 test('member page generates once, displays escaped cohesive text, and reopens saved reading',async()=>{
  const {JSDOM}=require('jsdom'),fs=require('fs');let stored=null,posts=0;
