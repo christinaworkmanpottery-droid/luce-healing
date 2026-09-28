@@ -71,7 +71,8 @@ function renderNatalReferences(result,context) {
   return {...result,paragraphs:result.paragraphs.map(p=>({...p,text:typeof p.text==='string'?p.text.replace(/\{\{natal:([^{}]+)\}\}/g,(_token,body)=>{
     if(!locked.has(body))throw fail('Your reading referenced a placement that is unavailable.',502);
     return 'your natal '+body+' in '+locked.get(body);
-  }):p.text}))};
+  }).replace(/\b(?:the )?(Mercury|Venus|Mars|Jupiter)[ -]retrograde (guidance|themes)\b/gi,(_phrase,body,noun)=>
+    (_phrase.startsWith('The ')?noun[0].toUpperCase()+noun.slice(1):noun)+' about the current '+Object.keys(chart.meanings).find(name=>name.toLowerCase()===body.toLowerCase())+' retrograde'):p.text}))};
 }
 function createOpenAIProvider({env, fetcher = fetch}) {
   const model = env.MEMBERSHIP_AI_MODEL || 'gpt-5.1-2025-11-13';
@@ -82,7 +83,7 @@ function createOpenAIProvider({env, fetcher = fetch}) {
     try {
       response = await fetcher('https://api.openai.com/v1/chat/completions', {
         method:'POST',signal:AbortSignal.timeout(60000),headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify({model,store:false,messages,...(/^gpt-5/.test(model)?{reasoning_effort:'low'}:{temperature:0.3}),max_completion_tokens:maxTokens,
+        body:JSON.stringify({model,store:false,messages,...(/^gpt-5/.test(model)?(name==='reading_grounding_review'?{reasoning_effort:'none',temperature:0.3}:{reasoning_effort:'low'}):{temperature:0.3}),max_completion_tokens:maxTokens,
           response_format:{type:'json_schema',json_schema:{name,strict:true,schema}}})
       });
     } catch (_) { throw fail('The reading service took too long. Please try again shortly.',503); }
@@ -108,7 +109,7 @@ For every paragraph, verify that its evidence IDs support its actual monthly cla
       let rendered, text, localIssue;
       try { rendered=renderNatalReferences(draft.value,context); text=validate(rendered,context); }
       catch(e) { if(e.status!==502)throw e; localIssue=e.message; }
-      const review = await request([{role:'system',content:reviewInstructions},{role:'user',content:JSON.stringify({context,reading:(rendered||draft.value).paragraphs})}],reviewSchema,'reading_grounding_review',2300);
+      const review = await request([{role:'system',content:reviewInstructions},{role:'user',content:JSON.stringify({context,reading:(rendered||draft.value).paragraphs})}],reviewSchema,'reading_grounding_review',2500);
       usage.push({draft:draft.usage,review:review.usage});
       if(!localIssue && checks.every(key=>review.value[key]===true))
         return {text,paragraphs:rendered.paragraphs,provider:'openai',model,usage,version};
