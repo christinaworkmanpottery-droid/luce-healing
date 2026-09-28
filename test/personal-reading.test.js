@@ -182,5 +182,15 @@ test('provider revises rejected drafts using concrete feedback and rechecks them
  }});
  const result=await provider.generate(context);assert.ok(result.text);assert.equal(requests.length,4);
  const revision=JSON.parse(requests[2].messages[1].content);assert.ok(revision.corrections.includes(issue));assert.ok(revision.previousDraft.paragraphs.length);
- assert.equal(requests[0].reasoning_effort,'low');assert.equal(requests[0].temperature,undefined);
+ assert.equal(requests[0].reasoning_effort,'low');assert.equal(requests[0].temperature,undefined);assert.equal(requests[1].reasoning_effort,'none');assert.equal(requests[1].max_completion_tokens,2500);
+});
+
+test('published retrograde guidance is labeled as current without changing natal facts',()=>{
+ const {renderNatalReferences}=require('../private-membership/personal-reading');const {validatePlacements}=require('../private-membership/placement-validation');
+ const c={placements:[{placement:'Venus',sign:'Leo'}]};
+ const d=renderNatalReferences({paragraphs:[{text:'The Venus-retrograde guidance invites reflection through {{natal:Venus}}.'}]},c);
+ assert.equal(d.paragraphs[0].text,'Guidance about the current Venus retrograde invites reflection through your natal Venus in Leo.');
+ assert.equal(validatePlacements(d.paragraphs[0].text,c),true);
+ const bad=renderNatalReferences({paragraphs:[{text:'Your natal Venus in Aries. The Venus-retrograde guidance invites reflection.'}]},c);
+ assert.throws(()=>validatePlacements(bad.paragraphs[0].text,c));
 });
