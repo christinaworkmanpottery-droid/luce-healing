@@ -11,6 +11,7 @@ const signature = placements => JSON.stringify(placements.map(p => [p.placement,
 function validatePlacements(text, context, {strict = true} = {}) {
   const locked = new Map(context.placements.map(p => [p.placement,p.sign.toLowerCase()]));
   const normalized = text.normalize('NFKC').replace(/[’‘]/g,"'");
+  if (/\{\{|\}\}/.test(normalized)) throw failure();
   let remaining = normalized;
   const natal = new RegExp('\\byour natal (' + bodyPattern + ') in (' + signPattern + ')\\b','gi');
   remaining = remaining.replace(natal, (phrase,body,sign) => {

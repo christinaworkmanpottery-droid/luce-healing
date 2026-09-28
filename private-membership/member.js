@@ -52,27 +52,41 @@ async function readings(config,personal){
  root.querySelectorAll('[data-open-month]').forEach(b=>b.onclick=act(async()=>{selected=b.dataset.openMonth;await show();document.getElementById('month-label').scrollIntoView({behavior:'smooth',block:'start'});}));await show();
 }
 async function personalReading(){
+ document.body.classList.add('personal-reading-page');
+ const heading=document.querySelector('header h1');if(heading)heading.textContent='Your personal reading';
+ const nav=document.querySelector('nav');
+ if(nav){for(const a of nav.querySelectorAll('a')){if(a.getAttribute('href')==='/members/reading'){a.textContent='My reading';a.setAttribute('aria-current','page');}if(a.getAttribute('href')==='/members/information')a.hidden=true;}}
+ feedback.textContent='';
  const catalog=await api('personal-readings');
  const months=[...new Set([...catalog.available.map(x=>x.month),...catalog.saved.map(x=>x.month)])].sort().reverse();
  const requested=new URLSearchParams(location.search).get('month');
  let selected=months.includes(requested)?requested:catalog.available[0]?.month||months[0];
  const monthLabel=value=>new Date(value+'-15T12:00:00Z').toLocaleDateString('en-US',{month:'long',year:'numeric'});
- root.innerHTML=`<section class="card"><h2>Your Personal Monthly Reading</h2><p>A reading that brings your birth-chart placements and Christina’s published monthly guidance together, with space for reflection and practical next steps.</p><p class="muted">AI-assisted using Luce Healing’s published content and your reliably calculated placements. Your reading is saved for this month, so you can return to the same words whenever you need them.</p><p><a href="/members/chart">View or update my birth chart</a> · <a href="/members">Read Christina’s original horoscopes</a></p>${months.length?`<label for="personal-month">Reading month</label><select id="personal-month">${months.map(month=>`<option value="${month}">${esc(monthLabel(month))}${catalog.saved.some(r=>r.month===month)?' — saved':''}</option>`).join('')}</select>`:'<p>Your personal reading will be available when this month’s horoscopes are published.</p>'}</section><section id="personal-result" class="card" aria-live="polite"></section>`;
- const target=document.getElementById('personal-result');let revision=0;
+ root.innerHTML=`<section class="card personal-card">${months.length?`<div ${months.length===1?'hidden':''}><label for="personal-month">Reading month</label><select id="personal-month">${months.map(month=>`<option value="${month}">${esc(monthLabel(month))}</option>`).join('')}</select></div>`:''}<div id="personal-result" aria-live="polite"></div><details class="reading-about"><summary>About your reading</summary><p class="muted">AI-assisted reflection combining your saved birth chart with Christina’s published monthly guidance. Your reading is saved automatically for you to return to.</p><p class="muted">Your name, email, birth date, time and location are not sent to the AI service.</p><p><a href="/members/chart">View or update my birth chart</a> · <a href="/members">Original horoscopes</a></p></details></section>`;
+ const target=document.getElementById('personal-result');let revision=0,poll=null,pollCount=0;
+ const errorMessage=e=>e.status===502?'We couldn’t finish your reading accurately. Please try again.':e.message||'We couldn’t load your reading. Please try again.';
  async function show(){
-  const current=++revision,month=selected;if(!month){target.hidden=true;return;}
+  clearTimeout(poll);
+  const current=++revision,month=selected;
+  if(!month){target.textContent='Your personal reading will be available when this month’s horoscopes are published.';return;}
   target.textContent='Loading your reading…';
-  const result=await api('personal-readings/'+encodeURIComponent(month));if(current!==revision)return;
-  if(result.reading){const r=result.reading;target.innerHTML=`<h2>${esc(r.label)}</h2><p class="muted">Your saved personal reading</p><div class="horoscope">${esc(r.text)}</div><details style="margin-top:24px"><summary>Placements used for this reading</summary><p>${r.placements.map(p=>esc(p.placement+' in '+p.sign)).join(' · ')}</p>${r.omitted.length?`<p class="muted">Not included because a reliable sign was unavailable: ${r.omitted.map(esc).join(', ')}.</p>`:''}<p class="muted">This reading reflects the chart and published guidance available when it was created. A saved reading is checked against your current calculated placements. If those placements change or a consistency check fails, you can generate a corrected reading.</p></details>`;return;}
-  target.innerHTML=`<h2>${esc(monthLabel(month))}</h2>${!catalog.hasChart?'<p>Save your birth details to begin. Unknown birth time or location is welcome; we use only placements that can be calculated reliably.</p><a class="button" href="/members/chart">Add my birth details</a>':!catalog.enabled?'<p>Personal readings are temporarily unavailable. Your birth chart and original horoscopes are still available.</p>':result.generating?'<p>Your reading is being prepared. Check again in a moment.</p><button id="check-reading">Check for my saved reading</button>':catalog.available.some(x=>x.month===month)?'<p>Your reliable placements will be combined with the General reading, relevant sign horoscopes, and applicable published Special Guidance. Your birth date, time, location, name and email are not sent to OpenAI.</p><p class="muted">Please check your birth chart first. Once created, this month’s reading stays saved.</p><button id="generate-reading">Generate my personal reading</button>':'<p>No saved reading is available for this month.</p>'}`;
-  const check=document.getElementById('check-reading');if(check)check.onclick=act(show);
-  const generate=document.getElementById('generate-reading');if(generate)generate.onclick=act(async()=>{
-   const selector=document.getElementById('personal-month');selector.disabled=true;generate.textContent='Preparing your reading…';feedback.textContent='This may take a minute. Your reading will be saved automatically.';
-   try{await api('personal-readings/'+encodeURIComponent(month),'POST',{});if(current===revision){await show();feedback.textContent='Your personal reading is saved.';}}
-   finally{selector.disabled=false;if(generate.isConnected)generate.textContent='Generate my personal reading';}
-  });
+  let result;
+  try{result=await api('personal-readings/'+encodeURIComponent(month));}
+  catch(e){if(current===revision){target.innerHTML='<p id="reading-status" role="status"></p><button id="reload-reading">Try again</button>';target.querySelector('#reading-status').textContent=errorMessage(e);target.querySelector('button').onclick=show;}return;}
+  if(current!==revision)return;
+  if(result.reading){const r=result.reading;target.innerHTML=`<h2>${esc(r.label)}</h2><p class="muted">Your saved personal reading</p><div class="horoscope">${esc(r.text)}</div><details class="reading-about"><summary>My birth-chart placements</summary><p>${r.placements.map(p=>esc(p.placement+' in '+p.sign)).join(' · ')}</p>${r.omitted.length?`<p class="muted">Not included because a reliable sign was unavailable: ${r.omitted.map(esc).join(', ')}.</p>`:''}</details>`;return;}
+  target.innerHTML=`<h2>${esc(monthLabel(month))}</h2>${!catalog.hasChart?'<p>Add your birth details to create your reading.</p><a class="button" href="/members/chart">Add my birth details</a>':!catalog.enabled?'<p>Personal readings are temporarily unavailable. Please try again later.</p>':result.generating?'<p id="reading-status" role="status">Preparing your reading… It will appear here automatically.</p>':catalog.available.some(x=>x.month===month)?'<p>Your birth chart and Christina’s monthly guidance, brought together for you.</p><button id="generate-reading">Create my reading</button><p id="reading-status" role="status"></p>':'<p>No saved reading is available for this month.</p>'}`;
+  if(result.generating){if(pollCount++<60)poll=setTimeout(show,3000);else{target.innerHTML+='<button id="check-reading">Check my reading</button>';document.getElementById('check-reading').onclick=()=>{pollCount=0;return show();};}return;}
+  const generate=document.getElementById('generate-reading');if(generate)generate.onclick=async e=>{
+   e?.preventDefault();if(generate.disabled)return;
+   const selector=document.getElementById('personal-month'),status=document.getElementById('reading-status');
+   if(selector)selector.disabled=true;generate.disabled=true;generate.textContent='Creating your reading…';status.textContent='This may take a minute. Your reading will appear here and save automatically.';
+   try{await api('personal-readings/'+encodeURIComponent(month),'POST',{});if(current===revision)await show();}
+   catch(err){if(current===revision){if(err.status===409){await show();}else{status.textContent=errorMessage(err);generate.textContent='Try again';}}}
+   finally{if(selector)selector.disabled=false;if(generate.isConnected){generate.disabled=false;if(generate.textContent==='Creating your reading…')generate.textContent='Create my reading';}}
+  };
  }
- const selector=document.getElementById('personal-month');if(selector){selector.value=selected;selector.onchange=act(async()=>{selected=selector.value;await show();});}
+ const selector=document.getElementById('personal-month');if(selector){selector.value=selected;selector.onchange=()=>{selected=selector.value;pollCount=0;return show();};}
  await show();
 }
 
@@ -97,4 +111,3 @@ el('birth-form').onsubmit=act(async()=>{const result=await api('chart','PUT',{da
 
 load().catch(e=>{feedback.textContent=e.message;root.innerHTML='<section class="card"><a class="button" href="/members/review">Open private preview with Admin</a></section>';});
 })();
-

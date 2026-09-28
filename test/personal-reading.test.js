@@ -138,3 +138,36 @@ test('chart changes invalidate a cached reading and block a stale in-flight gene
   assert.equal((await h.call('/2026-10','POST',2)).status,409);assert.equal((await h.call('/2026-10','GET',2)).data.reading,null);
  }finally{await h.close()}
 });
+test('server renders natal tokens from calculated facts before validation and review',async()=>{
+ const {renderNatalReferences}=require('../private-membership/personal-reading');
+ const placements=[['Sun','Virgo'],['Moon','Taurus'],['Rising','Libra'],['Mercury','Virgo'],['Venus','Leo'],['Mars','Cancer'],['Jupiter','Cancer']].map(([placement,sign])=>({placement,sign,reliable:true}));
+ const content=Object.fromEntries(['General','Virgo','Taurus','Libra','Leo','Cancer'].map(k=>[k,source]));
+ const context=contextFor({placements},{month:'2026-10',published:content},[]);
+ const draft=generated();draft.paragraphs[0].text+=' Together, {{natal:Mars}} and {{natal:Jupiter}} can inform your choices.';
+ draft.paragraphs[1].text+=' Consider {{natal:Sun}}, {{natal:Moon}} and {{natal:Rising}} as distinct lenses.';
+ draft.paragraphs[2].text+=' Weave {{natal:Mercury}} and {{natal:Venus}} into this reflection.';
+ let calls=0;
+ const provider=createOpenAIProvider({env:{OPENAI_API_KEY:'fake'},fetcher:async(_url,options)=>{
+  const body=JSON.parse(options.body);calls++;
+  if(calls===1)assert.match(body.messages[0].content,/exact token/);
+  else{const review=JSON.parse(body.messages[1].content);assert.match(review.reading[0].text,/your natal Mars in Cancer and your natal Jupiter in Cancer/);assert.doesNotMatch(JSON.stringify(review.reading),/\{\{/);}
+  return {ok:true,json:async()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify(calls===1?draft:{grounded:true,cohesive:true,accurate_placements:true,source_boundaries:true,timing_preserved:true})}}]})};
+ }});
+ const result=await provider.generate(context);assert.match(result.text,/your natal Mars in Cancer/);assert.equal(calls,2);
+ assert.throws(()=>renderNatalReferences({paragraphs:[{text:'{{natal:Neptune}}'}]},context),/unavailable/);
+ const unknown=contextFor(savedChart,{month:'2026-10',published:{General:source,Aries:source,Taurus:source}},[]);
+ assert.throws(()=>renderNatalReferences({paragraphs:[{text:'{{natal:Rising}}'}]},unknown),/unavailable/);
+});
+test('generation error and retry stay beside the button; extra explanation is collapsed',async()=>{
+ const {JSDOM}=require('jsdom'),fs=require('fs');let posts=0;
+ const dom=new JSDOM(fs.readFileSync('private-membership/member.html','utf8'),{url:'https://lucehealing.com/members/reading',runScripts:'outside-only'});
+ dom.window.fetch=async(url,opts={})=>{
+  let data;if(url.endsWith('/config'))data={private:false};else if(url.endsWith('/me'))data={access:true};else if(url.endsWith('/personal-readings'))data={available:[{month:'2026-10'}],saved:[],enabled:true,hasChart:true};else if(url.endsWith('/personal-readings/2026-10')){if(opts.method==='POST'){posts++;return {ok:false,status:502,json:async()=>({error:'Technical validation failure'})};}data={reading:null};}else throw Error(url);return {ok:true,json:async()=>data};
+ };
+ try{
+  dom.window.eval(fs.readFileSync('private-membership/member.js','utf8'));
+  for(let i=0;i<100&&!dom.window.document.querySelector('#generate-reading');i++)await new Promise(r=>setTimeout(r,5));
+  const d=dom.window.document,b=d.querySelector('#generate-reading');assert.equal(b.textContent,'Create my reading');assert(d.querySelector('#personal-month').parentElement.hidden);assert(!d.querySelector('.reading-about').open);
+  await b.onclick({preventDefault(){}});assert.equal(posts,1);assert.equal(b.disabled,false);assert.equal(b.textContent,'Try again');assert.match(d.querySelector('#personal-result #reading-status').textContent,/couldn’t finish/);assert.equal(d.querySelector('#feedback').textContent,'');
+ }finally{dom.window.close();}
+});
