@@ -8,7 +8,7 @@ const generated=()=>({paragraphs:Array.from({length:5},(_,i)=>({text:`Reflection
 async function harness(){
  const db=new PGlite(); let calls=0,hook=null,contexts=[];
  const env={NODE_ENV:'test',STRIPE_SECRET_KEY:'sk_live_fake',STRIPE_WEBHOOK_SECRET:'fake',MEMBERSHIP_LIVE_ENABLED:'true',MEMBERSHIP_PORTAL_LIVE_CONFIGURATION:'fake',TURNSTILE_SITE_KEY:'fake',TURNSTILE_SECRET_KEY:'fake',MEMBERSHIP_LIVE_PRICE_FOUNDING:'fake',MEMBERSHIP_LIVE_PRICE_MONTHLY:'fake',MEMBERSHIP_LIVE_PRICE_ANNUAL:'fake'};
- const provider={enabled:()=>true,generate:async c=>{calls++;contexts.push(c);if(hook)await hook();return generated();}};
+ const provider={enabled:()=>true,generate:async c=>{calls++;contexts.push(c);if(hook){const result=await hook();if(result)return result;}return generated();}};
  const pool={query:(...a)=>db.query(...a),connect:async()=>({query:(...a)=>db.query(...a),release(){}})};
  const service=createMembership({pool,env,clock:()=>new Date('2026-09-28T03:00:00Z'),stripeClient:{},readingProvider:provider});await service.initialize();
  for(let id=1;id<=3;id++){
@@ -27,7 +27,6 @@ test('published-only grounded input, account isolation, persistent cache and ent
   const catalog=await h.call();assert.deepEqual(catalog.data.available,[{month:'2026-10',label:'October 2026'}]);assert.equal(catalog.cache,'no-store');
   const created=await h.call('/2026-10','POST');assert.equal(created.status,200);assert.ok(created.data.reading.text);assert.equal(h.calls(),1);
   const c=h.contexts[0];assert.equal(c.sources.length,6);assert.deepEqual([...new Set(c.sources.map(s=>s.collection))],['2026-10','special']);assert.ok(c.omitted.includes('Rising'));assert.ok(!JSON.stringify(c).includes('SECRET'));assert.ok(!JSON.stringify(c).includes('private1'));assert.ok(!JSON.stringify(c).includes('Private Name'));
-  await h.db.query("UPDATE luce_members SET birth_chart=NULL WHERE id=1");
   assert.deepEqual((await h.call('/2026-10')).data,created.data);assert.deepEqual((await h.call('/2026-10','POST')).data,created.data);assert.equal(h.calls(),1);
   assert.equal((await h.call('/2026-10','GET',2)).data.reading,null);assert.equal((await h.call('/2026-11','POST',2)).status,404);
   await h.db.query("UPDATE luce_members SET status='canceled' WHERE id=1");assert.equal((await h.call('/2026-10')).status,403);assert.equal((await h.call('/2026-10','POST')).status,403);
@@ -64,4 +63,42 @@ test('member page generates once, displays escaped cohesive text, and reopens sa
   assert.equal(posts,1);assert.match(dom.window.document.querySelector('#personal-result').textContent,/Your saved personal reading/);assert.equal(dom.window.document.querySelector('#personal-result script'),null);assert.match(dom.window.document.querySelector('#personal-result').textContent,/Rising/);
   dom.window.eval(fs.readFileSync('private-membership/member.js','utf8'));await until(()=>dom.window.document.querySelector('#personal-result')?.textContent.includes('Your saved personal reading'));assert.equal(posts,1);
  }finally{dom.window.close()}
+});
+test('contradictory draft is rejected and retried before saving; valid cache makes no additional calls',async()=>{
+ const h=await harness();try{
+  h.setHook(()=>{const r=generated();r.paragraphs[0].text+=' '+(h.calls()===1?'Your natal Sun in Leo.':'Your natal Sun in Aries.');return r;});
+  const result=await h.call('/2026-10','POST');assert.equal(result.status,200);assert.equal(h.calls(),2);assert.match(result.data.reading.text,/natal Sun in Aries/);assert.doesNotMatch(result.data.reading.text,/Sun in Leo/);
+  assert.deepEqual(h.contexts[0].lockedNatalPlacements,{Sun:'Aries',Moon:'Taurus'});
+  assert.deepEqual((await h.call('/2026-10')).data,result.data);assert.deepEqual((await h.call('/2026-10','POST')).data,result.data);assert.equal(h.calls(),2);
+ }finally{await h.close()}
+});
+test('repeated invalid generation is never displayed or marked complete',async()=>{
+ const h=await harness();try{
+  h.setHook(()=>{const r=generated();r.paragraphs[0].text+=' Your natal Rising in Libra.';return r;});
+  assert.equal((await h.call('/2026-10','POST')).status,502);assert.equal(h.calls(),2);assert.equal((await h.call('/2026-10')).data.reading,null);
+  assert.equal((await h.db.query('SELECT state FROM luce_personal_readings WHERE member_id=1')).rows[0].state,'failed');
+ }finally{await h.close()}
+});
+test('deployment audit preserves valid legacy cache and invalidates contradictory text while retaining the record',async()=>{
+ const h=await harness();try{
+  await h.call('/2026-10','POST');await h.call('/2026-10','POST',2);
+  await h.db.query(`UPDATE luce_personal_readings SET provenance=jsonb_set(provenance,'{version}','"luce-monthly-v1"')`);
+  await h.db.query(`UPDATE luce_personal_readings SET reading=jsonb_set(reading,'{text}',to_jsonb((reading->>'text')||' Your Sun and Moon in Leo.')) WHERE member_id=1`);
+  const {createPersonalReadings}=require('../private-membership/personal-reading');
+  const service=createPersonalReadings({q:(...a)=>h.db.query(...a),now:()=>new Date('2026-09-28T03:00:00Z'),provider:{enabled:()=>true},limit:async()=>{}});
+  await service.auditSaved();
+  const rows=(await h.db.query('SELECT member_id,state,reading,provenance FROM luce_personal_readings ORDER BY member_id')).rows;
+  assert.equal(rows[0].state,'failed');assert.match(rows[0].reading.text,/Sun and Moon in Leo/);assert.equal(rows[0].provenance.invalidationReason,'natal-placement-consistency');assert.equal(rows[1].state,'complete');
+  assert.equal((await h.call('/2026-10')).data.reading,null);assert.ok((await h.call('/2026-10','GET',2)).data.reading);assert.equal(h.calls(),2);
+  assert.equal((await h.call('/2026-10','POST')).status,200);assert.equal(h.calls(),3);
+ }finally{await h.close()}
+});
+test('chart changes invalidate a cached reading and block a stale in-flight generation',async()=>{
+ const h=await harness();try{
+  await h.call('/2026-10','POST');
+  await h.db.query('UPDATE luce_members SET birth_chart=NULL WHERE id=1');
+  assert.equal((await h.call('/2026-10')).data.reading,null);assert.equal(h.calls(),1);
+  h.setHook(async()=>{await h.db.query('UPDATE luce_members SET birth_chart=NULL WHERE id=2');});
+  assert.equal((await h.call('/2026-10','POST',2)).status,409);assert.equal((await h.call('/2026-10','GET',2)).data.reading,null);
+ }finally{await h.close()}
 });

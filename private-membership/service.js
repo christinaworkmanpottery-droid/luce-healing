@@ -52,6 +52,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   await personalReadings.initialize();
   await q('ALTER TABLE luce_members ADD COLUMN IF NOT EXISTS checkout_id TEXT, ADD COLUMN IF NOT EXISTS checkout_nonce TEXT, ADD COLUMN IF NOT EXISTS checkout_plan TEXT');
   await q('ALTER TABLE luce_members ADD COLUMN IF NOT EXISTS birth_profile JSONB, ADD COLUMN IF NOT EXISTS birth_chart JSONB');
+  await personalReadings.auditSaved();
   await q('ALTER TABLE luce_horoscopes ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS scheduled_draft JSONB, ADD COLUMN IF NOT EXISTS scheduled_title TEXT, ADD COLUMN IF NOT EXISTS scheduled_demo BOOLEAN');
   await q("ALTER TABLE luce_horoscopes ADD COLUMN IF NOT EXISTS display_month TEXT, ADD COLUMN IF NOT EXISTS subtitle TEXT NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS featured_at TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS collection_hidden BOOLEAN NOT NULL DEFAULT false");
   await q("ALTER TABLE luce_horoscopes ADD COLUMN IF NOT EXISTS collection_type TEXT NOT NULL DEFAULT 'monthly'");
