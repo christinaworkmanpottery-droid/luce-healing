@@ -166,8 +166,20 @@ function createPersonalReadings({q,now,provider,limit}) {
       RETURNING member_id`,[member.id,month,claim,now(),new Date(+now()-180000)]);
     if(!held){const existing=await get(member,month);if(existing.reading)return existing;throw fail('Your reading is already being prepared. Please check again shortly.');}
     try{
-      await limit('personal-member:'+member.id,3,86400000);
-      await limit('personal-global',100,86400000);
+      // Failed drafts must not lock a member out for the rest of the day.
+      // Keep a short retry window and the existing site-wide AI spending cap.
+      const retryWindow=15*60*1000;
+      try { await limit('personal-retry:'+member.id,3,retryWindow); }
+      catch(e) {
+        if(e.status!==429)throw e;
+        const minutes=Math.max(1,Math.ceil((retryWindow-(+now()%retryWindow))/60000));
+        throw fail(`Please wait ${minutes} minute${minutes===1?'':'s'} before trying to generate again. Failed attempts have not used up your monthly reading.`,429);
+      }
+      try { await limit('personal-global',100,86400000); }
+      catch(e) {
+        if(e.status!==429)throw e;
+        throw fail('The reading service has reached its daily capacity. Please try again tomorrow. Your saved readings and published horoscopes remain available.',429);
+      }
       let result,text;
       for(let attempt=0;attempt<2;attempt++) {
         try {

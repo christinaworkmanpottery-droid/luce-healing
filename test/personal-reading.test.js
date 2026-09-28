@@ -6,11 +6,11 @@ const source='Make room to review your commitments and consider which relationsh
 const savedChart={method:'deterministic-test',placements:[{placement:'Sun',sign:'Aries',reliable:true},{placement:'Moon',sign:'Taurus',reliable:true},{placement:'Rising',sign:null,reliable:false}]};
 const generated=()=>({paragraphs:Array.from({length:5},(_,i)=>({text:`Reflection ${i+1}. Your priorities can become clearer when you pause and ask what feels sustainable for you. You can use this month as an invitation to listen closely to your needs, notice where you feel supported, and give your decisions enough space to develop. Consider a small adjustment in how you approach a commitment, allowing your relationships and your own wellbeing to inform the next step.`,evidence:[{source_id:'s1',excerpt:source.slice(0,80)}]})),provider:'fake',model:'fake'});
 async function harness(){
- const db=new PGlite(); let calls=0,hook=null,contexts=[];
+ const db=new PGlite(); let calls=0,hook=null,contexts=[],time=new Date('2026-09-28T03:00:00Z');
  const env={NODE_ENV:'test',STRIPE_SECRET_KEY:'sk_live_fake',STRIPE_WEBHOOK_SECRET:'fake',MEMBERSHIP_LIVE_ENABLED:'true',MEMBERSHIP_PORTAL_LIVE_CONFIGURATION:'fake',TURNSTILE_SITE_KEY:'fake',TURNSTILE_SECRET_KEY:'fake',MEMBERSHIP_LIVE_PRICE_FOUNDING:'fake',MEMBERSHIP_LIVE_PRICE_MONTHLY:'fake',MEMBERSHIP_LIVE_PRICE_ANNUAL:'fake'};
  const provider={enabled:()=>true,generate:async c=>{calls++;contexts.push(c);if(hook){const result=await hook();if(result)return result;}return generated();}};
  const pool={query:(...a)=>db.query(...a),connect:async()=>({query:(...a)=>db.query(...a),release(){}})};
- const service=createMembership({pool,env,clock:()=>new Date('2026-09-28T03:00:00Z'),stripeClient:{},readingProvider:provider});await service.initialize();
+ const service=createMembership({pool,env,clock:()=>new Date(time),stripeClient:{},readingProvider:provider});await service.initialize();
  for(let id=1;id<=3;id++){
   await db.query("INSERT INTO luce_members(id,email,name,password_hash,verified_at,status,access_until,is_test,birth_chart) VALUES($1,$2,'Private Name','unused',NOW(),$3,'2026-12-01',false,$4)",[id,`private${id}@example.com`,id===3?'unpaid':'active',JSON.stringify(savedChart)]);
   await db.query("INSERT INTO luce_member_sessions(token_hash,member_id,kind,expires_at) VALUES($1,$2,'member','2026-12-01')",[crypto.createHash('sha256').update(String(id).repeat(64)).digest('hex'),id]);
@@ -19,8 +19,29 @@ async function harness(){
  await publish('2026-10','2026-10','monthly',{featured:true});await publish('special','2026-10','special');await publish('hidden','2026-10','special',{hidden:true});await publish('draft','2026-10','special',{draft:true});await publish('future','2026-10','special',{future:true});await publish('demo','2026-10','special',{demo:true});await publish('september','2026-09','special');await publish('2026-11','2026-11');
  const app=express();app.use(express.json());service.register(app,(_req,res)=>res.sendStatus(401));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
  const call=async(path='',method='GET',id=1)=>{const r=await fetch('http://127.0.0.1:'+server.address().port+'/api/membership/personal-readings'+path,{method,headers:{Cookie:id?'luce_member='+String(id).repeat(64):''}});return {status:r.status,data:await r.json(),cache:r.headers.get('cache-control')}};
- return {db,call,contexts,calls:()=>calls,setHook:h=>hook=h,close:async()=>{await new Promise(r=>server.close(r));await db.close()}};
+ return {db,call,contexts,calls:()=>calls,setHook:h=>hook=h,advance:ms=>time=new Date(+time+ms),close:async()=>{await new Promise(r=>server.close(r));await db.close()}};
 }
+test('legacy daily lockout no longer blocks recovery; failed attempts have a bounded short cooldown',async()=>{
+ const h=await harness();try{
+  const key=crypto.createHash('sha256').update('personal-member:1').digest('hex');
+  await h.db.query('INSERT INTO luce_member_limits(key,bucket,n) VALUES($1,$2,7)',[key,Math.floor(+new Date('2026-09-28T03:00:00Z')/86400000)]);
+  h.setHook(()=>{throw Object.assign(Error('Provider unavailable'),{status:503})});
+  for(let i=0;i<3;i++)assert.equal((await h.call('/2026-10','POST')).status,503);
+  const blocked=await h.call('/2026-10','POST');assert.equal(blocked.status,429);assert.match(blocked.data.error,/15 minutes/);assert.equal(h.calls(),3);
+  assert.equal((await h.db.query('SELECT state FROM luce_personal_readings WHERE member_id=1')).rows[0].state,'failed');
+  h.advance(15*60*1000);h.setHook(null);
+  assert.equal((await h.call('/2026-10','POST')).status,200);assert.equal(h.calls(),4);
+  for(let i=0;i<5;i++)assert.equal((await h.call('/2026-10','POST')).status,200);
+  assert.equal(h.calls(),4);
+ }finally{await h.close()}
+});
+test('site-wide generation cap remains enforced with a specific message',async()=>{
+ const h=await harness();try{
+  const key=crypto.createHash('sha256').update('personal-global').digest('hex');
+  await h.db.query('INSERT INTO luce_member_limits(key,bucket,n) VALUES($1,$2,100)',[key,Math.floor(+new Date('2026-09-28T03:00:00Z')/86400000)]);
+  const blocked=await h.call('/2026-10','POST');assert.equal(blocked.status,429);assert.match(blocked.data.error,/daily capacity/);assert.equal(h.calls(),0);
+ }finally{await h.close()}
+});
 test('published-only grounded input, account isolation, persistent cache and entitlement enforcement',async()=>{
  const h=await harness();try{
   assert.equal((await h.call('','GET',0)).status,401);assert.equal((await h.call('','GET',3)).status,403);
