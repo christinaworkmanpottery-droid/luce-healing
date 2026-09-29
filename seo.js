@@ -1,6 +1,6 @@
 // Shared defaults keep new published articles search-ready without changing the editor.
 const ORIGIN = 'https://lucehealing.com';
-const PUBLIC_PATHS = ['/', '/blog', '/reading', '/forecast', '/pricing.html', '/gift', '/subscribe'];
+const PUBLIC_PATHS = ['/', '/blog', '/reading', '/forecast', '/pricing.html', '/gift', '/subscribe', '/about.html', '/contact.html', '/faq.html', '/readings.html'];
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const plain = value => String(value ?? '').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,' ').replace(/<[^>]*>/g,' ').replace(/&(?:nbsp|amp|quot|apos|lt|gt);/g,c=>({'&nbsp;':' ','&amp;':'&','&quot;':'"','&apos;':"'",'&lt;':'<','&gt;':'>'}[c])).replace(/\s+/g,' ').trim();
 const json = value => JSON.stringify(value).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');

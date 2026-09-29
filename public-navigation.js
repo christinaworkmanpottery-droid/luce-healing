@@ -6,7 +6,7 @@ const links = [
  [membership.label,membership.href],['Meet Christina','/#about'],['Sessions','/#services'],
  ['Pricing','/pricing.html'],['Blog','/blog'],['Free astrology emails','/subscribe'],['Contact','/#contact']
 ];
-const pages = new Set(['index.html','blog.html','pricing.html','reading.html','forecast.html','gift.html','subscribe.html','astrology-membership.html','memes-gallery.html']);
+const pages = new Set(['index.html','blog.html','pricing.html','reading.html','forecast.html','gift.html','subscribe.html','astrology-membership.html','memes-gallery.html','about.html','contact.html','faq.html','readings.html']);
 function compactMenu(){
  return `<details class="luce-public-menu" style="margin:12px 0;text-align:left"><summary style="cursor:pointer;padding:10px 0;color:inherit">Menu</summary><nav aria-label="Public navigation" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:8px 0">${links.map(([label,href])=>`<a href="${href}" style="display:block;padding:8px 0;color:inherit">${label}</a>`).join('')}</nav></details>`;
 }

@@ -1,0 +1,122 @@
+/* Only the homepage and the pages receiving its long-form content use these styles. */
+.home-editorial .home-section { padding:42px 0; scroll-margin-top:24px; }
+.home-editorial .home-section h2 { font-size:clamp(30px,3vw,39px); line-height:1.12; margin:0 0 14px; color:#392c44; font-weight:500; }
+.home-editorial .home-section p { line-height:1.65; margin:0 0 14px; }
+.home-editorial .home-section .container { max-width:1100px; }
+.home-editorial .home-link,.home-editorial .home-small a { color:#624373; text-decoration:underline; text-underline-offset:4px; }
+.home-editorial button.home-link { background:none; border:0; border-radius:0; font:inherit; cursor:pointer; text-align:left; padding:8px 0; }
+.home-editorial .home-link { display:inline-block; padding:8px 0; font-size:15px; }
+.home-editorial .home-small { font-size:14px; color:#64576c; }
+.home-editorial .home-question { padding-bottom:26px; }
+.home-editorial .question-layout { display:grid; grid-template-columns:1fr auto; gap:32px; align-items:center; }
+.home-editorial .question-layout h2 span { white-space:nowrap; }
+.home-editorial .question-layout>div:first-child { max-width:640px; }
+.home-editorial .question-action p { font-size:12px; margin:10px 0 0; }
+.home-editorial .home-readings { padding-top:10px; padding-bottom:36px; }
+.home-editorial .home-readings h2 { font-size:27px; }
+.home-editorial .reading-links { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:28px; margin:6px 0 12px; }
+.home-editorial .reading-links a,.home-editorial .reading-links button { display:flex; justify-content:space-between; align-items:center; gap:12px; min-height:52px; padding:10px 0; border:0; border-bottom:1px solid #e1d7e6; border-radius:0; background:none; color:#513760; font:15px/1.45 var(--font-sans); text-align:left; cursor:pointer; text-decoration:none; }
+.home-editorial .reading-links a:hover,.home-editorial .reading-links button:hover { color:#392c44; border-color:#624373; }
+.home-editorial .home-readings .home-small span { padding:0 8px; }
+.home-editorial .home-personalized { background:#eee6f2; border:0; }
+.home-editorial .personalized-layout { display:grid; grid-template-columns:1.4fr 1fr; gap:60px; align-items:center; }
+.home-editorial .home-personalized h2 { font-size:clamp(35px,4vw,48px); }
+.home-editorial .home-personalized .eyebrow { font-size:10px; letter-spacing:1.5px; }
+.home-editorial .personalized-action { border-left:1px solid #cbb9d4; padding-left:40px; }
+.home-editorial .home-price { font:500 46px/1.1 var(--font-serif); color:#513760; }
+.home-editorial .home-price span { display:block; font:13px/1.7 var(--font-sans); }
+.home-editorial .personalized-action>p:not(.home-price) { font-size:14px; }
+.home-editorial .membership-layout { display:grid; grid-template-columns:1fr 1.3fr; gap:60px; align-items:start; }
+.home-editorial .home-membership { border-bottom:1px solid #e6dde9; background:#fcfafc; }
+.home-editorial .home-membership h2 { font-size:31px; }
+.home-editorial .home-blog { background:#fff; padding:32px 0; }
+.home-editorial .home-blog .section-header { text-align:left; margin:0 0 16px; }
+.home-editorial .home-blog .section-header h2 { font-size:28px; margin-bottom:4px; }
+.home-editorial .home-blog .section-header p { margin:0!important; font-size:13px; }
+.home-editorial .home-blog .blog-grid { display:block; max-width:none; }
+.home-editorial .home-blog .blog-card { border:0; border-left:2px solid #b49ac2; border-radius:0; box-shadow:none; background:transparent; padding:4px 0 4px 22px; transform:none; }
+.home-editorial .home-blog .blog-card h3 { font-size:26px; margin-bottom:8px; }
+.home-editorial .home-blog .blog-excerpt { font-size:15px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+.home-editorial .home-blog .blog-meta { padding:0; border:0; justify-content:flex-start; gap:24px; }
+.home-editorial .home-about { background:#fcfafc; }
+.home-editorial .home-about-layout { display:grid; grid-template-columns:150px 1fr; gap:32px; align-items:center; max-width:860px!important; }
+.home-editorial .home-about-layout img { width:150px; height:180px; object-fit:cover; object-position:center 21%; border-radius:70px 70px 8px 8px; }
+.home-editorial .home-about-layout p { font-size:15px; }
+.home-editorial .home-support { padding-top:24px; }
+.home-editorial .support-choices { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px; margin-top:18px; }
+.home-editorial .support-choices article { border-top:1px solid #d6c9de; padding-top:16px; }
+.home-editorial .support-choices h3 { font-size:23px; line-height:1.2; margin:0 0 10px; color:#483353; }
+.home-editorial .support-choices p { font-size:14px; }
+.home-editorial .support-choices a.home-small { display:block; padding:5px 0; color:#624373; text-decoration:underline; }
+.home-editorial .home-reviews { background:#f4eff6; padding:30px 0; }
+.home-editorial .home-reviews .container { max-width:800px; }
+.home-editorial .home-reviews .section-header { text-align:left; margin:0 0 12px; }
+.home-editorial .home-reviews h2 { font-size:26px; }
+.home-editorial #reviews-container { display:block; }
+.home-editorial .home-reviews .review-card { box-shadow:none; border:0; border-radius:0; padding:8px 0; background:transparent; }
+.home-editorial .home-reviews .review-card p { font-family:var(--font-serif); font-size:23px; line-height:1.35!important; }
+.home-editorial .home-reviews .reviews-more,.home-editorial .home-reviews .review-details { margin:0; border:0; background:transparent; }
+.home-editorial .home-reviews summary { padding:10px 0; font-size:14px; min-height:44px; }
+.home-editorial .home-reviews .reviews-more>.reviews-grid { display:block; padding:0; }
+.home-editorial .home-newsletter { padding:32px 0; background:#fcfafc; border-bottom:1px solid #e2d8e7; }
+.home-editorial .home-newsletter .signup-layout { grid-template-columns:1fr 1fr; gap:40px; align-items:start; max-width:1000px; }
+.home-editorial .home-newsletter h2 { font-size:29px; line-height:1.15; margin:0 0 12px; }
+.home-editorial .home-newsletter p { font-size:14px; line-height:1.6; }
+.home-editorial .home-newsletter form { gap:6px; }
+.home-editorial .home-newsletter input:not([type=checkbox]) { min-height:44px; padding:10px 12px; margin:0; }
+.home-editorial .home-newsletter input[type=checkbox] { min-height:18px; height:18px; width:18px!important; accent-color:#624373; }
+.home-editorial .home-newsletter .luce-email-options label { font-weight:400; }
+.home-editorial .home-newsletter .signup-note { font-size:12px; margin:4px 0; }
+.home-editorial .home-newsletter button[type=submit] { justify-self:start; padding:11px 18px; }
+.home-editorial .home-contact { padding:28px 0; }
+.home-editorial .home-contact>.container { display:grid; grid-template-columns:1fr auto; gap:8px 30px; align-items:center; }
+.home-editorial .home-contact h2 { font-size:28px; margin-bottom:8px; }
+.home-editorial .home-contact p { font-size:14px; margin:0; }
+.home-editorial .home-contact #faq { grid-column:1/-1; margin-top:8px; }
+/* The original hero and dark footer deliberately retain their existing styles. */
+.home-detail main { max-width:1150px; margin:auto; }
+.home-detail main h1 { font-size:clamp(36px,5vw,52px); color:#392c44; }
+.home-detail .about-story { margin:20px 0; }
+.home-detail .about-content { align-items:start; }
+.home-detail .about-text p { margin-bottom:20px; }
+@media(max-width:768px) {
+ .home-editorial .home-section { padding:28px 0; }
+ .home-editorial .home-section .container,.home-editorial .home-newsletter .container { padding-left:24px; padding-right:24px; }
+ .home-editorial .question-layout { grid-template-columns:1fr; gap:4px; }
+ .home-editorial .question-layout h2 { font-size:32px; }
+ .home-editorial .question-layout p { font-size:15px; }
+ .home-editorial .question-action p { font-size:12px; }
+ .home-editorial .home-readings { padding-top:4px; }
+ .home-editorial .reading-links { grid-template-columns:1fr 1fr; gap:0 20px; }
+ .home-editorial .reading-links a,.home-editorial .reading-links button { font-size:14px; min-height:62px; }
+ .home-editorial .home-readings h2 { font-size:26px; }
+ .home-editorial .home-readings .home-small { font-size:12px; }
+ .home-editorial .personalized-layout { grid-template-columns:1fr; gap:10px; }
+ .home-editorial .home-personalized h2 { font-size:38px; }
+ .home-editorial .home-personalized p { font-size:15px; }
+ .home-editorial .personalized-action { padding:16px 0 0; border-left:0; border-top:1px solid #cbb9d4; display:grid; grid-template-columns:auto 1fr; gap:12px 24px; align-items:center; }
+ .home-editorial .personalized-action .home-price { font-size:40px; margin:0; }
+ .home-editorial .personalized-action>p:not(.home-price) { font-size:12px; margin:0; }
+ .home-editorial .personalized-action .btn { grid-column:1/-1; justify-self:start; }
+ .home-editorial .membership-layout { grid-template-columns:1fr; gap:0; }
+ .home-editorial .home-membership .eyebrow { margin-bottom:6px; font-size:10px; }
+ .home-editorial .home-membership h2 { font-size:30px; }
+ .home-editorial .home-membership p { font-size:15px; }
+ .home-editorial .home-about-layout { grid-template-columns:92px 1fr; gap:20px; align-items:start; }
+ .home-editorial .home-about-layout img { width:92px; height:124px; }
+ .home-editorial .home-about h2 { font-size:28px; }
+ .home-editorial .home-about-layout p { font-size:14px; }
+ .home-editorial .support-choices { grid-template-columns:1fr; gap:12px; }
+ .home-editorial .support-choices article { padding-top:12px; }
+ .home-editorial .support-choices h3 { font-size:23px; margin-bottom:4px; }
+ .home-editorial .support-choices p { margin-bottom:0; }
+ .home-editorial .support-choices a.home-small { display:inline-block; margin-left:16px; font-size:12px; }
+ .home-editorial .home-reviews .review-card p { font-size:22px; }
+ .home-editorial .home-newsletter .signup-layout { grid-template-columns:1fr; gap:14px; }
+ .home-editorial .home-newsletter { padding:28px 0; }
+ .home-editorial .home-newsletter h2 { font-size:28px; }
+ .home-editorial .home-newsletter .signup-layout>div>p { margin:4px 0; }
+ .home-editorial .home-contact>.container { grid-template-columns:1fr; gap:4px; }
+ .home-detail .nav-menu.active { max-height:75dvh!important; }
+}
+@media(prefers-reduced-motion:reduce) { .home-editorial * { scroll-behavior:auto!important; } }
