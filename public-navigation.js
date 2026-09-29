@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const membership = {label:'Astrology Membership',href:'https://lucehealing.com/astrology-membership'};
 const links = [
- ['Home','/'],['Readings','/readings.html'],['Gift a Reading','/gift'],
+ ['Home','/'],['My Purchases & Readings','/my-purchased-readings'],['Readings','/readings.html'],['Gift a Reading','/gift'],
  ['Personalized Monthly Reading','/personalized-monthly-reading'],
  ['Astrology Membership','/astrology-membership'],['Meet Christina','/about.html'],
  ['Sessions','/sessions.html'],['Pricing','/pricing.html'],['Blog','/blog'],

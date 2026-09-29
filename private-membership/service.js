@@ -343,7 +343,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   });
   admin('post','/horoscopes/:month/unpublish',async(req,res)=>{const result=await one('UPDATE luce_horoscopes SET collection_hidden=true,scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1 WHERE month=$1 AND revision=$2 RETURNING *',[req.params.month,req.body.revision]);if(!result)throw fail('This month changed. Reload first.',409);res.json(result);});
  }
- return {initialize,register,handleLiveEvent,access,syncSubscription,signs,tick,start,stop};
+ return {initialize,register,handleLiveEvent,access,syncSubscription,signs,tick,start,stop,customerSession:session};
 }
 module.exports={createMembership,signs,scheduleInstant};
 

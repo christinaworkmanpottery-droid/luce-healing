@@ -47,6 +47,7 @@ app.use(cors());
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/membership/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/admin/membership', express.json({ limit: '512kb' }));
+app.use('/api/admin/customer-readings', express.json({ limit: '12mb' }));
 app.use(express.json());
 // NOTE: express.static moved after SEO routes to allow server-rendering blog links
 
@@ -129,6 +130,12 @@ const newsletterService = require('./newsletter').createNewsletterService({pool,
 newsletterService.register(app,checkAdminPassword);
 const membershipService = require('./private-membership/service').createMembership({pool,getMailer:()=>smtpTransporter,stripeClient:stripe});
 membershipService.register(app,checkAdminPassword);
+const customerLibrary = require('./customer-library').createCustomerLibrary({ pool, session: membershipService.customerSession, getMailer: () => smtpTransporter, origin: process.env.DOMAIN || 'https://lucehealing.com' });
+customerLibrary.register(app, checkAdminPassword);
+async function purchaseAccountId(req) {
+  const customer = await membershipService.customerSession(req);
+  return customer?.verified_at && !customer.is_test ? customer.id : null;
+}
 
 // ============================================================================
 // DATABASE INITIALIZATION
@@ -464,6 +471,7 @@ async function initializeDatabase() {
   }
   await newsletterService.initialize();
   await membershipService.initialize();
+  await customerLibrary.initialize();
   await analytics.initialize();
 }
 
@@ -661,6 +669,7 @@ app.post('/api/booking/checkout', async (req, res) => {
   try {
     if (!stripe) return res.status(500).json({ error: 'Payment system not configured' });
     const { name, email, phone, date_of_birth, session_type, date, time, duration, is_pack, session_format, promo_code, birth_time, birth_location, notes } = req.body;
+    const purchaserId = await purchaseAccountId(req);
     if (!name || !email || !phone || !session_type || !session_format) return res.status(400).json({ error: 'Missing required fields' });
 
     // Skip availability check for chart readings (they don't need a specific time slot)
@@ -738,7 +747,7 @@ app.post('/api/booking/checkout', async (req, res) => {
         quantity: 1
       }],
       customer_email: email,
-      metadata: { client_name: name, email, phone, date_of_birth: date_of_birth || '', birth_time: String(birth_time || '').slice(0,100), birth_location: String(birth_location || '').slice(0,500), notes: String(notes || '').slice(0,500), session_type, date: isChartReading ? '' : date, time: isChartReading ? '' : time, duration: durationInt, is_pack: is_pack ? 'true' : 'false', session_format, promo_code: validPromoCode || '' },
+      metadata: { luce_customer_id: purchaserId ? String(purchaserId) : '', client_name: name, email, phone, date_of_birth: date_of_birth || '', birth_time: String(birth_time || '').slice(0,100), birth_location: String(birth_location || '').slice(0,500), notes: String(notes || '').slice(0,500), session_type, date: isChartReading ? '' : date, time: isChartReading ? '' : time, duration: durationInt, is_pack: is_pack ? 'true' : 'false', session_format, promo_code: validPromoCode || '' },
       success_url: `${process.env.DOMAIN || 'http://localhost:3000'}/booking-success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.DOMAIN || 'http://localhost:3000'}/booking-cancel.html`
     });
@@ -843,8 +852,8 @@ Location: ${m.birth_location}</p>
     } else if (m.is_pack === 'true') {
       await dbRun('UPDATE clients SET sessions_remaining = sessions_remaining + 3 WHERE id = $1', [client.id]);
     }
-    await dbRun('INSERT INTO bookings (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status, promo_code, birth_time, birth_location, notes, amount_paid) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)',
-      [m.client_name, customerEmail, m.phone, m.date_of_birth || null, m.session_type, m.duration, m.date || null, m.time || null, m.session_format || 'in-person', m.is_pack === 'true' ? 1 : 0, m.session_type.startsWith('chart-') ? 'awaiting-reading' : 'confirmed', session.id, 'paid', m.promo_code || null, m.birth_time || null, m.birth_location || null, m.notes || null, session.amount_total]);
+    await dbRun('INSERT INTO bookings (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status, promo_code, birth_time, birth_location, notes, amount_paid, luce_customer_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)',
+      [m.client_name, customerEmail, m.phone, m.date_of_birth || null, m.session_type, m.duration, m.date || null, m.time || null, m.session_format || 'in-person', m.is_pack === 'true' ? 1 : 0, m.session_type.startsWith('chart-') ? 'awaiting-reading' : 'confirmed', session.id, 'paid', m.promo_code || null, m.birth_time || null, m.birth_location || null, m.notes || null, session.amount_total, m.luce_customer_id || null]);
     console.log(`Booking created for ${m.client_name} on ${m.date} at ${m.time}`);
     }
   }
@@ -1467,8 +1476,8 @@ app.put('/api/client/appointments/:id/reschedule', verifyAuthToken, async (req, 
     if (!slotsFormatted.includes(new_time)) return res.status(400).json({ error: 'Selected time slot is not available' });
 
     await dbRun('UPDATE bookings SET status = $1 WHERE id = $2', ['rescheduled', booking.id]);
-    await dbRun('INSERT INTO bookings (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status, original_booking_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
-      [booking.client_name, booking.email, booking.phone, booking.date_of_birth, booking.session_type, booking.duration, new_date, new_time, booking.session_format, booking.is_pack, 'confirmed', booking.stripe_session_id, booking.stripe_payment_status, booking.id]);
+    await dbRun('INSERT INTO bookings (client_name, email, phone, date_of_birth, session_type, duration, date, time, session_format, is_pack, status, stripe_session_id, stripe_payment_status, original_booking_id, luce_customer_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)',
+      [booking.client_name, booking.email, booking.phone, booking.date_of_birth, booking.session_type, booking.duration, new_date, new_time, booking.session_format, booking.is_pack, 'confirmed', booking.stripe_session_id, booking.stripe_payment_status, booking.id, booking.luce_customer_id]);
     const newBooking = await dbGet('SELECT * FROM bookings WHERE email = $1 AND date = $2 AND time = $3', [user.email, new_date, new_time]);
     res.json({ success: true, booking: newBooking });
   } catch (error) {
@@ -1757,7 +1766,7 @@ app.get('/sitemap.xml', async (req, res) => {
 });
 
 // Static file serving (fallback for CSS, images, etc.)
-app.use((req,res,next)=>{if(/^\/(?:server\.js|analytics\.js|public-navigation\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
+app.use((req,res,next)=>{if(/^\/(?:server\.js|customer-library\.js|admin-sessions\.js|traffic-sources\.js|analytics\.js|public-navigation\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
 app.use(express.static(__dirname));
 
 // ============================================================================
@@ -1768,6 +1777,7 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
   try {
     if (!stripe) return res.status(500).json({ error: 'Payment system not configured' });
     const { name, email, birthDate, birthTime, birthLocation, question } = req.body;
+    const purchaserId = await purchaseAccountId(req);
     if (!name || !email || !birthDate || !birthLocation || !question) {
       return res.status(400).json({ error: 'Name, email, birth date, birth location, and your question are all required.' });
     }
@@ -1802,8 +1812,8 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
       }
     });
     await dbRun(
-      'INSERT INTO astrology_reading_orders (client_name, email, birth_date, birth_time, birth_location, question, price, stripe_session_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-      [name, email, birthDate, birthTime || null, birthLocation, question, 3300, session.id]
+      'INSERT INTO astrology_reading_orders (client_name, email, birth_date, birth_time, birth_location, question, price, stripe_session_id, luce_customer_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [name, email, birthDate, birthTime || null, birthLocation, question, 3300, session.id, purchaserId]
     );
     res.json({ url: session.url });
   } catch (error) {
@@ -1827,6 +1837,7 @@ app.post('/api/forecast/checkout', async (req, res) => {
   try {
     if (!stripe) return res.status(500).json({ error: 'Payment system not configured' });
     const { name, email, birthDate, birthTime, birthLocation, forecastType } = req.body;
+    const purchaserId = await purchaseAccountId(req);
     if (!name || !email || !birthDate || !birthTime || !birthLocation || !forecastType) {
       return res.status(400).json({ error: 'All fields are required' });
     }
@@ -1863,8 +1874,8 @@ app.post('/api/forecast/checkout', async (req, res) => {
     });
 
     await dbRun(
-      'INSERT INTO forecast_orders (client_name, email, birth_date, birth_time, birth_location, forecast_type, price, stripe_session_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-      [name, email, birthDate, birthTime, birthLocation, forecastType, price, session.id]
+      'INSERT INTO forecast_orders (client_name, email, birth_date, birth_time, birth_location, forecast_type, price, stripe_session_id, luce_customer_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [name, email, birthDate, birthTime, birthLocation, forecastType, price, session.id, purchaserId]
     );
 
     res.json({ url: session.url });
