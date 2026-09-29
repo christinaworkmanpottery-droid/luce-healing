@@ -5,7 +5,7 @@ body .luce-site-header .nav-logo{margin:0 auto 0 0;padding:0;flex-shrink:1;min-w
 body .luce-site-header .nav-logo a{display:flex;align-items:center;gap:10px;color:#483353;text-decoration:none;white-space:nowrap;font:600 25px/1.2 var(--font-serif,Georgia,serif)}
 body .luce-site-header .nav-logo-img{width:40px;height:40px;border-radius:50%;object-fit:cover;margin:0}
 body .luce-site-header .luce-home-link{color:#513760;font-size:15px;text-decoration:none;padding:12px 0}
-body .luce-site-header .hamburger{display:flex;align-items:center;gap:8px;position:static;width:auto;height:auto;min-height:44px;padding:10px 0;margin:0;background:transparent;border:0;border-radius:0;box-shadow:none;color:#513760;font:600 16px/1.4 var(--font-sans,system-ui,sans-serif);cursor:pointer}
+body .luce-site-header .hamburger{display:flex;flex-direction:row;align-items:center;gap:8px;position:static;width:auto;height:auto;min-height:44px;padding:10px 0;margin:0;background:transparent;border:0;border-radius:0;box-shadow:none;color:#513760;font:600 16px/1.4 var(--font-sans,system-ui,sans-serif);cursor:pointer}
 body .luce-site-header .hamburger span{display:inline;width:auto;height:auto;background:none;margin:0;transform:none;font-size:19px}
 body .luce-site-header .nav-menu{display:none;position:absolute;top:100%;left:auto;right:24px;bottom:auto;flex-direction:column;align-items:stretch;gap:0;width:min(360px,calc(100vw - 32px));max-height:calc(100dvh - 90px);overflow-y:auto;overscroll-behavior:contain;margin:0;padding:12px 20px;list-style:none;background:#fcfafc;border:1px solid #ded3e5;border-radius:0;box-shadow:0 8px 18px #38294012;text-align:left}
 body .luce-site-header .nav-menu.active{display:flex}
