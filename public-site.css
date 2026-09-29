@@ -46,3 +46,25 @@ body.luce-public-page .back-link a,body.luce-public-page .tier-price,body.luce-p
 body.luce-public-page .price-badge{background:#795526;color:#fff}
 body.luce-public-page .pricing-pack span{color:#795526!important}
 body.luce-public-page .luce-site-header .nav-menu .nav-link::after{display:none}
+/* Content reduction: quieter footers and readable supporting text in the Luce palette. */
+body.luce-public-page .footer-content{grid-template-columns:2fr 1fr;gap:24px}
+body.luce-public-page .footer{padding-top:32px}
+body.luce-public-page .footer-bottom{margin-top:20px;padding-top:16px}
+body.luce-public-page .session-availability h2{color:#795526}
+body.luce-public-page #reiki,body.luce-public-page #spiritual-support,body.luce-public-page #clearing,body.luce-public-page #reviews{scroll-margin-top:90px}
+body.luce-public-page .review-card small{color:#65576e!important}
+body.luce-public-page .review-read-more{color:#795526!important}
+@media(max-width:768px){
+ body.luce-public-page .footer-content{grid-template-columns:1fr;gap:16px}
+ body.luce-public-page .footer p,body.luce-public-page .footer li,body.luce-public-page .review-details summary{font-size:15px;line-height:1.65}
+ body.luce-public-page .session-availability p,body.luce-public-page.home-detail main p{font-size:16px;line-height:1.7}
+ body.luce-public-page .luce-email-options>p{font-size:14px!important;line-height:1.6}
+}
+/* Keep the free email invitation visibly secondary to the paid reading. */
+body.home-editorial .hero-cta .btn.btn-secondary{background:transparent!important;color:#513760!important;border:1px solid #9479a0!important}
+body.home-editorial .hero-cta .btn.btn-secondary:hover{background:#ede5f1!important;color:#513760!important}
+/* Override older per-page mobile rules so every public menu has the same geometry. */
+body .luce-site-header.navbar{position:sticky!important;top:0!important}
+body .luce-site-header .nav-menu{left:auto!important;right:24px;max-height:calc(100dvh - 90px)!important;padding:12px 20px!important}
+body .luce-site-header .nav-menu a.nav-link{padding:11px 0!important}
+@media(max-width:768px){body .luce-site-header .nav-menu{right:16px;max-height:calc(100dvh - 84px)!important}}

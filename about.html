@@ -11,7 +11,7 @@
 <li><a class="nav-link" href="/sessions.html">Sessions</a></li>
 <li><a class="nav-link" href="/pricing.html">Pricing</a></li>
 <li><a class="nav-link" href="/blog">Blog</a></li>
-<li><a class="nav-link nav-book-btn" href="/subscribe">Free astrology emails</a><a class="mobile-admin-link" href="/#admin">Admin dashboard</a></li>
+<li><a class="nav-link nav-book-btn" href="/subscribe">Free astrology emails</a></li>
 <li><a class="nav-link" href="/contact.html">Contact</a></li><li id="auth-nav-item" style="display: none;">
 <button class="btn btn-secondary" id="auth-login-btn" onclick="openLoginModal()">My Appointments</button>
 </li>
@@ -81,7 +81,48 @@
 </div>
 </div>
 </div>
-</section></main><footer class="footer">
+</section><section class="reviews" id="reviews"><div class="container"><h2>Kind words</h2><div class="reviews-grid" id="reviews-container"></div><details class="review-details"><summary>Already worked with Christina? Leave a review</summary> <!-- Submit Review Form -->
+<div class="review-submit-box" style="background: linear-gradient(135deg, rgba(212, 165, 116, 0.1) 0%, rgba(255, 249, 240, 0.6) 100%); padding: 30px; border-radius: 12px; margin-bottom: 40px; border: 1px solid rgba(212, 165, 116, 0.3);">
+<h3 style="margin-top: 0;">Share Your Healing Journey</h3>
+<p style="color: #666;">How has working with me helped your healing journey? Your story might inspire someone who needs to hear it.</p>
+<form id="review-form" style="display: grid; gap: 15px;">
+<div class="form-group">
+<label for="review-name">Your Name *</label>
+<input id="review-name" placeholder="Your name" required="" type="text"/>
+</div>
+<div class="form-group">
+<label for="review-session-type">Session Type</label>
+<select id="review-session-type">
+<option value="">Select...</option>
+<option value="Personal Energy Healing">Personal Energy Healing</option>
+<option value="End-of-Life &amp; Grief Support">End-of-Life &amp; Grief Support</option>
+<option value="Space &amp; Land Clearing">Space &amp; Land Clearing</option>
+<option value="Astrology Chart Reading">Astrology Chart Reading</option>
+</select>
+</div>
+<div class="form-group">
+<label for="review-rating">Rating *</label>
+<div style="display: flex; gap: 10px; align-items: center;">
+<div id="star-rating" style="display: flex; gap: 5px; font-size: 1.8em; cursor: pointer;">
+<span class="star" data-rating="1">☆</span>
+<span class="star" data-rating="2">☆</span>
+<span class="star" data-rating="3">☆</span>
+<span class="star" data-rating="4">☆</span>
+<span class="star" data-rating="5">☆</span>
+</div>
+<span id="rating-text" style="color: #666; font-size: 0.9em;">Select rating</span>
+</div>
+<input id="review-rating-value" type="hidden" value="0"/>
+</div>
+<div class="form-group">
+<label for="review-text">Your Review *</label>
+<textarea id="review-text" placeholder="Share your experience..." required="" rows="4" style="resize: vertical;"></textarea>
+</div>
+<button class="btn btn-primary" type="submit">Submit Review</button>
+</form>
+<div id="review-feedback" style="display: none; margin-top: 15px; padding: 12px; border-radius: 6px; text-align: center;"></div>
+</div>
+</details></div></section></main><footer class="footer">
 <div class="container">
 <div class="footer-content">
 <div class="footer-section">
@@ -101,15 +142,10 @@
 <li><a href="/faq.html">FAQ</a></li>
 </ul>
 </div>
-<div class="footer-section">
-<h4>Christina's Other Work</h4>
-<ul>
-<li><a href="https://www.christinaworkmanpottery.com" target="_blank">Christina Workman Pottery</a></li>
-</ul>
-</div>
+
 </div>
 <div class="footer-bottom">
-<p>© 2026 Luce Healing. All rights reserved. | <a href="mailto:lucehealing13@gmail.com">lucehealing13@gmail.com</a> | <a href="https://www.instagram.com/lucehealing13" target="_blank">Follow @lucehealing13</a></p>
+<p>© 2026 Luce Healing. All rights reserved.</p>
 </div>
 </div>
-<p class="admin-access"><a href="/#admin">Admin / business dashboard</a></p></footer><script src="/home-detail.js"></script></body></html>
+<p class="admin-access"><a href="/#admin">Admin / business dashboard</a></p></footer><script src="/home-detail.js"></script><script src="/public-reviews.js"></script></body></html>
