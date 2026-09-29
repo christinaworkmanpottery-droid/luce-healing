@@ -120,3 +120,8 @@
  .home-detail .nav-menu.active { max-height:75dvh!important; }
 }
 @media(prefers-reduced-motion:reduce) { .home-editorial * { scroll-behavior:auto!important; } }
+/* Keep the full existing navigation accessible on desktop and tablet. */
+@media(min-width:769px) {
+ .home-editorial .nav-container,.home-detail .nav-container { gap:20px; }
+ .home-editorial .nav-menu,.home-detail .nav-menu { flex:1; min-width:0; flex-wrap:wrap; justify-content:flex-end; gap:8px 18px; }
+}
