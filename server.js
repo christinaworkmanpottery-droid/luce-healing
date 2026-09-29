@@ -68,6 +68,10 @@ app.use((req, res, next) => {
   next();
 });
 
+const analytics = require('./analytics').createAnalytics({pool});
+app.use(analytics.middleware);
+analytics.register(app);
+
 // Shared public navigation covers rendered articles, clean page routes, and HTML aliases.
 require('./public-navigation').install(app, __dirname);
 
@@ -457,6 +461,7 @@ async function initializeDatabase() {
   }
   await newsletterService.initialize();
   await membershipService.initialize();
+  await analytics.initialize();
 }
 
 // ============================================================================
@@ -854,6 +859,7 @@ async function checkAdminPassword(req, res, next) {
     const record = await dbGet('SELECT value FROM admin_settings WHERE key = $1', ['admin_password']);
     if (!record) return res.status(500).json({ error: 'Admin password not initialized' });
     if (!verifyPassword(password, record.value)) return res.status(401).json({ error: 'Unauthorized' });
+    require('./analytics').markAdmin(req, res);
     next();
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1106,7 +1112,7 @@ app.delete('/api/admin/blog/:id', checkAdminPassword, async (req, res) => {
 
 app.get('/api/admin/blog', checkAdminPassword, async (req, res) => {
   try {
-    const posts = await dbAll('SELECT * FROM blog_posts ORDER BY created_at DESC');
+    const posts = await dbAll(`SELECT b.*, (SELECT COUNT(*)::int FROM filtered_page_views f WHERE f.path = '/blog/' || b.slug) AS filtered_reader_views FROM blog_posts b ORDER BY b.created_at DESC`);
     res.json(posts);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -1299,45 +1305,9 @@ app.delete('/api/admin/reviews/:id', checkAdminPassword, async (req, res) => {
 // TRAFFIC TRACKING
 // ============================================================================
 
-app.post('/api/track', async (req, res) => {
-  try {
-    const { path: pagePath } = req.body;
-    const referrer = req.headers.referer || req.headers.referrer || '';
-    const userAgent = req.headers['user-agent'] || '';
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || '';
-    await dbRun('INSERT INTO page_views (path, referrer, user_agent, ip) VALUES ($1, $2, $3, $4)', [pagePath || '/', referrer, userAgent, ip]);
-    res.json({ ok: true });
-  } catch (e) {
-    res.json({ ok: true }); // fail silently
-  }
-});
-
 app.get('/api/admin/traffic', checkAdminPassword, async (req, res) => {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0];
-    const monthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
-
-    const todayViews = await dbGet("SELECT COUNT(*) as count FROM page_views WHERE DATE(created_at) = $1", [today]);
-    const weekViews = await dbGet("SELECT COUNT(*) as count FROM page_views WHERE DATE(created_at) >= $1", [weekAgo]);
-    const monthViews = await dbGet("SELECT COUNT(*) as count FROM page_views WHERE DATE(created_at) >= $1", [monthAgo]);
-    const totalViews = await dbGet("SELECT COUNT(*) as count FROM page_views");
-    const topPages = await dbAll("SELECT path, COUNT(*) as views FROM page_views GROUP BY path ORDER BY views DESC LIMIT 10");
-    const dailyViews = await dbAll("SELECT DATE(created_at) as date, COUNT(*) as views FROM page_views WHERE DATE(created_at) >= $1 GROUP BY DATE(created_at) ORDER BY date DESC", [monthAgo]);
-    const topReferrers = await dbAll("SELECT referrer, COUNT(*) as views FROM page_views WHERE referrer != '' GROUP BY referrer ORDER BY views DESC LIMIT 10");
-
-    res.json({
-      today: parseInt(todayViews.count),
-      week: parseInt(weekViews.count),
-      month: parseInt(monthViews.count),
-      total: parseInt(totalViews.count),
-      topPages,
-      dailyViews,
-      topReferrers
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  try { res.json(await analytics.summary()); }
+  catch (e) { res.status(500).json({error:e.message}); }
 });
 
 // ============================================================================
@@ -1630,8 +1600,7 @@ app.get('/blog/:slug', async (req, res) => {
   try {
     const post = await dbGet('SELECT * FROM blog_posts WHERE slug = $1 AND published = 1', [req.params.slug]);
     if (!post) return res.status(404).set('X-Robots-Tag', 'noindex').send('Article not found. <a href="/blog">View published articles</a>');
-    // Track view
-    try { await dbRun('UPDATE blog_posts SET view_count = COALESCE(view_count,0) + 1 WHERE slug = $1', [req.params.slug]); } catch(e) {}
+    // Legacy view_count is frozen. Browser-confirmed views use separate analytics tables.
     // Server-render the blog post into HTML for SEO
     const date = post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
     const metadata = seo.metadata(post);
@@ -1784,7 +1753,7 @@ app.get('/sitemap.xml', async (req, res) => {
 });
 
 // Static file serving (fallback for CSS, images, etc.)
-app.use((req,res,next)=>{if(/^\/(?:server\.js|public-navigation\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
+app.use((req,res,next)=>{if(/^\/(?:server\.js|analytics\.js|public-navigation\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
 app.use(express.static(__dirname));
 
 // ============================================================================

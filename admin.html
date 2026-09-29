@@ -138,6 +138,8 @@ async function loadPosts() {
                 <div class="post-meta">
                     <span class="${p.published ? 'status-published' : 'status-draft'}">${p.publish_at ? 'Scheduled: '+new Date(p.publish_at).toLocaleString() : p.published ? '✅ Published' : '📝 Draft'}</span>
                     · ${new Date(p.created_at).toLocaleDateString()} · /${esc(p.slug)}
+                    <br>${p.view_count || 0} Legacy Views — historical unfiltered request count
+                    <br>${p.filtered_reader_views || 0} Filtered Reader Views — new human-oriented count going forward
                 </div>
                 <div class="btn-group">
                     <button class="btn btn-secondary btn-sm" onclick="previewPost(${p.id})">👁️ Preview</button>

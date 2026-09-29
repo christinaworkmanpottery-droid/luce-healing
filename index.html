@@ -1074,17 +1074,20 @@
 </div>
 <!-- Traffic Tab -->
 <div class="admin-tab-content" id="admin-traffic">
+<h3>Filtered Website Page Views</h3>
+<p>Public pages, including individual blog posts. Repeat visits to the same page count at most once per browser every 30 minutes. Obvious automated traffic and recognized Admin browsers are excluded. Today uses Pacific Time.</p>
+<p id="traffic-method"></p>
 <div class="dashboard-stats" id="traffic-stats">
 <div class="stat-card">
 <div class="stat-label">Today</div>
 <div class="stat-value" id="traffic-today">0</div>
 </div>
 <div class="stat-card">
-<div class="stat-label">This Week</div>
+<div class="stat-label">Last 7 Days</div>
 <div class="stat-value" id="traffic-week">0</div>
 </div>
 <div class="stat-card">
-<div class="stat-label">This Month</div>
+<div class="stat-label">Last 30 Days</div>
 <div class="stat-value" id="traffic-month">0</div>
 </div>
 <div class="stat-card">
@@ -2802,6 +2805,7 @@
                 document.getElementById('traffic-week').textContent = data.week || 0;
                 document.getElementById('traffic-month').textContent = data.month || 0;
                 document.getElementById('traffic-total').textContent = data.total || 0;
+                document.getElementById('traffic-method').textContent = 'Tracking since ' + new Date(data.startedAt).toLocaleString() + '. Unique visitors (browsers): ' + data.unique_total + ' total; ' + data.unique_month + ' in the last 30 days. Legacy Website Events: ' + data.legacyTotal + ' — historical unfiltered tracking events, preserved unchanged. Filtered counts are estimates; blocked scripts or cookies may undercount, and sophisticated bots may still be counted.';
                 
                 // Daily views table
                 const dailyEl = document.getElementById('traffic-daily');
@@ -2970,7 +2974,7 @@
                                     <h4 style="margin: 0 0 5px 0;">${post.title}</h4>
                                     <small style="color: #666;">/${post.slug}</small>
                                     <br>
-                                    <small style="color: #999;">${new Date(post.created_at).toLocaleDateString()} | ${post.publish_at ? 'Scheduled: '+new Date(post.publish_at).toLocaleString() : post.published ? '✓ Published' : '○ Draft'} | 👁 ${post.view_count || 0} views</small>
+                                    <small style="color: #999;">${new Date(post.created_at).toLocaleDateString()} | ${post.publish_at ? 'Scheduled: '+new Date(post.publish_at).toLocaleString() : post.published ? '✓ Published' : '○ Draft'} | 👁 ${post.view_count || 0} Legacy Views — historical unfiltered request count | ${post.filtered_reader_views || 0} Filtered Reader Views — new human-oriented count going forward</small>
                                 </div>
                                 <div style="display: flex; gap: 8px;">
                                     <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;" onclick="openBlogEditor(${post.id})">Edit</button>
@@ -3626,13 +3630,6 @@
         }
     </script>
 <script>
-    // Track page view
-    fetch('/api/track', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ path: window.location.pathname + window.location.hash })
-    }).catch(() => {});
-
     // Auto-open booking modal if URL has #book
     function checkBookHash() {
         if (['#book', '#booking'].includes(window.location.hash)) {
