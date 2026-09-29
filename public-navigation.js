@@ -2,31 +2,29 @@ const fs = require('fs');
 const path = require('path');
 const membership = {label:'Astrology Membership',href:'https://lucehealing.com/astrology-membership'};
 const links = [
- ['Home','/'],['Email readings','/#special-offer'],['Gift a Reading','/gift'],
- [membership.label,membership.href],['Meet Christina','/#about'],['Sessions','/#services'],
- ['Pricing','/pricing.html'],['Blog','/blog'],['Free astrology emails','/subscribe'],['Contact','/#contact']
+ ['Home','/'],['Readings','/readings.html'],['Gift a Reading','/gift'],
+ ['Personalized Monthly Reading','/personalized-monthly-reading'],
+ ['Astrology Membership','/astrology-membership'],['Meet Christina','/about.html'],
+ ['Sessions','/sessions.html'],['Pricing','/pricing.html'],['Blog','/blog'],
+ ['Free astrology emails','/subscribe'],['Contact','/contact.html'],['FAQ','/faq.html']
 ];
-const pages = new Set(['index.html','blog.html','pricing.html','reading.html','forecast.html','gift.html','subscribe.html','astrology-membership.html','memes-gallery.html','about.html','contact.html','faq.html','readings.html']);
-function compactMenu(){
- return `<details class="luce-public-menu" style="margin:12px 0;text-align:left"><summary style="cursor:pointer;padding:10px 0;color:inherit">Menu</summary><nav aria-label="Public navigation" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:8px 0">${links.map(([label,href])=>`<a href="${href}" style="display:block;padding:8px 0;color:inherit">${label}</a>`).join('')}</nav></details>`;
+const pages = new Set(['index.html','blog.html','pricing.html','reading.html','forecast.html','gift.html','subscribe.html','astrology-membership.html','memes-gallery.html','about.html','contact.html','faq.html','readings.html','sessions.html','reading-success.html','forecast-success.html','booking-success.html','booking-cancel.html','unsubscribe.html']);
+function header(accountItems='') {
+ return `<nav class="navbar luce-site-header" id="navbar" aria-label="Main navigation"><div class="nav-container"><div class="nav-logo"><a href="/" aria-label="Luce Healing home"><img class="nav-logo-img" src="/images/logo.jpg" alt=""> Luce Healing</a></div><a class="luce-home-link" href="/">Home</a><button class="hamburger luce-menu-toggle" type="button" aria-controls="main-menu" aria-expanded="false" aria-label="Open menu">Menu <span aria-hidden="true">☰</span></button><ul class="nav-menu" id="main-menu">${links.map(([label,href])=>`<li><a class="nav-link" href="${href}">${label}</a></li>`).join('')}${accountItems}</ul></div></nav>`;
 }
 function render(html){
- if(typeof html!=='string'||!/<body\b/i.test(html))return html;
+ if(typeof html!=='string'||!/<body\b/i.test(html)||html.includes('class="navbar luce-site-header"'))return html;
+ // Replace only the site navbar; reading/account navigation remains intact.
  let found=false;
- html=html.replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi,nav=>{
+ html=html.replace(/<nav\b[^>]*class=["'][^"']*\bnavbar\b[^"']*["'][^>]*>[\s\S]*?<\/nav>/i,nav=>{
   found=true;
-  // Retain the existing element/classes and normalize its destination.
-  if(/>\s*Astrology Membership\s*<\/a>/i.test(nav))return nav.replace(/<a\b([^>]*)>\s*Astrology Membership\s*<\/a>/gi,(anchor,attrs)=>attrs.includes(`href="${membership.href}"`)?anchor:`<a${attrs.replace(/\s+href\s*=\s*(["']).*?\1/i,'')} href="${membership.href}">${membership.label}</a>`);
-  if(/<ul\b[^>]*class=["'][^"']*\bnav-menu\b/i.test(nav))return nav.replace(/(<ul\b[^>]*class=["'][^"']*\bnav-menu\b[^>]*>)([\s\S]*?)(<\/ul>)/i,(_,open,items,close)=>`${open}${items}<li><a class="nav-link" href="${membership.href}">${membership.label}</a></li>${close}`);
-  // Minimal headers (e.g. Pricing) keep their logo and Back to Home button.
-  return nav.replace(/(<a\b[^>]*>Back to Home<\/a>)/i,`<a class="btn btn-secondary" href="${membership.href}">${membership.label}</a>$1`);
+  const accounts=nav.match(/<li\b[^>]*id="(?:auth-nav-item|user-nav-item)"[^>]*>[\s\S]*?<\/li>/g)||[];
+  return header(accounts.join(''));
  });
- if(!found){
-  const menu=compactMenu();
-  if(/<main\b[^>]*>/i.test(html))html=html.replace(/<main\b[^>]*>/i,match=>match+menu);
-  else if(/<div class="(?:card|reading-back)"[^>]*>/i.test(html))html=html.replace(/<div class="(?:card|reading-back)"[^>]*>/i,match=>match+menu);
-  else html=html.replace(/<body\b[^>]*>/i,match=>match+menu);
- }
+ if(!found)html=html.replace(/<body\b[^>]*>/i,match=>match+header());
+ html=html.replace(/<head\b[^>]*>/i,match=>match+'<script src="/public-menu.js" defer></script>');
+ html=html.replace(/<\/head>/i,'<link rel="stylesheet" href="/public-site.css"></head>');
+ html=html.replace(/<body([^>]*)>/i,(_,attrs)=>'<body'+(/class=/.test(attrs)?attrs.replace(/class=(["'])(.*?)\1/,(_,q,c)=>'class='+q+c+' luce-public-page'+q):attrs+' class="luce-public-page"')+'>');
  return html;
 }
 function install(app,root){
@@ -35,7 +33,7 @@ function install(app,root){
   const send=res.send.bind(res),sendFile=res.sendFile.bind(res);
   res.send=body=>send(typeof body==='string'?render(body):body);
   res.sendFile=(file,...args)=>{
-   if(path.dirname(file)!==root||!pages.has(path.basename(file)))return sendFile(file,...args);
+   if(!((path.dirname(file)===root&&pages.has(path.basename(file)))||(path.dirname(file)===path.join(root,'private-membership')&&path.basename(file)==='purchased.html')))return sendFile(file,...args);
    fs.readFile(file,'utf8',(err,html)=>{if(err){const callback=args.find(x=>typeof x==='function');return callback?callback(err):next(err);}res.type('html').send(html);});
    return res;
   };

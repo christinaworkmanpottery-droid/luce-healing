@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const WINDOW_MS = 30 * 60 * 1000;
-const publicPages = new Set(['/', '/blog', '/reading', '/forecast', '/subscribe', '/gift', '/pricing', '/astrology-membership', '/memes-gallery', '/about', '/contact', '/faq', '/readings']);
+const publicPages = new Set(['/', '/blog', '/reading', '/forecast', '/subscribe', '/gift', '/pricing', '/astrology-membership', '/memes-gallery', '/about', '/contact', '/faq', '/readings', '/sessions']);
 function publicPath(value) {
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return null;
   const url = new URL(value, 'https://analytics.invalid');
