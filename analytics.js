@@ -2,6 +2,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const {classifySource,groupSources} = require('./traffic-sources');
 const WINDOW_MS = 30 * 60 * 1000;
 const publicPages = new Set(['/', '/blog', '/reading', '/forecast', '/subscribe', '/gift', '/pricing', '/astrology-membership', '/memes-gallery', '/about', '/contact', '/faq', '/readings', '/sessions']);
 function publicPath(value) {
@@ -34,6 +35,8 @@ function createAnalytics({pool, clock = () => Date.now()}) {
     secret = (await pool.query('SELECT secret FROM filtered_analytics_meta WHERE id=1')).rows[0].secret;
     await pool.query(`CREATE TABLE IF NOT EXISTS filtered_analytics_dedup (visitor TEXT NOT NULL, path TEXT NOT NULL, last_seen TIMESTAMPTZ NOT NULL, PRIMARY KEY(visitor,path))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS filtered_page_views (id BIGSERIAL PRIMARY KEY, visitor TEXT NOT NULL, path TEXT NOT NULL, referrer TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL)`);
+    await pool.query("ALTER TABLE filtered_page_views ADD COLUMN IF NOT EXISTS traffic_source TEXT NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS traffic_medium TEXT NOT NULL DEFAULT ''");
+    await pool.query('CREATE TABLE IF NOT EXISTS filtered_analytics_sources (visitor TEXT PRIMARY KEY, traffic_source TEXT NOT NULL, traffic_medium TEXT NOT NULL, last_seen TIMESTAMPTZ NOT NULL)');
     await pool.query('CREATE INDEX IF NOT EXISTS filtered_views_path_date ON filtered_page_views(path,created_at)');
     await pool.query('CREATE INDEX IF NOT EXISTS filtered_views_date ON filtered_page_views(created_at)');
   }
@@ -72,14 +75,23 @@ function createAnalytics({pool, clock = () => Date.now()}) {
       }
       let referrer = '';
       try { const ref = new URL(req.body.referrer); if (/^https?:$/.test(ref.protocol) && ref.host !== origin.host) referrer=ref.origin; } catch {}
+      const attribution = classifySource(req.body.path, referrer, origin.host);
       // Atomic rolling-window gate handles concurrent refreshes/tabs and survives deployments.
       const result = await pool.query(`WITH accepted AS (
         INSERT INTO filtered_analytics_dedup(visitor,path,last_seen) VALUES($1,$2,$3)
         ON CONFLICT(visitor,path) DO UPDATE SET last_seen=EXCLUDED.last_seen
         WHERE filtered_analytics_dedup.last_seen <= $3::timestamptz - INTERVAL '30 minutes'
         RETURNING visitor,path
-      ) INSERT INTO filtered_page_views(visitor,path,referrer,created_at)
-        SELECT visitor,path,$4,$3 FROM accepted RETURNING id`,[sign(v),p,new Date(now),referrer]);
+      ), attributed AS (
+        INSERT INTO filtered_analytics_sources(visitor,traffic_source,traffic_medium,last_seen)
+        SELECT visitor,$5,$6,$3 FROM accepted
+        ON CONFLICT(visitor) DO UPDATE SET
+          traffic_source=CASE WHEN $7 OR filtered_analytics_sources.last_seen <= $3::timestamptz - INTERVAL '30 minutes' THEN EXCLUDED.traffic_source ELSE filtered_analytics_sources.traffic_source END,
+          traffic_medium=CASE WHEN $7 OR filtered_analytics_sources.last_seen <= $3::timestamptz - INTERVAL '30 minutes' THEN EXCLUDED.traffic_medium ELSE filtered_analytics_sources.traffic_medium END,
+          last_seen=EXCLUDED.last_seen
+        RETURNING visitor,traffic_source,traffic_medium
+      ) INSERT INTO filtered_page_views(visitor,path,referrer,created_at,traffic_source,traffic_medium)
+        SELECT accepted.visitor,path,$4,$3,traffic_source,traffic_medium FROM accepted JOIN attributed USING(visitor) RETURNING id`,[sign(v),p,new Date(now),referrer,attribution.source,attribution.medium,attribution.explicit]);
       res.json({ok:true,counted:result.rows.length === 1});
     } catch (error) { console.error('Filtered analytics event failed:', error.message); res.json({ok:true,counted:false}); }
   }
@@ -93,9 +105,10 @@ function createAnalytics({pool, clock = () => Date.now()}) {
     const topPages = (await pool.query('SELECT path,COUNT(*)::int AS views FROM filtered_page_views GROUP BY path ORDER BY views DESC LIMIT 10')).rows;
     const dailyViews = (await pool.query(`SELECT (created_at AT TIME ZONE 'America/Los_Angeles')::date::text AS date, COUNT(*)::int AS views FROM filtered_page_views WHERE created_at >= NOW()-INTERVAL '30 days' GROUP BY 1 ORDER BY 1 DESC`)).rows;
     const topReferrers = (await pool.query("SELECT referrer,COUNT(*)::int AS views FROM filtered_page_views WHERE referrer != '' GROUP BY referrer ORDER BY views DESC LIMIT 10")).rows;
+    const trafficSources = groupSources((await pool.query("SELECT traffic_source,traffic_medium,referrer,COUNT(*)::int AS views FROM filtered_page_views WHERE created_at >= NOW()-INTERVAL '30 days' GROUP BY traffic_source,traffic_medium,referrer")).rows);
     const startedAt = (await pool.query('SELECT started_at FROM filtered_analytics_meta WHERE id=1')).rows[0].started_at;
     const legacyTotal = (await pool.query('SELECT COUNT(*)::int AS count FROM page_views')).rows[0].count;
-    return {...totals,topPages,dailyViews,topReferrers,startedAt,legacyTotal};
+    return {...totals,topPages,dailyViews,topReferrers,trafficSources,startedAt,legacyTotal};
   }
   function register(app) {
     app.get('/reader-tracking.js',(req,res)=>res.type('js').send(fs.readFileSync(path.join(__dirname,'reader-tracking.js'),'utf8')));

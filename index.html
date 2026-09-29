@@ -62,7 +62,7 @@
 <meta name="twitter:description" content="Personal astrology readings by email, Reiki and energy healing with Christina Workman. Explore weekly astrology and self-healing resources. Ask one question for $33.">
 <meta name="twitter:image" content="https://lucehealing.com/images/og-image.jpg">
 <link rel="stylesheet" href="/homepage.css">
-</head>
+<script src="/admin-signin.js"></script></head>
 <body class="email-first home-editorial">
 <!-- Navigation -->
 <nav class="navbar" id="navbar">
@@ -106,10 +106,10 @@
 <p class="hero-description">Explore love, work, or your next step with a personal, intuitive reading guided by your birth chart.</p>
 <div class="hero-cta"><a class="btn btn-primary" href="/reading">Ask One Question — $33 <span aria-hidden="true">↗</span></a><a class="btn btn-secondary" href="/subscribe">Get the free astrology emails</a></div>
 </div>
-<figure class="hero-visual"><img alt="Christina Workman, founder of Luce Healing" class="portrait" fetchpriority="high" src="images/christina-new.jpeg"/><figcaption>Christina Workman <span>Intuitive readings · Reiki · Spiritual guidance</span></figcaption></figure>
+
 </div>
 </section>
-<section id="about" class="home-section home-about"><div class="container home-about-layout"><img alt="Christina Workman smiling outdoors" loading="lazy" src="/images/christina-smiling.jpeg"><div><h2>About Christina</h2><p>A Certified Reiki Master and ordained minister with over 20 years of experience, Christina offers support that respects your own inner guidance.</p><a class="home-link" href="/about.html">Meet Christina →</a></div></div></section>
+
 <section id="special-offer" class="home-section home-question"><div class="container question-layout"><div><p class="eyebrow">START WITH WHAT MATTERS TO YOU</p><h2>Ask One Question <span>— $33</span></h2><p>A focused written reading about love, work, purpose, or a transition you’re navigating.</p></div><div class="question-action"><a class="btn btn-primary" href="/reading">Ask One Question →</a><p>One-time · By email in 1–3 days</p></div></div></section>
 <section id="all-readings" class="home-section home-readings"><div class="container"><h2>Explore More Readings</h2><div class="reading-links"><a href="/forecast?type=6month">6-month forecast <span aria-hidden="true">↗</span></a><a href="/forecast?type=12month">12-month forecast <span aria-hidden="true">↗</span></a><button class="book-chart-reading" data-chart-type="chart-written">Written birth chart <span aria-hidden="true">↗</span></button><button class="book-chart-reading" data-chart-type="chart-30min">Birth chart + 30-minute consultation <span aria-hidden="true">↗</span></button><button class="book-chart-reading" data-chart-type="chart-60min">Birth chart + 60-minute consultation <span aria-hidden="true">↗</span></button><a href="/gift">Gift a reading <span aria-hidden="true">↗</span></a></div><p class="home-small" id="astrology"><a href="/readings.html">Compare readings &amp; see how they work →</a> <span>·</span> <a href="/pricing.html">View prices</a></p></div></section>
 <section id="personalized-reading" class="home-section home-personalized"><div class="container personalized-layout"><div><p class="eyebrow">ONE MONTH. YOUR BIRTH CHART. YOUR PERSPECTIVE.</p><h2>Personalized<br>Monthly Reading</h2><p>Your birth-chart placements and Christina’s monthly guidance, brought together in one personal, AI-assisted reading.</p></div><div class="personalized-action"><p class="home-price">$12.95 <span>introductory price</span></p><p>One-time purchase<br><strong>No membership required</strong></p><a class="btn btn-primary" href="/personalized-monthly-reading">Explore Your Reading →</a></div></div></section>
@@ -119,7 +119,7 @@
 <section class="blog home-section home-blog" id="blog">
 <div class="container">
 <div class="section-header">
-<p class="eyebrow">THE LUCE HEALING BLOG</p><h2>From the Light</h2>
+<p class="eyebrow">FROM THE LIGHT</p><h2>The Luce Healing Blog</h2>
 
 
 </div>
@@ -127,12 +127,13 @@
 <p style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">Loading posts...</p>
 </div>
 <div style="margin-top: 12px;">
-<a class="home-link" href="/blog">View All Posts</a>
+<a class="btn btn-primary blog-all-posts" href="/blog">View All Posts</a>
 </div>
 </div>
 </section> <!-- About Section -->
 
 <!-- Services Section -->
+<section id="about" class="home-section home-about"><div class="container home-about-layout"><figure class="hero-visual"><img alt="Christina Workman, founder of Luce Healing" class="portrait" fetchpriority="high" src="images/christina-new.jpeg"/><figcaption>Christina Workman <span>Intuitive readings · Reiki · Spiritual guidance</span></figcaption></figure><div><h2>About Christina</h2><p>A Certified Reiki Master and ordained minister with over 20 years of experience, Christina offers support that respects your own inner guidance.</p><a class="home-link" href="/about.html">Meet Christina →</a></div></div></section>
 <section id="services" class="home-section home-support"><div class="container"><h2>Personal Support</h2><div class="support-choices"><article><h3>Reiki &amp; energy healing</h3><p>Space to pause, reconnect, and explore what you’re carrying.</p><a class="home-link" href="/sessions.html#reiki">Explore Reiki →</a></article><article><h3>Grief &amp; spiritual support</h3><p>Compassionate companionship through loss and life transitions.</p><a class="home-link" href="/sessions.html#spiritual-support">Explore support →</a></article><article><h3>Space &amp; land clearing</h3><p>Clearing and blessing for your home or property.</p><a class="home-link" href="/sessions.html#clearing">Explore clearing →</a></article></div></div></section>
 <!-- Not Sure Where to Begin Section -->
 <!-- Credibility Badges -->
@@ -465,7 +466,7 @@
 <div class="admin-panel" id="admin-panel">
 <div class="admin-header">
 <h1>👑 Admin Dashboard</h1>
-<button class="admin-close" type="button">Close</button>
+<div style="display:flex;gap:12px;align-items:center"><button id="admin-sign-out" type="button" class="btn btn-secondary">Sign Out</button><button class="admin-close" type="button">Close</button></div>
 </div>
 <div class="admin-container">
 <div class="admin-tabs">
@@ -819,8 +820,12 @@
 <div id="traffic-pages"></div>
 </div>
 <div class="admin-card" style="margin-top:20px;">
-<h3>🔗 Top Referrers (Where Traffic Comes From)</h3>
-<div id="traffic-referrers"></div>
+<h3>Where your traffic comes from</h3>
+<p>Last 30 days · Filtered page views</p>
+<div id="traffic-sources" style="overflow-x:auto"></div>
+<p style="font-size:14px;line-height:1.6">Direct / unknown includes typed addresses, bookmarks, and visits from apps that hide their source. Sources follow visitors as they browse for up to 30 minutes of inactivity. Older views use the referring website when available.</p>
+<details><summary style="cursor:pointer;min-height:44px;padding:10px 0">Referring websites — all time</summary>
+<div id="traffic-referrers"></div></details>
 </div>
 </div>
 <!-- Settings Tab -->
@@ -1833,61 +1838,35 @@
             });
         });
 
-        // Open admin panel (if password is correct)
-        // Store admin password in sessionStorage so it persists across page navigation
-        let adminPassword = sessionStorage.getItem('luce-admin-pw') || '';
-
-        // Auto-open admin panel if we have a stored password and URL has #admin
-        if (adminPassword && window.location.hash === '#admin') {
-            fetch(`/api/admin/bookings?password=${encodeURIComponent(adminPassword)}`)
-                .then(response => {
-                    if (response.ok) {
-                        document.getElementById('admin-panel').classList.add('active');
-                        loadAdminData();
-                    } else {
-                        sessionStorage.removeItem('luce-admin-pw');
-                        adminPassword = '';
-                    }
-                });
+        // Authentication lives in a secure cookie; never retain the admin password.
+        sessionStorage.removeItem('luce-admin-pw');
+        let adminPassword = '';
+        let adminOpening = false;
+        async function openAdminPanel() {
+            if (adminOpening) return;
+            adminOpening = true;
+            try {
+                const response = await fetch('/api/admin/session', { cache: 'no-store' });
+                if (response.status === 401) {
+                    if (!(await window.luceAdminSignIn())) return;
+                } else if (!response.ok) {
+                    throw new Error('Unable to check your sign-in. Please try again.');
+                }
+                adminPassword = 'cookie-session';
+                document.getElementById('admin-panel').classList.add('active');
+                loadAdminData();
+            } catch (error) { alert(error.message || 'Unable to open admin. Please try again.'); }
+            finally { adminOpening = false; }
         }
-
-        function openAdminPanel() {
-            // If already authenticated, just open
-            if (adminPassword) {
-                fetch(`/api/admin/bookings?password=${encodeURIComponent(adminPassword)}`)
-                    .then(response => {
-                        if (response.ok) {
-                            document.getElementById('admin-panel').classList.add('active');
-                            loadAdminData();
-                        } else {
-                            sessionStorage.removeItem('luce-admin-pw');
-                            adminPassword = '';
-                            openAdminPanel(); // retry with prompt
-                        }
-                    });
-                return;
-            }
-
-            const password = prompt('Admin password:');
-            if (!password) return;
-            
-            // Try to authenticate with the password by making an API call
-            fetch(`/api/admin/bookings?password=${encodeURIComponent(password)}`)
-                .then(response => {
-                    if (response.ok) {
-                        adminPassword = password;
-                        sessionStorage.setItem('luce-admin-pw', password);
-                        document.getElementById('admin-panel').classList.add('active');
-                        loadAdminData();
-                    } else {
-                        alert('Incorrect password');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error verifying password');
-                });
-        }
+        document.getElementById('admin-sign-out').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/admin/session', { method: 'DELETE' });
+                if (!response.ok) throw new Error('Unable to sign out. Please try again.');
+                adminPassword = '';
+                document.getElementById('admin-panel').classList.remove('active');
+                window.location.replace(window.location.pathname + window.location.search);
+            } catch (error) { alert(error.message); }
+        });
 
         async function loadAdminData() {
             try {
@@ -2545,6 +2524,27 @@
                     pagesEl.innerHTML = html;
                 } else {
                     pagesEl.innerHTML = '<p style="color:#888;">No data yet</p>';
+                }
+
+                // Named acquisition sources, rendered as text to keep campaign values safe.
+                const sourcesEl = document.getElementById('traffic-sources');
+                sourcesEl.replaceChildren();
+                if (data.trafficSources?.length) {
+                    const table = document.createElement('table');
+                    table.className = 'calendar-table';
+                    const header = table.createTHead().insertRow();
+                    ['Source', 'Channel', 'Views', 'Share'].forEach(label => {
+                        const th = document.createElement('th'); th.scope = 'col'; th.textContent = label; header.append(th);
+                    });
+                    const body = table.createTBody();
+                    const total = data.trafficSources.reduce((sum, row) => sum + Number(row.views), 0);
+                    data.trafficSources.forEach(source => {
+                        const row = body.insertRow();
+                        [source.source, source.medium, source.views, (total ? Math.round(source.views / total * 100) : 0) + '%'].forEach(value => { row.insertCell().textContent = value; });
+                    });
+                    sourcesEl.append(table);
+                } else {
+                    sourcesEl.textContent = 'No tracked visits in the last 30 days. Sources will appear here as people visit.';
                 }
 
                 // Top referrers

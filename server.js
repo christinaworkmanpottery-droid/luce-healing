@@ -121,6 +121,9 @@ function verifyToken(token) {
   }
 }
 
+const adminSessions = require('./admin-sessions').createAdminSessions({ dbGet, dbRun, verifyPassword });
+adminSessions.register(app);
+
 const gifts = require('./gifts')({app,pool,stripe,checkAdminPassword,getMailer:()=>smtpTransporter,domain:process.env.DOMAIN || 'https://lucehealing.com'});
 const newsletterService = require('./newsletter').createNewsletterService({pool,getTransporter:()=>smtpTransporter});
 newsletterService.register(app,checkAdminPassword);
@@ -858,7 +861,7 @@ async function checkAdminPassword(req, res, next) {
     const password = req.query.password || req.body.password;
     const record = await dbGet('SELECT value FROM admin_settings WHERE key = $1', ['admin_password']);
     if (!record) return res.status(500).json({ error: 'Admin password not initialized' });
-    if (!verifyPassword(password, record.value)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!(await adminSessions.valid(req, record.value)) && !verifyPassword(password, record.value)) return res.status(401).json({ error: 'Unauthorized' });
     require('./analytics').markAdmin(req, res);
     next();
   } catch (error) {
@@ -1320,6 +1323,7 @@ app.put('/api/admin/password', checkAdminPassword, async (req, res) => {
     if (!new_password || new_password.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
     const newPasswordHash = hashPassword(new_password);
     await dbRun('UPDATE admin_settings SET value = $1 WHERE key = $2', [newPasswordHash, 'admin_password']);
+    await adminSessions.revoke(req, res);
     res.json({ success: true, message: 'Password changed successfully' });
   } catch (error) {
     console.error('Password change error:', error);

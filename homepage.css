@@ -1,4 +1,6 @@
 /* Only the homepage and the pages receiving its long-form content use these styles. */
+.home-editorial .hero-content { grid-template-columns:1fr; gap:0; }
+.home-editorial .hero-text { max-width:720px; }
 .home-editorial .home-section { padding:42px 0; scroll-margin-top:24px; }
 .home-editorial .home-section h2 { font-size:clamp(30px,3vw,39px); line-height:1.12; margin:0 0 14px; color:#392c44; font-weight:500; }
 .home-editorial .home-section p { line-height:1.65; margin:0 0 14px; }
@@ -29,18 +31,22 @@
 .home-editorial .membership-layout { display:grid; grid-template-columns:1fr 1.3fr; gap:60px; align-items:start; }
 .home-editorial .home-membership { border-bottom:1px solid #e6dde9; background:#fcfafc; }
 .home-editorial .home-membership h2 { font-size:31px; }
-.home-editorial .home-blog { background:#fff; padding:32px 0; }
+.home-editorial .home-blog { background:#eee5f3; padding:36px 0; border-top:3px solid #80608f; border-bottom:1px solid #d5c4df; }
 .home-editorial .home-blog .section-header { text-align:left; margin:0 0 16px; }
-.home-editorial .home-blog .section-header h2 { font-size:28px; margin-bottom:4px; }
+.home-editorial .home-blog .section-header h2 { font-size:clamp(30px,3vw,39px); margin-top:6px; margin-bottom:4px; }
 .home-editorial .home-blog .section-header p { margin:0!important; font-size:13px; }
 .home-editorial .home-blog .blog-grid { display:block; max-width:none; }
-.home-editorial .home-blog .blog-card { border:0; border-left:2px solid #b49ac2; border-radius:0; box-shadow:none; background:transparent; padding:4px 0 4px 22px; transform:none; }
+.home-editorial .home-blog .blog-card { border:1px solid #ddcfe5; border-left:3px solid #80608f; border-radius:8px; box-shadow:none; background:#fff; padding:20px; transform:none; }
 .home-editorial .home-blog .blog-card h3 { font-size:26px; margin-bottom:8px; }
 .home-editorial .home-blog .blog-excerpt { font-size:15px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
 .home-editorial .home-blog .blog-meta { padding:0; border:0; justify-content:flex-start; gap:24px; }
+.home-editorial .home-blog .blog-meta small { color:#65576e; font-size:14px; }
+.home-editorial .home-blog .blog-meta a { min-height:44px; display:inline-flex; align-items:center; text-decoration:underline!important; text-underline-offset:4px; }
+.home-editorial .home-blog .blog-all-posts { min-height:46px; padding:11px 22px; font-size:16px; width:auto; margin-top:4px; }
+.home-editorial .home-blog a:focus-visible { outline:3px solid #624373; outline-offset:4px; }
 .home-editorial .home-about { background:#fcfafc; }
-.home-editorial .home-about-layout { display:grid; grid-template-columns:150px 1fr; gap:32px; align-items:center; max-width:860px!important; }
-.home-editorial .home-about-layout img { width:150px; height:180px; object-fit:cover; object-position:center 21%; border-radius:70px 70px 8px 8px; }
+.home-editorial .home-about-layout { display:grid; grid-template-columns:300px 1fr; gap:32px; align-items:center; max-width:860px!important; }
+.home-editorial .home-about-layout .portrait { width:100%; height:350px; object-fit:cover; object-position:center 38%; }
 .home-editorial .home-about-layout p { font-size:15px; }
 .home-editorial .home-support { padding-top:24px; }
 .home-editorial .support-choices { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px; margin-top:18px; }
@@ -102,8 +108,7 @@
  .home-editorial .home-membership .eyebrow { margin-bottom:6px; font-size:10px; }
  .home-editorial .home-membership h2 { font-size:30px; }
  .home-editorial .home-membership p { font-size:15px; }
- .home-editorial .home-about-layout { grid-template-columns:92px 1fr; gap:20px; align-items:start; }
- .home-editorial .home-about-layout img { width:92px; height:124px; }
+ .home-editorial .home-about-layout { grid-template-columns:1fr; gap:20px; align-items:start; }
  .home-editorial .home-about h2 { font-size:28px; }
  .home-editorial .home-about-layout p { font-size:14px; }
  .home-editorial .support-choices { grid-template-columns:1fr; gap:12px; }

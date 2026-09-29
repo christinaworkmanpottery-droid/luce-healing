@@ -3,6 +3,21 @@ const {PGlite}=require('@electric-sql/pglite');
 const express=require('express');
 const {createAnalytics,publicPath}=require('../analytics');
 const UA='Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Version/26.0 Mobile/15E148 Safari/604.1';
+test('traffic source names distinguish search, social, tagged links and unknown',()=>{
+ const {classifySource,groupSources}=require('../traffic-sources');
+ assert.equal(classifySource('/','https://www.google.com/search?q=astrology').source,'Google');
+ assert.equal(classifySource('/','https://l.instagram.com/').source,'Instagram');
+ assert.equal(classifySource('/','https://m.facebook.com/').source,'Facebook');
+ assert.equal(classifySource('/','https://www.threads.com/').source,'Threads');
+ assert.equal(classifySource('/?utm_source=tiktok','').source,'TikTok');
+ assert.equal(classifySource('/?utm_source=instagram','https://www.google.com/').source,'Instagram');
+ assert.equal(classifySource('/','https://evilgoogle.com/').medium,'Other websites');
+ assert.equal(classifySource('/','https://lucehealing.com/blog').explicit,false);
+ assert.equal(classifySource('/','').source,'Direct / unknown');
+ const grouped=groupSources([{referrer:'https://www.google.com',views:2},{traffic_source:'Google',traffic_medium:'Search',views:3},{referrer:'',views:4}]);
+ assert.equal(grouped.find(x=>x.source==='Google').views,5);
+ assert.equal(grouped.find(x=>x.source==='Direct / unknown').views,4);
+});
 async function harness(){
  const db=new PGlite();let now=Date.now();
  await db.exec("CREATE TABLE blog_posts(id SERIAL PRIMARY KEY,slug TEXT,published INTEGER,view_count INTEGER); INSERT INTO blog_posts(slug,published,view_count) VALUES('sample',1,193),('draft',0,17); CREATE TABLE page_views(id SERIAL PRIMARY KEY,path TEXT); INSERT INTO page_views(path) VALUES('/'),('/#admin');");
@@ -10,6 +25,7 @@ async function harness(){
  const app=express();app.use(express.json());app.use(service.middleware);service.register(app);require('../public-navigation').install(app,require('path').resolve(__dirname,'..'));
  app.get('/blog/:slug',async(req,res)=>{const p=(await db.query('SELECT * FROM blog_posts WHERE slug=$1 AND published=1',[req.params.slug])).rows[0];res.status(p?200:404).send('<html><body>Article</body></html>');});
  app.get('/',(req,res)=>res.sendFile(require('path').resolve(__dirname,'../index.html')));
+ app.get('/reading',(req,res)=>res.send('<html><body>Reading</body></html>'));
  app.get('/admin',(req,res)=>res.send('<html><body>Admin</body></html>'));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  const get=async(p='/blog/sample',cookie='',headers={},method='GET')=>{const r=await fetch(base+p,{method,headers:{'user-agent':UA,cookie,...headers}});const text=await r.text();return {status:r.status,token:text.match(/data-token="([^"]+)"/)?.[1],cookie:r.headers.getSetCookie().map(s=>s.split(';')[0]).join('; '),text};};
@@ -54,4 +70,17 @@ test('browser script waits for visible page and excludes admin/hash, stored admi
   Object.defineProperty(w.document,'currentScript',{value:w.document.querySelector('script')});Object.defineProperty(w.document,'visibilityState',{value:mode==='hidden'?'hidden':'visible'});Object.defineProperty(w.navigator,'webdriver',{value:mode==='automated'});
   if(mode==='stored')w.sessionStorage.setItem('luce-admin-pw','test-only');w.setTimeout=fn=>timers.push(fn);w.clearTimeout=()=>{};w.fetch=(...a)=>{calls.push(a);return Promise.resolve();};w.eval(source);timers.forEach(fn=>fn());assert.equal(calls.length,mode==='normal'?1:0,mode);w.close();
  }
+});
+
+test('source attribution follows internal navigation, changes for tagged entries, and expires',async()=>{
+ const h=await harness();try{
+  const page=await h.get();assert.equal((await h.send(page,{referrer:'https://www.google.com/search?q=astrology'})).counted,true);
+  const home=await h.get('/',page.cookie);assert.equal((await h.send(home,{path:'/',referrer:''})).counted,true);
+  const summary=await h.service.summary();assert.equal(summary.trafficSources.reduce((n,s)=>n+s.views,0),2);assert.equal(summary.trafficSources.find(x=>x.source==='Google').views,2);
+  const tagged=await h.get('/reading?utm_source=instagram&utm_medium=social',page.cookie);
+  assert.equal((await h.send(tagged,{path:'/reading?utm_source=instagram&utm_medium=social'})).counted,true);
+  const sources=(await h.service.summary()).trafficSources;assert.equal(sources.find(x=>x.source==='Instagram').views,1);
+  h.advance(31*60000);const later=await h.get('/blog/sample',page.cookie);assert.equal((await h.send(later)).counted,true);
+  assert.equal((await h.service.summary()).trafficSources.find(x=>x.source==='Direct / unknown').views,1);
+ }finally{await h.close();}
 });
