@@ -39,7 +39,9 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
  const setCookie=(res,name,value,seconds)=>res.cookie(name,value,{httpOnly:true,secure:env.NODE_ENV!=='test',sameSite:'lax',path:'/',maxAge:seconds*1000});
  const complimentary=require('./complimentary').createComplimentary({q,now,scheduleInstant});
  const {createPersonalReadings,createOpenAIProvider}=require('./personal-reading');
- const personalReadings=createPersonalReadings({q,now,limit,provider:readingProvider||createOpenAIProvider({env,fetcher})});
+ const provider=readingProvider||createOpenAIProvider({env,fetcher});
+ const personalReadings=createPersonalReadings({q,now,limit,provider});
+ const purchases=require('./purchased-readings').createPurchasedReadings({q,tx,now,provider,stripe:liveStripe,liveEnabled,needMember,session,limit,wrap,tick,origin});
  async function initialize(){
   const schema=`CREATE TABLE IF NOT EXISTS luce_members(id SERIAL PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password_hash TEXT NOT NULL,verified_at TIMESTAMPTZ,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),tier TEXT NOT NULL DEFAULT 'shared_preview',status TEXT NOT NULL DEFAULT 'pending',access_until TIMESTAMPTZ,cancel_at_period_end BOOLEAN NOT NULL DEFAULT false,stripe_customer_id TEXT UNIQUE,stripe_subscription_id TEXT UNIQUE,billing_period_start TIMESTAMPTZ,billing_period_end TIMESTAMPTZ,billing_synced_at TIMESTAMPTZ,is_test BOOLEAN NOT NULL DEFAULT true);
    CREATE TABLE IF NOT EXISTS luce_member_sessions(token_hash TEXT PRIMARY KEY,member_id INTEGER REFERENCES luce_members(id),kind TEXT NOT NULL,email TEXT,expires_at TIMESTAMPTZ NOT NULL);
@@ -50,6 +52,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   await tx(async c=>{for(const statement of schema.split(';').filter(x=>x.trim()))await c.query(statement);});
   await complimentary.initialize();
   await personalReadings.initialize();
+  await purchases.initialize();
   await q('ALTER TABLE luce_members ADD COLUMN IF NOT EXISTS checkout_id TEXT, ADD COLUMN IF NOT EXISTS checkout_nonce TEXT, ADD COLUMN IF NOT EXISTS checkout_plan TEXT');
   await q('ALTER TABLE luce_members ADD COLUMN IF NOT EXISTS birth_profile JSONB, ADD COLUMN IF NOT EXISTS birth_chart JSONB');
   await personalReadings.auditSaved();
@@ -81,8 +84,8 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
  async function tick(){
   return q(`UPDATE luce_horoscopes SET collection_hidden=false,published=scheduled_draft,published_title=scheduled_title,published_demo=scheduled_demo,published_at=$1,scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1,updated_at=$1 WHERE scheduled_at<=$1 AND scheduled_draft IS NOT NULL RETURNING month`,[now()]);
  }
- function start(){if(timer)return;const run=()=>tick().catch(e=>console.error('[Luce horoscope scheduler]',e.code||e.name));timer=setInterval(run,30000);timer.unref();run();}
- function stop(){if(timer)clearInterval(timer);timer=null;}
+ function start(){if(timer)return;const run=()=>Promise.all([tick(),purchases.resume()]).catch(e=>console.error('[Luce horoscope scheduler]',e.code||e.name));timer=setInterval(run,30000);timer.unref();run();}
+ function stop(){purchases.stop();if(timer)clearInterval(timer);timer=null;}
  async function limit(key,max=10,period=3600000){const bucket=Math.floor(+now()/period);const r=await one(`INSERT INTO luce_member_limits(key,bucket) VALUES($1,$2) ON CONFLICT(key,bucket) DO UPDATE SET n=luce_member_limits.n+1 RETURNING n`,[hash(key),bucket]);if(r.n>max)throw fail('Too many attempts. Please try again later.',429);}
  async function passwordHash(p){if(typeof p!=='string'||p.length<8||p.length>200)throw fail('Use a password of 8–200 characters.');const salt=crypto.randomBytes(16).toString('hex');return salt+':'+(await scrypt(p,salt,64)).toString('hex');}
  async function passwordMatches(p,encoded){if(typeof p!=='string'||p.length>200)return false;const [salt,digest]=encoded.split(':');const actual=await scrypt(p,salt,64);return actual.length===Buffer.from(digest,'hex').length&&crypto.timingSafeEqual(actual,Buffer.from(digest,'hex'));}
@@ -102,7 +105,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   const t=token(),url=origin+'/members/'+(kind==='verify'?'verify':'reset')+'?token='+t;
   await q('DELETE FROM luce_member_tokens WHERE member_id=$1 AND kind=$2',[m.id,kind]);
   await q('INSERT INTO luce_member_tokens(token_hash,member_id,kind,expires_at) VALUES($1,$2,$3,$4)',[hash(t),m.id,kind,later(kind==='verify'?86400000:3600000)]);
-  const subject=kind==='verify'?'Confirm your Luce Healing member account':'Reset your Luce Healing password';
+  const subject=kind==='verify'?'Confirm your Luce Healing account':'Reset your Luce Healing password';
   try{const r=await mailer.sendMail({from:{name:'Christina at Luce Healing',address:'lucehealing13@gmail.com'},to:m.email,subject,text:`${subject}\n${url}\n${m.is_test?'This is your private membership preview account. No subscription or charge is created.':'Confirming your email does not start a subscription. Membership payment is a separate step.'} If you did not request this email, ignore it.`,html:`<div style="background:#f3eef6;padding:24px;font:17px/1.7 Georgia,serif;color:#392c44"><div style="max-width:600px;margin:auto;background:white;padding:24px;border-radius:12px"><h1>Luce Healing</h1><h2>${subject}</h2><p>Hello ${esc(m.name)},</p><p><a href="${url}" style="background:#624373;color:white;padding:14px;display:inline-block;border-radius:6px">${kind==='verify'?'Confirm my account':'Reset my password'}</a></p><p>${m.is_test?'This private preview creates no paid subscription.':'Membership payment is a separate step; this email does not authorize a charge.'} This link expires in ${kind==='verify'?'24 hours':'one hour'}. If you did not request it, ignore this email.</p></div></div>`});if(!r.accepted?.length)throw Error('Not accepted');}
   catch(_){await q('DELETE FROM luce_member_tokens WHERE token_hash=$1',[hash(t)]);throw fail('Email could not be sent. Please try again.',503);}
  }
@@ -155,6 +158,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
  async function reconcile(m){if(complimentary.active(m))return m;const stripe=clientFor(m);if(stripe&&m.stripe_subscription_id&&(!m.billing_synced_at||+now()-new Date(m.billing_synced_at)>60000)){try{await syncSubscription(await stripe.subscriptions.retrieve(m.stripe_subscription_id));}catch(_){throw fail('Unable to confirm membership billing. Please try again shortly.',503);}return one('SELECT * FROM luce_members WHERE id=$1',[m.id]);}return m;}
  async function handleLiveEvent(event){
   if(event.livemode!==true||!liveStripe)return false;
+  if(await purchases.handleEvent(event))return true;
   const obj=event.data.object;let id,sub;
   if(event.type==='checkout.session.completed'&&obj.mode==='subscription'&&obj.metadata?.luce_membership==='membership')id=typeof obj.subscription==='string'?obj.subscription:obj.subscription?.id;
   else if(event.type.startsWith('customer.subscription.')&&obj.metadata?.luce_membership==='membership'){if(event.type==='customer.subscription.deleted')sub=obj;else id=obj.id;}
@@ -165,6 +169,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   await syncSubscription(sub);await q('INSERT INTO luce_member_events(id,event_type) VALUES($1,$2) ON CONFLICT DO NOTHING',[event.id,event.type]);return true;
  }
  function register(app,checkAdmin){
+  purchases.register(app);
   app.use(['/members','/api/membership','/api/admin/membership'],(req,res,next)=>{res.set({'X-Robots-Tag':'noindex, nofollow','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});if(['POST','PUT','DELETE','PATCH'].includes(req.method)&&!req.originalUrl.startsWith('/api/membership/stripe/webhook')&&(req.headers['sec-fetch-site']==='cross-site'||(req.headers.origin&&req.headers.origin!==origin&&env.NODE_ENV!=='test')))return res.status(403).json({error:'Please use the Luce Healing site.'});next();});
   // These files are only served by gated routes, never by the site's static root.
   app.use('/private-membership',(req,res)=>res.sendStatus(404));
@@ -185,7 +190,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
    const existing=await one('SELECT id FROM luce_members WHERE email=$1',[email]);if(existing)throw fail('This account already exists. Sign in or reset your password.',409);
    const code=req.body.complimentary_code;
    if(code)await limit('redeem:'+clientIP(req),20);
-   const m=await tx(async c=>{const created=(await c.query("INSERT INTO luce_members(email,name,password_hash,is_test,tier) VALUES($1,$2,$3,$4,$5) RETURNING *",[email,name,pw,isTest,isTest?'shared_preview':'membership'])).rows[0];return code?complimentary.redeem(c,created.id,code):created;});await startSession(res,m);
+   const m=await tx(async c=>{const created=(await c.query("INSERT INTO luce_members(email,name,password_hash,is_test,tier) VALUES($1,$2,$3,$4,$5) RETURNING *",[email,name,pw,isTest,isTest?'shared_preview':req.body.purpose==='purchased_reading'?'customer':'membership'])).rows[0];return code?complimentary.redeem(c,created.id,code):created;});await startSession(res,m);
    if(complimentary.active(m)){res.json({success:true,message:'Your complimentary membership is ready. No payment is required.'});return;}
    try{await accountMail(m,'verify');res.json({success:true,message:'Check your inbox to confirm your member account.'});}catch(e){res.json({success:true,message:'Account saved. '+e.message+' Use Resend confirmation.'});}
   }));
@@ -194,7 +199,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   app.post('/api/membership/logout',wrap(async(req,res)=>{await q('DELETE FROM luce_member_sessions WHERE token_hash=$1',[hash(cookie(req,'luce_member'))]);setCookie(res,'luce_member','',0);res.json({success:true});}));
   app.post('/api/membership/resend',needPreview,wrap(async(req,res)=>{const m=await needMember(req);if(!m.verified_at)await accountMail(m,'verify');res.json({success:true,message:'If confirmation is needed, check your inbox.'});}));
   app.post('/api/membership/forgot',needPreview,wrap(async(req,res)=>{await limit('forgot:'+clientIP(req),10);const email=String(req.body.email||'').trim().toLowerCase();const m=await one('SELECT * FROM luce_members WHERE email=$1',[email]);if(m&&(!m.is_test||email===testEmail))await accountMail(m,'reset');res.json({success:true,message:'If that account exists, a reset email has been sent.'});}));
-  app.post('/api/membership/verify',wrap(async(req,res)=>{await limit('verify:'+clientIP(req),30);const m=await consume(req.body.token,'verify',async(c,id)=>(await c.query("UPDATE luce_members SET verified_at=COALESCE(verified_at,$1),status=CASE WHEN status='pending' AND is_test THEN 'preview' WHEN status='pending' THEN 'unpaid' ELSE status END,access_until=CASE WHEN is_test THEN COALESCE(access_until,$2) ELSE access_until END WHERE id=$3 RETURNING *",[now(),later(7*86400000),id])).rows[0]);await startSession(res,m);res.json({success:true,message:m.is_test?'Your account is confirmed. Your seven-day private preview is ready.':'Your email is confirmed. Choose your membership on the Account page.'});}));
+  app.post('/api/membership/verify',wrap(async(req,res)=>{await limit('verify:'+clientIP(req),30);const m=await consume(req.body.token,'verify',async(c,id)=>(await c.query("UPDATE luce_members SET verified_at=COALESCE(verified_at,$1),status=CASE WHEN status='pending' AND is_test THEN 'preview' WHEN status='pending' THEN 'unpaid' ELSE status END,access_until=CASE WHEN is_test THEN COALESCE(access_until,$2) ELSE access_until END WHERE id=$3 RETURNING *",[now(),later(7*86400000),id])).rows[0]);await startSession(res,m);res.json({success:true,next:m.tier==='customer'?'/my-purchased-readings':'/members/account',message:m.is_test?'Your account is confirmed. Your seven-day private preview is ready.':'Your email is confirmed. You can continue to your reading or your account.'});}));
   app.post('/api/membership/reset',wrap(async(req,res)=>{await limit('reset:'+clientIP(req),20);const pw=await passwordHash(req.body.member_password);await consume(req.body.token,'reset',async(c,id)=>{await c.query('UPDATE luce_members SET password_hash=$1 WHERE id=$2',[pw,id]);await c.query("DELETE FROM luce_member_sessions WHERE member_id=$1 AND kind='member'",[id]);});setCookie(res,'luce_member','',0);res.json({success:true,message:'Password updated. Please sign in again.'});}));
   app.get('/api/membership/me',needPreview,wrap(async(req,res)=>res.json(publicMember(await reconcile(await needMember(req))))));
   app.get('/api/membership/horoscopes',needPreview,wrap(async(req,res)=>{await tick();const m=await reconcile(await needMember(req));if(!access(m))throw fail('Confirm your account and check your membership access on the Account page.',403);res.json((await q('SELECT month,COALESCE(display_month,month) AS display_month,subtitle,featured_at,collection_type,published_title AS title,published AS content,published_demo AS demo,published_at FROM luce_horoscopes WHERE published IS NOT NULL AND collection_hidden=false AND ($1 OR published_demo=false) ORDER BY published_demo,published_at DESC NULLS LAST,month DESC',[m.is_test])).rows);}));

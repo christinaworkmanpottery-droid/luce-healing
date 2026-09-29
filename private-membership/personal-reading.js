@@ -4,7 +4,7 @@ const chart = require('./chart');
 const {validatePlacements,signature} = require('./placement-validation');
 const fail = (message, status = 409) => Object.assign(Error(message), {status});
 const version = 'luce-monthly-v2-locked-natal';
-const claimLifetimeMs = 420000;
+const claimLifetimeMs = 15*60*1000;
 const validMonth = value => /^\d{4}-(0[1-9]|1[0-2])$/.test(value || '');
 const monthOf = row => row.display_month || row.month;
 const label = month => moment.utc(month + '-01').format('MMMM YYYY');
@@ -71,7 +71,7 @@ function renderNatalReferences(result,context) {
   return {...result,paragraphs:result.paragraphs.map(p=>({...p,text:typeof p.text==='string'?p.text.replace(/\{\{natal:([^{}]+)\}\}/g,(_token,body)=>{
     if(!locked.has(body))throw fail('Your reading referenced a placement that is unavailable.',502);
     return 'your natal '+body+' in '+locked.get(body);
-  }).replace(/\b(?:the )?(Mercury|Venus|Mars|Jupiter)[ -]retrograde (guidance|themes)\b/gi,(_phrase,body,noun)=>
+  }).replace(/(^|[.!?]\s+)(your natal)/g,(_m,prefix)=>prefix+'Your natal').replace(/\b(?:the )?(Mercury|Venus|Mars|Jupiter)[ -]retrograde (guidance|themes)\b/gi,(_phrase,body,noun)=>
     (_phrase.startsWith('The ')?noun[0].toUpperCase()+noun.slice(1):noun)+' about the current '+Object.keys(chart.meanings).find(name=>name.toLowerCase()===body.toLowerCase())+' retrograde'):p.text}))};
 }
 function createOpenAIProvider({env, fetcher = fetch}) {
