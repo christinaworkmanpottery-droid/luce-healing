@@ -2707,17 +2707,22 @@
 
         async function previewAdminBlogPost(id) {
             try {
-                const posts = await fetch(`/api/admin/blog?password=${encodeURIComponent(adminPassword)}`).then(r => r.json());
+                const response = await fetch(`/api/admin/blog?password=${encodeURIComponent(adminPassword)}`);
+                if (!response.ok) throw new Error('Could not load posts');
+                const posts = await response.json();
                 const post = posts.find(p => p.id == id);
                 if (!post) return alert('Could not load post preview');
                 const overlay = document.createElement('div');
                 overlay.className = 'modal';
                 overlay.style.display = 'flex';
                 overlay.style.zIndex = '10000';
+                const title = String(post.title || 'Blog Preview')
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
                 overlay.innerHTML = `
                     <div class="modal-content" style="max-width:800px;max-height:90vh;overflow-y:auto;background:white;">
                         <div class="modal-header">
-                            <h2 style="margin-right:12px;">${escapeHtml(post.title || 'Blog Preview')}</h2>
+                            <h2 style="margin-right:12px;">${title}</h2>
                             <button class="modal-close" type="button" onclick="this.closest('.modal').remove()">×</button>
                         </div>
                         <div style="padding:24px;line-height:1.8;text-align:left;">${post.content || '<p>Nothing to preview yet.</p>'}</div>
@@ -2727,6 +2732,7 @@
                     </div>`;
                 document.body.appendChild(overlay);
             } catch (e) {
+                console.error('Blog preview error:', e);
                 alert('Error loading preview');
             }
         }
