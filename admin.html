@@ -205,7 +205,30 @@ function openEditor(post=null) {
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                <button class="btn btn-secondary" onclick="previewEditor()">👁️ Preview</button>
                 <button class="btn btn-primary" onclick="savePost(${post?.id || 'null'})">Save</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+function previewEditor() {
+    const title = document.getElementById('edTitle')?.value || 'Untitled Post';
+    const content = document.getElementById('edContent')?.value || '<p style="color:#999">Nothing to preview yet.</p>';
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '1100';
+    overlay.onclick = e => { if(e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = `
+        <div class="modal">
+            <div class="modal-header">
+                <h2>${esc(title)}</h2>
+                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+            </div>
+            <div class="preview-content">${content}</div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">← Back to Editing</button>
             </div>
         </div>
     `;
