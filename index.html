@@ -2692,6 +2692,7 @@
                                 </div>
                                 <div style="display: flex; gap: 8px;">
                                     <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;" onclick="openBlogEditor(${post.id})">Edit</button>
+                                    <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;" onclick="previewAdminBlogPost(${post.id})">👁 Preview</button>
                                     <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em; background:#e74c3c; color:white;" onclick="deleteBlogPost(${post.id})">Delete</button>
                                 </div>
                             </div>
@@ -2701,6 +2702,32 @@
                 container.innerHTML = html;
             } catch (e) {
                 console.error('Error loading admin blog:', e);
+            }
+        }
+
+        async function previewAdminBlogPost(id) {
+            try {
+                const posts = await fetch(`/api/admin/blog?password=${encodeURIComponent(adminPassword)}`).then(r => r.json());
+                const post = posts.find(p => p.id == id);
+                if (!post) return alert('Could not load post preview');
+                const overlay = document.createElement('div');
+                overlay.className = 'modal';
+                overlay.style.display = 'flex';
+                overlay.style.zIndex = '10000';
+                overlay.innerHTML = `
+                    <div class="modal-content" style="max-width:800px;max-height:90vh;overflow-y:auto;background:white;">
+                        <div class="modal-header">
+                            <h2 style="margin-right:12px;">${escapeHtml(post.title || 'Blog Preview')}</h2>
+                            <button class="modal-close" type="button" onclick="this.closest('.modal').remove()">×</button>
+                        </div>
+                        <div style="padding:24px;line-height:1.8;text-align:left;">${post.content || '<p>Nothing to preview yet.</p>'}</div>
+                        <div style="padding:0 24px 24px;">
+                            <button class="btn btn-secondary" type="button" onclick="this.closest('.modal').remove()">Close Preview</button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+            } catch (e) {
+                alert('Error loading preview');
             }
         }
 
