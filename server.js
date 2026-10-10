@@ -19,10 +19,10 @@ const PORT = process.env.PORT || 3000;
 let smtpTransporter = null;
 function setupSmtp(user, pass) {
   if (user && pass) {
-    smtpTransporter = nodemailer.createTransport({ service: 'gmail', auth: { user, pass } });
+    smtpTransporter = nodemailer.createTransport({ service: 'gmail', connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000, auth: { user, pass } });
     smtpTransporter.verify(err => {
-      if (err) console.error('⚠️ SMTP verification failed:', err.message);
-      else console.log('✅ SMTP connected as', user);
+      if (err) console.error('SMTP verification failed', { code: 'SMTP_VERIFY_FAILED' });
+      else console.log('SMTP connection verified');
     });
   }
 }
@@ -126,6 +126,7 @@ const adminSessions = require('./admin-sessions').createAdminSessions({ dbGet, d
 adminSessions.register(app);
 
 const gifts = require('./gifts')({app,pool,stripe,checkAdminPassword,getMailer:()=>smtpTransporter,domain:process.env.DOMAIN || 'https://lucehealing.com'});
+const readingNotifications = require('./reading-notifications').createReadingNotifications({pool, getTransporter:()=>smtpTransporter, stripe});
 const newsletterService = require('./newsletter').createNewsletterService({pool,getTransporter:()=>smtpTransporter});
 newsletterService.register(app,checkAdminPassword);
 const membershipService = require('./private-membership/service').createMembership({pool,getMailer:()=>smtpTransporter,stripeClient:stripe});
@@ -472,6 +473,7 @@ async function initializeDatabase() {
   await newsletterService.initialize();
   await membershipService.initialize();
   await customerLibrary.initialize();
+  await readingNotifications.initialize();
   await analytics.initialize();
 }
 
@@ -770,72 +772,30 @@ app.post('/api/booking/checkout', async (req, res) => {
 
 app.post('/api/stripe/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_secret';
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!stripe || !endpointSecret) return res.status(503).json({error:'Webhook not configured'});
   let event;
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (error) {
-    console.error('Webhook signature verification failed:', error.message, '| sig header:', sig ? sig.substring(0,40) : 'none', '| body type:', typeof req.body, '| body len:', req.body ? req.body.length : 0);
-    return res.status(400).json({ error: error.message });
+    console.error('Webhook signature verification failed');
+    return res.status(400).json({ error: 'Invalid webhook signature' });
   }
 
   try {
   if (await membershipService.handleLiveEvent(event)) return res.json({received:true});
+  if (['checkout.session.completed','checkout.session.async_payment_succeeded','checkout.session.expired','checkout.session.async_payment_failed'].includes(event.type) && event.data.object.metadata?.type === 'astrology_reading') {
+    await readingNotifications.handleSession(event.data.object);
+    return res.json({received:true});
+  }
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const m = session.metadata || {};
     if (session.payment_status !== 'paid') return res.json({received:true});
     if (await gifts.handleWebhook(session)) return res.json({received:true});
 
-    // Handle $33 astrology reading orders
-    if (m.type === 'astrology_reading') {
-      await dbRun(
-        "UPDATE astrology_reading_orders SET stripe_payment_status = 'paid' WHERE stripe_session_id = $1",
-        [session.id]
-      );
-      // Notify Christina
-      try {
-        if (smtpTransporter) {
-          await smtpTransporter.sendMail({
-            from: '"Luce Healing" <lucehealing13@gmail.com>',
-            to: 'lucehealing13@gmail.com',
-            subject: `⭐ New $33 Reading — ${m.client_name}`,
-            html: `<h2 style="color:#c9a96e">New One Question Astrology Reading</h2>
-<p><strong>Name:</strong> ${m.client_name}</p>
-<p><strong>Email:</strong> ${session.customer_email}</p>
-<p><strong>Birth Date:</strong> ${m.birth_date}</p>
-<p><strong>Birth Time:</strong> ${m.birth_time}</p>
-<p><strong>Birth Location:</strong> ${m.birth_location}</p>
-<p><strong>Question:</strong></p>
-<blockquote style="background:#f9f0e0;padding:15px;border-left:4px solid #c9a96e">${m.question}</blockquote>
-<p style="color:#888;font-size:0.9em">Payment confirmed via Stripe. Please deliver reading within 1–3 days.</p>`
-          });
-          // Send confirmation to client
-          await smtpTransporter.sendMail({
-            from: '"Christina @ Luce Healing" <lucehealing13@gmail.com>',
-            to: session.customer_email,
-            subject: 'Your Astrology Reading is Confirmed ✦',
-            html: `<div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:30px;background:#fffdf8">
-<h2 style="color:#c9a96e;font-family:Georgia,serif">Your Reading is Confirmed ✦</h2>
-<p>Hi ${m.client_name},</p>
-<p>Thank you for your order! I've received your question and will deliver your personalized astrology reading within <strong>1–3 days</strong> by email.</p>
-<p><strong>Your question:</strong></p>
-<blockquote style="background:#f9f0e0;padding:15px;border-left:4px solid #c9a96e;font-style:italic">${m.question}</blockquote>
-<p><strong>Birth info I'll use:</strong><br>
-Date: ${m.birth_date}<br>
-Time: ${m.birth_time}<br>
-Location: ${m.birth_location}</p>
-<p>If you have anything to add, simply reply to this email.</p>
-<p>With love and light,<br><strong>Christina</strong><br>Luce Healing</p>
-</div>`
-          });
-        }
-      } catch (emailErr) {
-        console.error('Email notification error (astrology reading):', emailErr.message);
-      }
-      console.log(`$33 astrology reading paid: ${m.client_name}`);
-    // Handle forecast orders
-    } else if (m.type === 'forecast') {
+    // One-question reading events are handled by the durable outbox above.
+    if (m.type === 'forecast') {
       await dbRun(
         "UPDATE forecast_orders SET stripe_payment_status = 'paid' WHERE stripe_session_id = $1",
         [session.id]
@@ -858,7 +818,7 @@ Location: ${m.birth_location}</p>
     }
   }
   res.json({ received: true });
-  } catch(error) { console.error('Payment recording failed:',error.message);res.status(500).json({error:'Payment recording failed; webhook will retry.'}); }
+  } catch(error) { console.error('Payment recording failed', {code:'PAYMENT_RECORDING_ERROR'});res.status(500).json({error:'Payment recording failed; webhook will retry.'}); }
 });
 
 // ============================================================================
@@ -934,7 +894,7 @@ app.get('/api/admin/dashboard', checkAdminPassword, async (req, res) => {
     const stats = {};
     const revenue = await dbGet(`SELECT
       COALESCE((SELECT SUM(amount_paid) FROM bookings WHERE stripe_payment_status='paid'),0) +
-      COALESCE((SELECT SUM(price) FROM astrology_reading_orders WHERE stripe_payment_status='paid'),0) +
+      COALESCE((SELECT SUM(COALESCE(amount_paid,price)) FROM astrology_reading_orders WHERE stripe_payment_status='paid'),0) +
       COALESCE((SELECT SUM(price) FROM forecast_orders WHERE stripe_payment_status='paid'),0) +
       COALESCE((SELECT SUM(price) FROM reading_gifts WHERE payment_status='paid'),0) AS total`);
     stats.total_revenue = (Number(revenue.total)||0)/100;
@@ -1767,7 +1727,7 @@ app.get('/sitemap.xml', async (req, res) => {
 });
 
 // Static file serving (fallback for CSS, images, etc.)
-app.use((req,res,next)=>{if(/^\/(?:server\.js|customer-library\.js|admin-sessions\.js|traffic-sources\.js|analytics\.js|public-navigation\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
+app.use((req,res,next)=>{if(/^\/(?:server\.js|reading-notifications\.js|customer-library\.js|admin-sessions\.js|traffic-sources\.js|analytics\.js|public-navigation\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
 app.use(express.static(__dirname));
 
 // ============================================================================
@@ -1776,15 +1736,20 @@ app.use(express.static(__dirname));
 
 app.post('/api/astrology-reading/checkout', async (req, res) => {
   try {
-    if (!stripe) return res.status(500).json({ error: 'Payment system not configured' });
-    const { name, email, birthDate, birthTime, birthLocation, question } = req.body;
+    const { name, email, birthDate, birthTime, birthLocation, question, promoCode } = req.body;
     const purchaserId = await purchaseAccountId(req);
-    if (!name || !email || !birthDate || !birthLocation || !question) {
+    if (![name,email,birthDate,birthLocation,question].every(v=>typeof v==='string' && v.trim()) ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length>254 || name.length>200 ||
+        birthLocation.length>500 || question.length>10000 || (birthTime!=null && (typeof birthTime!=='string' || birthTime.length>100))) {
       return res.status(400).json({ error: 'Name, email, birth date, birth location, and your question are all required.' });
     }
     if (question.trim().length < 10) {
       return res.status(400).json({ error: 'Please enter your full question (at least 10 characters).' });
     }
+    // Save the request and its alert before contacting Stripe. A checkout outage must not hide a request.
+    const order = await readingNotifications.submitOrder({name,email,birthDate,birthTime,birthLocation,question,purchaserId,promoCode});
+    if (order.stripe_payment_status==='complimentary') return res.json({complimentary:true,orderId:order.id});
+    if (!stripe) return res.status(503).json({error:'Your request was recorded, but payment is temporarily unavailable. Contact Christina before submitting again.'});
     const domain = process.env.DOMAIN || 'http://localhost:3000';
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -1795,38 +1760,38 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
             name: 'One Question Astrology Reading — $33',
             description: `Personalized birth chart reading for ${name}. Delivered by email within 1–3 days.`
           },
-          unit_amount: 3300
+          unit_amount: order.checkout_amount
         },
         quantity: 1
       }],
       mode: 'payment',
+      allow_promotion_codes: !promoCode,
       success_url: `${domain}/reading-success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${domain}/#book-reading`,
       customer_email: email,
       metadata: {
         type: 'astrology_reading',
+        reading_order_id: String(order.id),
         client_name: name,
         birth_date: birthDate,
         birth_time: birthTime || 'Not provided',
         birth_location: birthLocation,
         question: question.substring(0, 500)
       }
-    });
-    await dbRun(
-      'INSERT INTO astrology_reading_orders (client_name, email, birth_date, birth_time, birth_location, question, price, stripe_session_id, luce_customer_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [name, email, birthDate, birthTime || null, birthLocation, question, 3300, session.id, purchaserId]
-    );
+    }, {idempotencyKey: `reading-order-${order.id}`});
+    await dbRun('UPDATE astrology_reading_orders SET stripe_session_id=$2 WHERE id=$1',[order.id,session.id]);
     res.json({ url: session.url });
   } catch (error) {
-    console.error('Astrology reading checkout error:', error);
-    res.status(500).json({ error: 'Failed to create checkout session. Please try again.' });
+    if(error.status===400) return res.status(400).json({error:error.message});
+    console.error('Astrology reading checkout failed', {code:'CHECKOUT_ERROR'});
+    res.status(500).json({ error: 'Unable to open payment. Your request may already be recorded; please contact Christina before submitting again.' });
   }
 });
 
 // Admin: get astrology reading orders
 app.get('/api/admin/astrology-reading-orders', checkAdminPassword, async (req, res) => {
   try {
-    const orders = await dbAll('SELECT * FROM astrology_reading_orders ORDER BY created_at DESC');
+    const orders = await dbAll(`SELECT o.*, COALESCE((SELECT jsonb_object_agg(n.kind, jsonb_build_object('status',n.status,'attempts',n.attempts,'last_error',n.last_error,'sent_at',n.sent_at,'next_attempt_at',n.next_attempt_at)) FROM reading_notifications n WHERE n.order_id=o.id),'{}'::jsonb) AS notifications FROM astrology_reading_orders o ORDER BY o.created_at DESC`);
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1947,7 +1912,8 @@ async function startServer() {
       const smtpPass = await dbGet("SELECT value FROM admin_settings WHERE key = 'smtp_pass'");
       if (smtpUser && smtpPass) setupSmtp(smtpUser.value, smtpPass.value);
       newsletterService.start();
-    } catch(e) { /* not configured yet */ }
+    } catch(e) { console.error('SMTP settings load failed',{code:'SMTP_SETTINGS_UNAVAILABLE'}); }
+    readingNotifications.start();
   });
 }
 

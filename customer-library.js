@@ -31,7 +31,7 @@ function createCustomerLibrary({ pool, session, getMailer = () => null, origin =
     const args = [id];
     const ownership = member ? ' AND (luce_customer_id=$2 OR (luce_customer_id IS NULL AND lower(trim(email))=$3))' : '';
     if (member) args.push(member.id, member.email.trim().toLowerCase());
-    const row = await one(`SELECT * FROM ${table} WHERE id=$1 AND stripe_payment_status='paid'${ownership}`, args);
+    const row = await one(`SELECT * FROM ${table} WHERE id=$1 AND stripe_payment_status IN (${kind==='question'?"'paid','complimentary'":"'paid'"})${ownership}`, args);
     if (!row) throw fail('Purchase not found.', 404);
     return row;
   }
@@ -40,7 +40,7 @@ function createCustomerLibrary({ pool, session, getMailer = () => null, origin =
     const title = kind === 'question' ? 'Ask One Question' : kind === 'forecast' ? (row.forecast_type === '12month' ? '12-Month Forecast' : '6-Month Forecast') : chartNames[row.session_type] || 'Healing / Support Session';
     const hasReading = !!(doc?.reading_text || doc?.has_pdf);
     return { kind, id: row.id, title, recipient: row.client_name, purchasedAt: row.created_at,
-      amount: kind === 'booking' ? row.amount_paid : row.price, ready: hasReading,
+      amount: kind === 'booking' ? row.amount_paid : kind === 'question' ? (row.amount_paid ?? (row.stripe_payment_status==='complimentary'?0:row.price)) : row.price, ready: hasReading,
       isReading: kind !== 'booking' || String(row.session_type).startsWith('chart-'),
       ...(kind === 'booking' ? { date: row.date, time: row.time, status: row.cancelled ? 'cancelled' : row.status, format: row.session_format } : {}) };
   }
@@ -58,7 +58,7 @@ function createCustomerLibrary({ pool, session, getMailer = () => null, origin =
       const m = await customer(req), result = [];
       for (const [kind,table] of Object.entries(tables)) {
         const rows = (await q(`SELECT o.*,d.reading_text <> '' OR d.pdf IS NOT NULL AS ready FROM ${table} o LEFT JOIN luce_customer_readings d ON d.order_kind=$1 AND d.order_id=o.id
-          WHERE o.stripe_payment_status='paid' AND (o.luce_customer_id=$2 OR (o.luce_customer_id IS NULL AND lower(trim(o.email))=$3))`,[kind,m.id,m.email.trim().toLowerCase()])).rows;
+          WHERE o.stripe_payment_status IN (${kind==='question'?"'paid','complimentary'":"'paid'"}) AND (o.luce_customer_id=$2 OR (o.luce_customer_id IS NULL AND lower(trim(o.email))=$3))`,[kind,m.id,m.email.trim().toLowerCase()])).rows;
         result.push(...rows.map(r=>summary(kind,r,r.ready?{has_pdf:true}:null)));
       }
       result.sort((a,b)=>new Date(b.purchasedAt)-new Date(a.purchasedAt));

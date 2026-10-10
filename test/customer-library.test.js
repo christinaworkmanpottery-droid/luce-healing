@@ -109,3 +109,12 @@ test('Save & Notify saves once and retry notification does not resave',async()=>
  w.document.getElementById('customer-reading-notify').click();await new Promise(r=>setTimeout(r,20));
  assert.equal(puts,1);assert.equal(notifications,2);assert.match(w.document.getElementById('customer-reading-status').textContent,/Notification sent/);w.close();
 });
+
+test('complimentary question is fulfillable with zero amount while pending remains blocked',async()=>{
+ const h=await setup();try{
+ await h.db.query("UPDATE astrology_reading_orders SET stripe_payment_status='complimentary' WHERE id=2");
+ const item=await h.call('/question/2');assert.equal(item.status,200);assert.equal(item.data.amount,0);
+ const edit=await h.call('/api/admin/customer-readings/question/2','PUT',{text:'Complimentary reading',revision:0},1,true);assert.equal(edit.status,200);
+ assert.equal((await h.call('/question/2','GET',null,2)).status,404);
+ }finally{await h.close();}
+});
