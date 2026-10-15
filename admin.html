@@ -53,7 +53,7 @@
         label { display:block; font-size:13px; font-weight:500; color:#666; margin-bottom:4px; }
         .checkbox-label { display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:12px; }
         .checkbox-label input { width:auto; margin:0; }
-    </style>
+        .blog-email-toggle { display:flex; align-items:flex-start; gap:12px; padding:12px 4px; cursor:pointer; color:#292334; font-size:15px; line-height:1.5; touch-action:manipulation; }\n        .blog-email-toggle input[type="checkbox"] { flex:0 0 24px; width:24px; height:24px; margin:0; accent-color:#654276; pointer-events:auto; }\n        .blog-email-toggle span { flex:1; }\n    </style>
 </head>
 <body>
 
@@ -201,7 +201,7 @@ function openEditor(post=null) {
                 <input type="text" id="edExcerpt" value="${esc(post?.excerpt || '')}">
                 <label>Content (HTML)</label>
                 <textarea id="edContent">${esc(post?.content || '')}</textarea>
-                <label class="checkbox-label"><input type="checkbox" id="edPublished" ${post?.published ? 'checked' : ''}> Published</label><div class="luce-blog-options"><label for="edPublishAt">Publish later (optional, your device time zone)</label><input type="datetime-local" id="edPublishAt" value="${post?.publish_at ? new Date(new Date(post.publish_at)-new Date(post.publish_at).getTimezoneOffset()*60000).toISOString().slice(0,16) : ''}"><label><input type="checkbox" id="edEmail" ${post?.publish_at && post?.email_on_publish ? 'checked' : ''}> Email verified blog subscribers when published</label><p>Unchecked means no email. Clear the scheduled time and uncheck Published to cancel scheduled publication.</p></div>
+                <label class="checkbox-label"><input type="checkbox" id="edPublished" ${post?.published ? 'checked' : ''}> Published</label><div class="luce-blog-options"><label for="edPublishAt">Publish later (optional, your device time zone)</label><input type="datetime-local" id="edPublishAt" value="${post?.publish_at ? new Date(new Date(post.publish_at)-new Date(post.publish_at).getTimezoneOffset()*60000).toISOString().slice(0,16) : ''}"><label class="checkbox-label blog-email-toggle" for="edEmail"><input type="checkbox" id="edEmail" name="email_blog" ${post?.email_on_publish ? 'checked' : ''}><span>Email this article to verified blog subscribers when it publishes</span></label><p>Unchecked means no email. Clear the scheduled time and uncheck Published to cancel scheduled publication.</p></div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
