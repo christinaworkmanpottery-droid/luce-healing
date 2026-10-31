@@ -1,0 +1,40 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('fs');
+const {JSDOM}=require('jsdom');
+const source=name=>fs.readFileSync(require.resolve('../'+name),'utf8');
+const subs=[{id:1,email:'reader@example.test',status:'verified',subscribed_at:'2026-10-31',wants_blog:true},{id:2,email:'pending@example.test',status:'pending',subscribed_at:'2026-10-30'}];
+const members=[{id:1,email:'member@example.test',name:'Example',tier:'annual',status:'active',access:true,membership_type:'paid',is_test:false,created_at:'2026-10-30'},{id:2,email:'test@example.test',access:true,is_test:true,created_at:'2026-10-30'}];
+const posts=[{id:2,title:'November 2026 Forecast',published:1,created_at:'2026-10-20',slug:'november'},{id:1,title:'Older article',published:1,created_at:'2026-01-01',slug:'older'}];
+const traffic={periods:[{label:'Today',views:4,visitors:2,previous_views:0,previous_visitors:0,previous_at:'2026-10-30'}],topArticles:[],trafficSources:[],dailyTrend:[],weeklyTrend:[],topPages:[],topReferrers:[],total:4,unique_total:2,legacyTotal:20,startedAt:'2026-10-25'};
+const tick=()=>new Promise(r=>setImmediate(r));
+test('dashboard, touch ordering, failed save, and unavailable traffic remain truthful',async()=>{
+ const dom=new JSDOM('<div id="adminScreen"><div class="tabs"></div><div id="blogTab"><div id="postsList"></div></div></div>',{runScripts:'outside-only',url:'https://lucehealing.com/admin'}),w=dom.window,calls=[];let fail=false;
+ w.eval("var adminPw='test-only';function switchTab(){};async function doLogin(){};function editPost(){};function previewPost(){};function deletePost(){}");
+ w.fetch=async(url,opts)=>{calls.push([url,opts]);const path=url.split('/api/admin/')[1].split('?')[0];return {ok:!fail,json:async()=>fail?{error:'Unavailable'}:path==='blog'?posts:path==='newsletter/subscribers'?subs:path==='membership/members'?members:path==='traffic'?traffic:{ids:JSON.parse(opts.body).ids}};};
+ w.eval(source('admin-mobile.js'));await w.loadMobileDashboard();
+ assert.match(w.document.getElementById('mobile-dashboard').textContent,/1 paid/);assert(!w.document.getElementById('mobile-dashboard').textContent.includes('test@example.test'));
+ await w.loadPosts();w.document.querySelector('[data-move="1"][data-direction="top"]').click();await tick();
+ const write=calls.find(([,o])=>o.method==='PUT');assert.deepEqual(JSON.parse(write[1].body),{ids:[1,2],previous:[2,1]});assert.match(w.document.getElementById('blog-order-message').textContent,/Order saved/);
+ fail=true;w.document.querySelector('[data-move="2"][data-direction="top"]').click();await tick();assert.match(w.document.getElementById('blog-order-message').textContent,/not applied/);assert.match(w.document.querySelector('.mobile-post h3').textContent,/Older article/);
+ await w.loadAdminTraffic();assert.match(w.document.getElementById('trafficTab').textContent,/Unavailable/);assert(!w.document.getElementById('trafficTab').textContent.includes('0 visitors'));
+ fail=false;await w.loadAdminTraffic();assert.match(w.document.getElementById('trafficTab').textContent,/not conversion rates/);assert.match(w.document.getElementById('trafficTab').textContent,/No percentage baseline/);
+ dom.window.close();
+});
+test('newsletter records move first; composing stays available and errors stay visible',async()=>{
+ const dom=new JSDOM('<div data-newsletter-admin></div>',{runScripts:'outside-only',url:'https://lucehealing.com'}),w=dom.window;
+ w.eval("var adminPassword='test-only'");w.fetch=async url=>({ok:true,json:async()=>url.includes('/subscribers')?subs:url.includes('/status')?{}:[]});
+ w.eval(source('newsletter-admin.js'));await w.loadAdminNewsletter();
+ const root=w.document.querySelector('[data-newsletter-admin]');assert.equal(root.firstElementChild.id,'nl-summary');assert.match(root.firstElementChild.textContent,/reader@example.test/);assert.match(root.firstElementChild.textContent,/2026/);
+ assert.equal(w.document.getElementById('nl-subject').closest('details').open,false);assert(w.document.getElementById('nl-subscribers').querySelector('details'));
+ assert.equal(w.document.getElementById('nl-feedback').parentElement,root);
+ dom.window.close();
+});
+test('membership signup summary leads the existing editor and preserves account controls',async()=>{
+ const dom=new JSDOM('<div data-membership-admin></div>',{runScripts:'outside-only',url:'https://lucehealing.com'}),w=dom.window;
+ w.eval("var adminPassword='test-only'");w.fetch=async url=>({ok:true,json:async()=>url.includes('/members?')?members:url.includes('/status')?{}:[]});
+ w.eval(source('membership-admin.js'));await w.loadMembershipAdmin();
+ const root=w.document.querySelector('[data-membership-admin]');assert.equal(root.firstElementChild.id,'mb-summary');assert.match(root.firstElementChild.textContent,/Example/);assert(!root.firstElementChild.textContent.includes('test@example.test'));
+ assert.equal(root.children[1].id,'mb-accounts');assert.equal(root.children[1].open,false);
+ assert(w.document.getElementById('mb-members').querySelector('details'));
+ assert(w.document.getElementById('mb-save'));assert(w.document.getElementById('mb-publish'));assert(w.document.getElementById('mb-schedule'));
+ dom.window.close();
+});

@@ -1,0 +1,41 @@
+/* Scoped admin styles: public Luce pages retain their existing design. */
+.admin-panel,.admin-screen{background:#fffdf5;color:#392c44;font:17px/1.5 system-ui;overflow-wrap:anywhere}
+.admin-panel *,.admin-screen *{box-sizing:border-box;min-width:0}
+.admin-panel .admin-header{background:#624373;padding:12px 16px;gap:10px;flex-wrap:wrap}
+.admin-panel .admin-header h1{font-size:22px}
+.admin-panel .admin-container{padding:16px;max-width:1100px}
+.admin-panel h2,.admin-screen h2{font:600 24px/1.3 system-ui;color:#392c44;margin:8px 0 12px}
+.admin-panel h3,.admin-screen h3{font:600 19px/1.4 system-ui;color:#392c44;margin:0 0 8px}
+.admin-panel button,.admin-panel summary,.admin-screen button,.admin-screen summary{min-height:44px;font-size:16px;touch-action:manipulation;cursor:pointer}
+.admin-panel input,.admin-panel select,.admin-panel textarea,.admin-screen input,.admin-screen select,.admin-screen textarea{font-size:17px!important;max-width:100%}
+.admin-panel details,.admin-screen details{background:#fff;border:1px solid #dfd3e6;border-radius:9px;padding:10px 12px;margin:10px 0}
+.admin-panel summary,.admin-screen summary{padding:10px 0;font-weight:600;color:#513260}
+.admin-panel small,.admin-screen small,.admin-panel .nl-muted,.admin-screen .nl-muted{font-size:16px;color:#62546d}
+.admin-panel .btn-primary,.admin-screen .btn-primary{background:#624373;color:white}
+.admin-panel button:focus-visible,.admin-screen button:focus-visible{outline:3px solid #a06bba;outline-offset:3px}
+.mobile-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}
+.mobile-stat{background:#f3edf6;border:1px solid #dfd3e6;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:4px}
+.mobile-stat strong{font-size:26px;line-height:1.2;color:#513260}.mobile-stat small{font-size:16px;line-height:1.45}
+.mobile-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.mobile-actions button,#mobile-traffic-refresh,#mobile-admin-section{background:#624373;color:#fff;border:0;border-radius:8px;padding:10px 12px;font:16px/1.4 system-ui;min-height:44px}
+.mobile-actions button:disabled{opacity:.45}
+.mobile-record{padding:10px 0;border-top:1px solid #dfd3e6;display:flex;flex-direction:column}
+.mobile-post{padding:12px;background:#fff;border:1px solid #dfd3e6;border-radius:10px;margin:10px 0}
+.mobile-post input{width:100%}.mobile-post details{margin-bottom:0}
+.mobile-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:16px}
+.mobile-table td,.mobile-table th{padding:10px 6px;text-align:left;vertical-align:top;overflow-wrap:anywhere;border-bottom:1px solid #dfd3e6}
+.mobile-table th:first-child,.mobile-table td:first-child{width:50%}
+#mobile-admin-section{display:none;width:100%;margin:0 0 12px}
+.luce-newsletter-admin .nl-card{margin:10px 0;padding:14px}
+#nl-summary,#mb-summary{margin-top:0}
+#blog-order-search{display:block;width:100%;padding:10px;border:1px solid #cbbbd4;border-radius:8px;min-height:44px}
+@media(max-width:700px){
+ .admin-panel .admin-tabs{display:none}#mobile-admin-section{display:block;position:sticky;top:0;z-index:4}
+ .admin-panel .admin-container,.admin-screen{padding:12px}
+ .admin-panel .admin-card{padding:12px;margin-bottom:12px}
+ .admin-panel .dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-panel .admin-tab-content{max-width:100%}
+ .admin-screen .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.admin-screen .tab{padding:8px}
+ .admin-panel .calendar-table{font-size:16px}
+ .traffic-cards{grid-template-columns:1fr}.traffic-cards .mobile-stat{display:grid;grid-template-columns:1fr 1fr;gap:6px}.traffic-cards .mobile-stat h3,.traffic-cards .mobile-stat small{grid-column:1/-1}.traffic-cards .mobile-stat strong{font-size:22px}
+}

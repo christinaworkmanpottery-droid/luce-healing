@@ -108,7 +108,33 @@ function createAnalytics({pool, clock = () => Date.now()}) {
     const trafficSources = groupSources((await pool.query("SELECT traffic_source,traffic_medium,referrer,COUNT(*)::int AS views FROM filtered_page_views WHERE created_at >= NOW()-INTERVAL '30 days' GROUP BY traffic_source,traffic_medium,referrer")).rows);
     const startedAt = (await pool.query('SELECT started_at FROM filtered_analytics_meta WHERE id=1')).rows[0].started_at;
     const legacyTotal = (await pool.query('SELECT COUNT(*)::int AS count FROM page_views')).rows[0].count;
-    return {...totals,topPages,dailyViews,topReferrers,trafficSources,startedAt,legacyTotal};
+    const periods = (await pool.query(`WITH bounds AS (
+      SELECT 'Today' AS label, (date_trunc('day',NOW() AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'America/Los_Angeles') AS start_at,
+        (date_trunc('day',NOW() AT TIME ZONE 'America/Los_Angeles') - INTERVAL '1 day') AT TIME ZONE 'America/Los_Angeles' AS previous_at
+      UNION ALL SELECT 'Last 7 days', NOW()-INTERVAL '7 days', NOW()-INTERVAL '14 days'
+      UNION ALL SELECT 'Last 30 days', NOW()-INTERVAL '30 days', NOW()-INTERVAL '60 days'
+    ) SELECT label,start_at,previous_at,
+      COUNT(v.id) FILTER(WHERE v.created_at>=start_at)::int AS views,
+      COUNT(DISTINCT visitor) FILTER(WHERE v.created_at>=start_at)::int AS visitors,
+      COUNT(v.id) FILTER(WHERE v.created_at<start_at)::int AS previous_views,
+      COUNT(DISTINCT visitor) FILTER(WHERE v.created_at<start_at)::int AS previous_visitors
+      FROM bounds LEFT JOIN filtered_page_views v ON v.created_at>=previous_at AND v.created_at<=NOW()
+      GROUP BY label,start_at,previous_at ORDER BY start_at DESC`)).rows;
+    const topArticles = (await pool.query(`SELECT path, COUNT(*)::int AS views, COUNT(DISTINCT visitor)::int AS visitors
+      FROM filtered_page_views WHERE path LIKE '/blog/%' AND created_at>=NOW()-INTERVAL '30 days'
+      GROUP BY path ORDER BY visitors DESC,views DESC,path LIMIT 10`)).rows;
+    const dailyTrend = (await pool.query(`WITH days AS (
+      SELECT generate_series((NOW() AT TIME ZONE 'America/Los_Angeles')::date-29,(NOW() AT TIME ZONE 'America/Los_Angeles')::date,INTERVAL '1 day')::date AS day
+    ) SELECT day::text AS date,COUNT(v.id)::int AS views,COUNT(DISTINCT visitor)::int AS visitors
+      FROM days LEFT JOIN filtered_page_views v ON (v.created_at AT TIME ZONE 'America/Los_Angeles')::date=day
+      GROUP BY day ORDER BY day DESC`)).rows;
+    const weeklyTrend = (await pool.query(`WITH weeks AS (
+      SELECT generate_series(date_trunc('week',NOW() AT TIME ZONE 'America/Los_Angeles')-INTERVAL '7 weeks',date_trunc('week',NOW() AT TIME ZONE 'America/Los_Angeles'),INTERVAL '1 week')::date AS week
+    ) SELECT week::text AS date,COUNT(v.id)::int AS views,COUNT(DISTINCT visitor)::int AS visitors
+      FROM weeks LEFT JOIN filtered_page_views v ON (v.created_at AT TIME ZONE 'America/Los_Angeles')::date>=week
+        AND (v.created_at AT TIME ZONE 'America/Los_Angeles')::date<week+7
+      GROUP BY week ORDER BY week DESC`)).rows;
+    return {...totals,topPages,dailyViews,topReferrers,trafficSources,startedAt,legacyTotal,periods,topArticles,dailyTrend,weeklyTrend};
   }
   function register(app) {
     app.get('/reader-tracking.js',(req,res)=>res.type('js').send(fs.readFileSync(path.join(__dirname,'reader-tracking.js'),'utf8')));

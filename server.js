@@ -70,6 +70,8 @@ app.use((req, res, next) => {
 });
 
 const analytics = require('./analytics').createAnalytics({pool});
+const {orderBy: blogOrderBy, createBlogOrder} = require('./blog-order');
+const blogOrder = createBlogOrder(pool);
 app.use(analytics.middleware);
 analytics.register(app);
 
@@ -471,6 +473,7 @@ async function initializeDatabase() {
     await dbRun('INSERT INTO admin_settings (key, value) VALUES ($1, $2)', ['admin_password', hashPassword(initialPassword)]);
   }
   await newsletterService.initialize();
+  await blogOrder.initialize();
   await membershipService.initialize();
   await customerLibrary.initialize();
   await readingNotifications.initialize();
@@ -1002,14 +1005,14 @@ app.delete('/api/admin/block/:id', checkAdminPassword, async (req, res) => {
 
 app.get('/api/blog', async (req, res) => {
   try {
-    const posts = await dbAll('SELECT id, title, slug, excerpt, created_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
+    const posts = await dbAll(`SELECT id, title, slug, excerpt, created_at FROM blog_posts WHERE published = 1 ORDER BY ${blogOrderBy()}`);
     res.json(posts);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 app.get('/api/blog/latest', async (req, res) => {
   try {
-    const posts = await dbAll('SELECT id, title, slug, excerpt, created_at FROM blog_posts WHERE published = 1 ORDER BY created_at DESC LIMIT 1');
+    const posts = await dbAll(`SELECT id, title, slug, excerpt, created_at FROM blog_posts WHERE published = 1 ORDER BY ${blogOrderBy()} LIMIT 1`);
     res.json(posts);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -1068,6 +1071,11 @@ app.delete('/api/admin/forecast-updates/:id', checkAdminPassword, async (req, re
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+app.put('/api/admin/blog-order', checkAdminPassword, async (req, res) => {
+  try { res.json(await blogOrder.save(req.body.ids, req.body.previous)); }
+  catch (e) { res.status(e.status || 500).json({error:e.status ? e.message : 'Unable to save blog order. Please retry.'}); }
+});
+
 app.put('/api/admin/blog/:id', checkAdminPassword, async (req, res) => {
   try {
     const post = await newsletterService.saveBlog(req.body, req.params.id);
@@ -1084,7 +1092,7 @@ app.delete('/api/admin/blog/:id', checkAdminPassword, async (req, res) => {
 
 app.get('/api/admin/blog', checkAdminPassword, async (req, res) => {
   try {
-    const posts = await dbAll(`SELECT b.*, (SELECT COUNT(*)::int FROM filtered_page_views f WHERE f.path = '/blog/' || b.slug) AS filtered_reader_views FROM blog_posts b ORDER BY b.created_at DESC`);
+    const posts = await dbAll(`SELECT b.*, (SELECT COUNT(*)::int FROM filtered_page_views f WHERE f.path = '/blog/' || b.slug) AS filtered_reader_views FROM blog_posts b ORDER BY b.published DESC, ${blogOrderBy('b')}`);
     res.json(posts);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -1518,7 +1526,7 @@ function renderBlogLinksHTML(posts, mode = 'full') {
 // Route for homepage with server-rendered blog links
 app.get('/', async (req, res) => {
   try {
-    const posts = await dbAll('SELECT * FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
+    const posts = await dbAll(`SELECT * FROM blog_posts WHERE published = 1 ORDER BY ${blogOrderBy()}`);
     const fs = require('fs');
     let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
     
@@ -1539,7 +1547,7 @@ app.get('/', async (req, res) => {
 // Route for /blog with server-rendered blog links
 app.get('/blog', async (req, res) => {
   try {
-    const posts = await dbAll('SELECT * FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
+    const posts = await dbAll(`SELECT * FROM blog_posts WHERE published = 1 ORDER BY ${blogOrderBy()}`);
     const fs = require('fs');
     let html = fs.readFileSync(path.join(__dirname, 'blog.html'), 'utf8');
     
@@ -1583,7 +1591,7 @@ app.get('/blog/:slug', async (req, res) => {
     const postUrl = metadata.url;
     let relatedHTML = '';
     try {
-      const candidates = await dbAll('SELECT title, slug, excerpt FROM blog_posts WHERE published = 1 ORDER BY created_at DESC');
+      const candidates = await dbAll(`SELECT title, slug, excerpt FROM blog_posts WHERE published = 1 ORDER BY ${blogOrderBy()}`);
       const related = seo.related(post, candidates);
       if (related.length) relatedHTML = '<section aria-label="Related articles"><h2>Continue exploring</h2><ul>' + related.map(p => `<li><a href="${seo.postPath(p.slug)}">${seo.escape(p.title)}</a></li>`).join('') + '</ul></section>';
     } catch (e) { console.error('[RELATED ARTICLES]', e.message); }
@@ -1727,7 +1735,7 @@ app.get('/sitemap.xml', async (req, res) => {
 });
 
 // Static file serving (fallback for CSS, images, etc.)
-app.use((req,res,next)=>{if(/^\/(?:server\.js|reading-notifications\.js|customer-library\.js|admin-sessions\.js|traffic-sources\.js|analytics\.js|public-navigation\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
+app.use((req,res,next)=>{if(/^\/(?:server\.js|blog-order\.js|reading-notifications\.js|customer-library\.js|admin-sessions\.js|traffic-sources\.js|analytics\.js|public-navigation\.js|gifts\.js|newsletter\.js|package(?:-lock)?\.json|test(?:\/|$)|\.git(?:\/|$))/.test(req.path))return res.sendStatus(404);next();});
 app.use(express.static(__dirname));
 
 // ============================================================================

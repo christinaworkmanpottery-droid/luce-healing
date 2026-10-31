@@ -62,7 +62,8 @@
 <meta name="twitter:description" content="Personal astrology readings by email, Reiki and energy healing with Christina Workman. Explore weekly astrology and self-healing resources. Ask one question for $33.">
 <meta name="twitter:image" content="https://lucehealing.com/images/og-image.jpg">
 <link rel="stylesheet" href="/homepage.css">
-<script src="/admin-signin.js"></script></head>
+<script src="/admin-signin.js"></script><link rel="stylesheet" href="/admin-mobile.css">
+</head>
 <body class="email-first home-editorial">
 <!-- Navigation -->
 <nav class="navbar" id="navbar">
@@ -1875,7 +1876,7 @@
                 loadRecurringBlocks();
                 loadWeekCalendar();
                 loadUpcomingBookings();
-                loadAdminTraffic();
+                document.querySelector('[data-tab="admin-dashboard"]').click();
                 loadAdminPromos();
                 loadAdminMessages();
             } catch (error) {
@@ -3331,5 +3332,5 @@
     }
     </script>
 <link rel="stylesheet" href="/newsletter-admin.css"><script src="/newsletter-signup.js"></script><script src="/newsletter-admin.js"></script><script src="/membership-admin.js?v=20260924-simple-posts"></script><script src="/complimentary-admin.js"></script><script src="/business-functions.js"></script><script src="/admin-customer-readings.js"></script>
-<script src="/compact-home.js"></script><script src="/public-reviews.js"></script></body>
+<script src="/compact-home.js"></script><script src="/public-reviews.js"></script><script src="/admin-mobile.js"></script></body>
 </html>

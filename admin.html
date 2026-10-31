@@ -54,6 +54,7 @@
         .checkbox-label { display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:12px; }
         .checkbox-label input { width:auto; margin:0; }
         .blog-email-toggle { display:flex; align-items:flex-start; gap:12px; padding:12px 4px; cursor:pointer; color:#292334; font-size:15px; line-height:1.5; touch-action:manipulation; }\n        .blog-email-toggle input[type="checkbox"] { flex:0 0 24px; width:24px; height:24px; margin:0; accent-color:#654276; pointer-events:auto; }\n        .blog-email-toggle span { flex:1; }\n    </style>
+<link rel="stylesheet" href="/admin-mobile.css">
 </head>
 <body>
 
@@ -77,7 +78,7 @@
         <div id="postsList">Loading...</div>
     </div>
 
-    <div id="membershipTab" class="hidden"><div data-complimentary-admin></div><div data-membership-admin></div></div>
+    <div id="membershipTab" class="hidden"><div data-membership-admin></div><details><summary>Complimentary membership tools</summary><div data-complimentary-admin></div></details></div>
     <div id="newsletterTab" class="hidden">
         <div data-newsletter-admin></div>
     </div>
@@ -301,5 +302,5 @@ async function loadNewsletter() {
 
 function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 </script>
-<link rel="stylesheet" href="/newsletter-admin.css"><script src="/newsletter-admin.js"></script><script src="/membership-admin.js?v=20260924-simple-posts"></script><script src="/complimentary-admin.js"></script></body>
+<link rel="stylesheet" href="/newsletter-admin.css"><script src="/newsletter-admin.js"></script><script src="/membership-admin.js?v=20260924-simple-posts"></script><script src="/complimentary-admin.js"></script><script src="/admin-mobile.js"></script></body>
 </html>

@@ -84,3 +84,16 @@ test('source attribution follows internal navigation, changes for tagged entries
   assert.equal((await h.service.summary()).trafficSources.find(x=>x.source==='Direct / unknown').views,1);
  }finally{await h.close();}
 });
+
+test('periods count distinct browsers separately, compare preceding windows and retain empty trend days',async()=>{
+ const h=await harness();try{
+  await h.db.exec(`INSERT INTO filtered_page_views(visitor,path,created_at,traffic_source) VALUES
+    ('same','/blog/sample',NOW(),'Google'),('same','/',NOW(),'Google'),('other','/blog/sample',NOW(),'Threads'),
+    ('prior','/blog/sample',NOW()-INTERVAL '8 days','Facebook'),('older','/blog/sample',NOW()-INTERVAL '40 days','Google');`);
+  const s=await h.service.summary(),week=s.periods.find(p=>p.label==='Last 7 days'),month=s.periods.find(p=>p.label==='Last 30 days');
+  assert.equal(week.views,3);assert.equal(week.visitors,2);assert.equal(week.previous_views,1);assert.equal(week.previous_visitors,1);
+  assert.equal(month.views,4);assert.equal(month.visitors,3);assert.equal(month.previous_views,1);
+  assert.equal(s.topArticles[0].visitors,3);assert.equal(s.topArticles[0].views,3);
+  assert.equal(s.dailyTrend.length,30);assert(s.dailyTrend.some(d=>d.views===0));assert.equal(s.weeklyTrend.length,8);
+ }finally{await h.close();}
+});
