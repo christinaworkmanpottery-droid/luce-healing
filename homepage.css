@@ -130,3 +130,45 @@
  .home-editorial .nav-container,.home-detail .nav-container { gap:20px; }
  .home-editorial .nav-menu,.home-detail .nav-menu { flex:1; min-width:0; flex-wrap:wrap; justify-content:flex-end; gap:8px 18px; }
 }
+/* Personal homepage: welcome, Christina, editorial feature, offerings, free emails. */
+body.home-editorial .hero { padding:28px 0!important; }
+body.home-editorial .hero-text h1 { margin:12px 0 18px; }
+body.home-editorial .hero-cta { flex-direction:row; gap:8px 24px; }
+body.home-editorial .home-section { scroll-margin-top:80px; }
+body.home-editorial .home-link { min-height:44px; box-sizing:border-box; display:inline-flex; align-items:center; }
+body.home-editorial .home-about-layout { grid-template-columns:240px 1fr; gap:28px; }
+body.home-editorial .home-about-layout .portrait { height:260px; border-radius:8px; }
+body.home-editorial .home-about figcaption { margin-top:8px; }
+body.home-editorial .home-kind-words { margin-top:8px; }
+body.home-editorial summary { cursor:pointer; min-height:44px; padding:10px 0; color:#513760; }
+body.home-editorial .home-kind-words .home-reviews { padding:12px 0; background:transparent; }
+body.home-editorial .home-kind-words .container { padding:0; }
+body.home-editorial .home-kind-words .section-header { display:none; }
+body.home-editorial .offering-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; }
+body.home-editorial .offering-grid article { border-top:1px solid #cbb9d4; padding-top:16px; min-width:0; }
+body.home-editorial .offering-grid h3 { font:500 27px/1.12 var(--font-serif); color:#483353; margin:0 0 10px; }
+body.home-editorial .offering-grid p { font-size:16px; margin-bottom:8px; }
+body.home-editorial .offering-price { color:#513760; font-weight:700; }
+body.home-editorial .offering-price span { font-weight:400; font-size:14px; }
+body.home-editorial .home-more { margin-top:12px; border-top:1px solid #e1d7e6; }
+body.home-editorial .home-more .container { padding:0; }
+body.home-editorial .home-newsletter .signup-layout { gap:20px; }
+body.home-editorial .newsletter-name-option label { display:block; }
+
+body.home-editorial .home-newsletter { padding:24px 0; }
+@media(max-width:768px) {
+ body.home-editorial .hero-content { padding:0 20px; }
+ body.home-editorial .home-section { padding:24px 0; }
+ body.home-editorial .home-section .container { padding-left:20px; padding-right:20px; }
+ body.home-editorial .home-about-layout { grid-template-columns:1fr; gap:16px; }
+ body.home-editorial .home-about-layout .hero-visual { max-width:none; display:grid; grid-template-columns:112px 1fr; gap:16px; align-items:center; }
+ body.home-editorial .home-about-layout .portrait { height:140px; width:112px; }
+ body.home-editorial .home-about figcaption { text-align:left; margin:0; font-size:20px; }
+ body.home-editorial .offering-grid { grid-template-columns:1fr; gap:16px; }
+ body.home-editorial .offering-grid article { padding-top:16px; }
+ body.home-editorial .home-more .container,body.home-editorial .home-kind-words .container { padding:0; }
+ body.home-editorial .home-newsletter .signup-layout { gap:12px; }
+ body.home-editorial .home-blog .blog-card { padding:16px; }
+}
+
+body.home-editorial .home-newsletter form { padding:16px; box-shadow:none; border:1px solid #e2d8e7; }

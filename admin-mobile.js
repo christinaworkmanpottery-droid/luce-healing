@@ -61,7 +61,7 @@
   }
   function renderBlogs(root,focusId) {
     const published=posts.filter(p=>p.published);
-    root.innerHTML=`<p>Published posts appear in this order. Each move saves immediately. New articles appear after your ordered posts.</p><p id="blog-order-message" role="status" aria-live="polite"></p><label>Find a post<input id="blog-order-search" type="search" placeholder="Search titles"></label><div id="blog-order-list"></div>`;
+    root.innerHTML=`<p>The first published post is featured on your homepage, regardless of publication date. Use Move to top to choose it. Each move saves immediately. New articles appear after your ordered posts.</p><p id="blog-order-message" role="status" aria-live="polite"></p><label>Find a post<input id="blog-order-search" type="search" placeholder="Search titles"></label><div id="blog-order-list"></div>`;
     const list=root.querySelector('#blog-order-list');
     function render(filter='') {
       list.innerHTML=posts.filter(p=>p.title.toLowerCase().includes(filter.toLowerCase())).map(p=>{
@@ -76,7 +76,7 @@
         const ids=published.map(p=>p.id),previous=[...ids],id=Number(b.dataset.move),from=ids.indexOf(id),to=b.dataset.direction==='top'?0:from+Number(b.dataset.direction);
         if(to<0||to>=ids.length)return;ids.splice(from,1);ids.splice(to,0,id);saving=true;
         root.querySelectorAll('button').forEach(b=>b.disabled=true);
-        try {await request('blog-order','PUT',{ids,previous});posts=ids.map(id=>posts.find(p=>p.id===id)).concat(posts.filter(p=>!p.published));renderBlogs(root,id);root.querySelector('#blog-order-message').textContent='Order saved. Your public blog uses this order.';}
+        try {await request('blog-order','PUT',{ids,previous});posts=ids.map(id=>posts.find(p=>p.id===id)).concat(posts.filter(p=>!p.published));renderBlogs(root,id);root.querySelector('#blog-order-message').textContent='Order saved. The first post is featured on your homepage.';}
         catch(err){renderBlogs(root);root.querySelector('#blog-order-message').textContent=err.message+' Your move was not applied. Reopen Blog to refresh.';}
         finally{saving=false;}
       }

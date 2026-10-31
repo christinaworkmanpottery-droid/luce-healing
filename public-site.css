@@ -68,3 +68,10 @@ body .luce-site-header.navbar{position:sticky!important;top:0!important}
 body .luce-site-header .nav-menu{left:auto!important;right:24px;max-height:calc(100dvh - 90px)!important;padding:12px 20px!important}
 body .luce-site-header .nav-menu a.nav-link{padding:11px 0!important}
 @media(max-width:768px){body .luce-site-header .nav-menu{right:16px;max-height:calc(100dvh - 84px)!important}}
+/* Compact homepage header, with full-size menu targets and room for anchor headings. */
+@media(max-width:768px){
+ body.home-editorial .luce-site-header .nav-container{min-height:60px;padding:4px 16px;gap:12px}
+ body.home-editorial .luce-site-header .nav-logo a{font-size:22px}
+ body.home-editorial .luce-site-header .nav-menu{max-height:calc(100dvh - 72px)!important}
+}
+@media(max-width:768px){body.home-editorial .luce-site-header.navbar,body.home-editorial .luce-site-header.navbar.scrolled{padding:0!important}}
