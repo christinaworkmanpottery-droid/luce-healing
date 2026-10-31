@@ -75,3 +75,16 @@ body .luce-site-header .nav-menu a.nav-link{padding:11px 0!important}
  body.home-editorial .luce-site-header .nav-menu{max-height:calc(100dvh - 72px)!important}
 }
 @media(max-width:768px){body.home-editorial .luce-site-header.navbar,body.home-editorial .luce-site-header.navbar.scrolled{padding:0!important}}
+/* Rich plum headings; preserve fonts, sizing, spacing and lavender accents.
+   Cover editorial HTML with inline colors, but retain light footer headings. */
+body.luce-public-page{--luce-heading-plum:#43264f}
+body.luce-public-page :is(h1,h2,h3,h4,h5,h6):not(.footer *,#admin-panel *){
+ color:var(--luce-heading-plum)!important;
+ -webkit-text-fill-color:currentColor;
+}
+body.luce-public-page :is(h1,h2,h3):not(.footer *,#admin-panel *){font-weight:600!important}
+body.luce-public-page :is(h1,h2,h3,h4,h5,h6):not(.footer *,#admin-panel *) :is(a,span,em,strong){
+ color:inherit!important;
+ -webkit-text-fill-color:currentColor;
+}
+body.luce-public-page .hero-text h1{background-image:none;-webkit-text-fill-color:var(--luce-heading-plum)}
