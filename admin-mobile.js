@@ -61,14 +61,19 @@
   }
   function renderBlogs(root,focusId) {
     const published=posts.filter(p=>p.published);
-    root.innerHTML=`<p>The first published post is featured on your homepage, regardless of publication date. Use Move to top to choose it. Each move saves immediately. New articles appear after your ordered posts.</p><p id="blog-order-message" role="status" aria-live="polite"></p><label>Find a post<input id="blog-order-search" type="search" placeholder="Search titles"></label><div id="blog-order-list"></div>`;
+    const scheduled=posts.filter(p=>!p.published&&p.publish_at).sort((a,b)=>new Date(a.publish_at)-new Date(b.publish_at));
+    const drafts=posts.filter(p=>!p.published&&!p.publish_at);
+    const dateTime=x=>x?new Date(x).toLocaleString('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}):'Not scheduled';
+    root.innerHTML=`<details open class="admin-card"><summary>Scheduled Posts (${scheduled.length})</summary><div id="scheduled-blog-posts"></div></details><details class="admin-card"><summary>Draft Posts (${drafts.length})</summary><div id="draft-blog-posts"></div></details><details class="admin-card"><summary>Published Posts (${published.length})</summary><p>The first published post is featured on your homepage. Move to top changes that featured post.</p><p id="blog-order-message" role="status" aria-live="polite"></p><label>Find a published post<input id="blog-order-search" type="search" placeholder="Search titles"></label><div id="blog-order-list"></div></details>`;
+    const cardFor=p=>{
+      const i=published.findIndex(x=>x.id===p.id);
+      const status=p.published?'Published':p.publish_at?'Scheduled for '+dateTime(p.publish_at):'Draft';
+      return `<article class="mobile-post"><h3>${i>=0?i+1+'. ':''}${esc(p.title)}</h3><span>${esc(status)}</span>${p.published?`<div class="mobile-actions"><button data-move="${p.id}" data-direction="-1" ${i===0?'disabled':''}>↑ Up</button><button data-move="${p.id}" data-direction="1" ${i===published.length-1?'disabled':''}>↓ Down</button><button data-move="${p.id}" data-direction="top" ${i===0?'disabled':''}>Move to top</button></div>`:''}<details><summary>Post details and editing</summary><p>/${esc(p.slug)}<br>${p.filtered_reader_views||0} Filtered Reader Views<br>${p.view_count||0} Legacy Views</p><div class="mobile-actions"><button data-edit-post="${p.id}">Edit</button><button data-preview-post="${p.id}">Preview</button><button data-delete-post="${p.id}">Delete</button></div></details></article>`;
+    };
+    root.querySelector('#scheduled-blog-posts').innerHTML=scheduled.map(cardFor).join('')||'<p>No scheduled posts.</p>';
+    root.querySelector('#draft-blog-posts').innerHTML=drafts.map(cardFor).join('')||'<p>No drafts.</p>';
     const list=root.querySelector('#blog-order-list');
-    function render(filter='') {
-      list.innerHTML=posts.filter(p=>p.title.toLowerCase().includes(filter.toLowerCase())).map(p=>{
-        const i=published.findIndex(x=>x.id===p.id);
-        return `<article class="mobile-post"><h3>${i>=0?i+1+'. ':''}${esc(p.title)}</h3><span>${p.published?'Published':p.publish_at?'Scheduled':'Draft'} · ${date(p.created_at)}</span>${p.published?`<div class="mobile-actions"><button data-move="${p.id}" data-direction="-1" ${i===0?'disabled':''} aria-label="Move ${esc(p.title)} up">↑ Up</button><button data-move="${p.id}" data-direction="1" ${i===published.length-1?'disabled':''} aria-label="Move ${esc(p.title)} down">↓ Down</button><button data-move="${p.id}" data-direction="top" ${i===0?'disabled':''}>Move to top</button></div>`:''}<details><summary>Post details and editing</summary><p>/${esc(p.slug)}<br>${p.filtered_reader_views||0} Filtered Reader Views<br>${p.view_count||0} Legacy Views — historical unfiltered request count</p><div class="mobile-actions"><button data-edit-post="${p.id}">Edit</button><button data-preview-post="${p.id}">Preview</button><button data-delete-post="${p.id}">Delete</button></div></details></article>`;
-      }).join('');
-    }
+    function render(filter='') {list.innerHTML=published.filter(p=>p.title.toLowerCase().includes(filter.toLowerCase())).map(cardFor).join('')||'<p>No matching published posts.</p>';}
     render();root.querySelector('#blog-order-search').oninput=e=>render(e.target.value);
     root.onclick=async e=>{
       const b=e.target.closest('button');if(!b||saving)return;
