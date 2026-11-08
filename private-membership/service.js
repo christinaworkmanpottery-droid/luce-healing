@@ -84,7 +84,29 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
  async function tick(){
   return q(`UPDATE luce_horoscopes SET collection_hidden=false,published=scheduled_draft,published_title=scheduled_title,published_demo=scheduled_demo,published_at=$1,scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1,updated_at=$1 WHERE scheduled_at<=$1 AND scheduled_draft IS NOT NULL RETURNING month`,[now()]);
  }
- function start(){if(timer)return;const run=()=>Promise.all([tick(),purchases.resume()]).catch(e=>console.error('[Luce horoscope scheduler]',e.code||e.name));timer=setInterval(run,30000);timer.unref();run();}
+ let monthlyRunning=false,lastMonthlyAttempt=0;
+ async function prepareMonthlyReading(){
+  // One candidate per hour, after the published monthly horoscopes are available.
+  // Reuse the personal-reading claim, retry limits and global spending cap.
+  if(monthlyRunning||+now()-lastMonthlyAttempt<3600000)return;
+  monthlyRunning=true;lastMonthlyAttempt=+now();
+  try{
+   const month=require('./monthly-reading-schedule').publicationMonth(now());
+   const row=await one(`SELECT m.* FROM luce_members m
+    WHERE m.is_test=false AND m.verified_at IS NOT NULL
+      AND ((m.status='active' AND m.stripe_subscription_id IS NOT NULL AND m.access_until>$1)
+        OR (m.complimentary_granted_at IS NOT NULL AND (m.complimentary_until IS NULL OR m.complimentary_until>$1)))
+      AND m.birth_chart IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM luce_personal_readings r WHERE r.member_id=m.id AND r.month=$2 AND r.state IN ('complete','generating'))
+      AND EXISTS (SELECT 1 FROM luce_horoscopes h WHERE h.collection_type='monthly'
+        AND COALESCE(h.display_month,h.month)=$2 AND h.published IS NOT NULL
+        AND h.published_demo=false AND h.collection_hidden=false AND h.published_at<=$1)
+    ORDER BY m.id LIMIT 1`,[now(),month]);
+   if(row&&access(row))await personalReadings.generate(row,month);
+  }catch(e){console.error('[Luce monthly reading]',e.code||e.name);}
+  finally{monthlyRunning=false;}
+ }
+ function start(){if(timer)return;const run=()=>Promise.all([tick(),purchases.resume()]).then(()=>prepareMonthlyReading()).catch(e=>console.error('[Luce horoscope scheduler]',e.code||e.name));timer=setInterval(run,30000);timer.unref();run();}
  function stop(){purchases.stop();if(timer)clearInterval(timer);timer=null;}
  async function limit(key,max=10,period=3600000){const bucket=Math.floor(+now()/period);const r=await one(`INSERT INTO luce_member_limits(key,bucket) VALUES($1,$2) ON CONFLICT(key,bucket) DO UPDATE SET n=luce_member_limits.n+1 RETURNING n`,[hash(key),bucket]);if(r.n>max)throw fail('Too many attempts. Please try again later.',429);}
  async function passwordHash(p){if(typeof p!=='string'||p.length<8||p.length>200)throw fail('Use a password of 8–200 characters.');const salt=crypto.randomBytes(16).toString('hex');return salt+':'+(await scrypt(p,salt,64)).toString('hex');}
