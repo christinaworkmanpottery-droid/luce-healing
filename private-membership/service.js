@@ -84,7 +84,31 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
  async function tick(){
   return q(`UPDATE luce_horoscopes SET collection_hidden=false,published=scheduled_draft,published_title=scheduled_title,published_demo=scheduled_demo,published_at=$1,scheduled_at=NULL,scheduled_draft=NULL,scheduled_title=NULL,scheduled_demo=NULL,revision=revision+1,updated_at=$1 WHERE scheduled_at<=$1 AND scheduled_draft IS NOT NULL RETURNING month`,[now()]);
  }
- function start(){if(timer)return;const run=()=>Promise.all([tick(),purchases.resume()]).catch(e=>console.error('[Luce horoscope scheduler]',e.code||e.name));timer=setInterval(run,30000);timer.unref();run();}
+ let monthlyRunning=false,lastMonthlyAttempt=0;
+ async function prepareMonthlyReading(){
+  // One candidate per hour, after the published monthly horoscopes are available.
+  // Reuse the personal-reading claim, retry limits and global spending cap.
+  if(monthlyRunning||+now()-lastMonthlyAttempt<3600000)return;
+  monthlyRunning=true;lastMonthlyAttempt=+now();
+  try{
+   const month=require('./monthly-reading-schedule').publicationMonth(now());
+   const row=await one(`SELECT m.* FROM luce_members m
+    WHERE m.is_test=false AND m.verified_at IS NOT NULL
+      AND ((m.status='active' AND m.stripe_subscription_id IS NOT NULL AND m.access_until>$1)
+        OR (m.complimentary_granted_at IS NOT NULL AND (m.complimentary_until IS NULL OR m.complimentary_until>$1)))
+      AND m.birth_chart IS NOT NULL
+      AND jsonb_typeof(m.birth_chart->'placements')='array'
+      AND EXISTS (SELECT 1 FROM jsonb_array_elements(m.birth_chart->'placements') p WHERE p->>'reliable'='true' AND p->>'sign' IS NOT NULL)
+      AND NOT EXISTS (SELECT 1 FROM luce_personal_readings r WHERE r.member_id=m.id AND r.month=$2 AND r.state IN ('complete','generating'))
+      AND EXISTS (SELECT 1 FROM luce_horoscopes h WHERE h.collection_type='monthly'
+        AND COALESCE(h.display_month,h.month)=$2 AND h.published IS NOT NULL
+        AND h.published_demo=false AND h.collection_hidden=false AND h.published_at<=$1)
+    ORDER BY m.id LIMIT 1`,[now(),month]);
+   if(row&&access(row))await personalReadings.generate(row,month);
+  }catch(e){console.error('[Luce monthly reading]',e.code||e.name);}
+  finally{monthlyRunning=false;}
+ }
+ function start(){if(timer)return;const run=()=>Promise.all([tick(),purchases.resume()]).then(()=>prepareMonthlyReading()).catch(e=>console.error('[Luce horoscope scheduler]',e.code||e.name));timer=setInterval(run,30000);timer.unref();run();}
  function stop(){purchases.stop();if(timer)clearInterval(timer);timer=null;}
  async function limit(key,max=10,period=3600000){const bucket=Math.floor(+now()/period);const r=await one(`INSERT INTO luce_member_limits(key,bucket) VALUES($1,$2) ON CONFLICT(key,bucket) DO UPDATE SET n=luce_member_limits.n+1 RETURNING n`,[hash(key),bucket]);if(r.n>max)throw fail('Too many attempts. Please try again later.',429);}
  async function passwordHash(p){if(typeof p!=='string'||p.length<8||p.length>200)throw fail('Use a password of 8–200 characters.');const salt=crypto.randomBytes(16).toString('hex');return salt+':'+(await scrypt(p,salt,64)).toString('hex');}
@@ -94,9 +118,10 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
  async function needPreview(req,res,next){try{if(liveEnabled())return next();if(!await preview(req))return res.status(404).json({error:'This private preview requires Admin access.'});next();}catch(_){res.status(503).json({error:'Preview temporarily unavailable.'});}}
  async function needMember(req){const m=await session(req);if(!m)throw fail('Please sign in.',401);return m;}
  async function startSession(res,m){const t=token();await q("INSERT INTO luce_member_sessions(token_hash,member_id,kind,expires_at) VALUES($1,$2,'member',$3)",[hash(t),m.id,later(7*86400000)]);setCookie(res,'luce_member',t,7*86400);}
- function paidAccess(m){return !!m.verified_at&&(m.is_test?['preview','active','trialing']:['active']).includes(m.status)&&!!m.access_until&&new Date(m.access_until)>now();}
- function access(m){return complimentary.active(m)||paidAccess(m);}
- function publicMember(m){const comp=complimentary.active(m),paid=paidAccess(m);return {id:m.id,email:m.email,name:m.name,verified:!!m.verified_at,tier:m.tier,membership_type:comp?'complimentary':paid?'paid':m.complimentary_granted_at?'complimentary_expired':m.is_test?'preview':'unpaid',status:comp&&!paid?'complimentary':paid?m.status:(['preview','active','trialing'].includes(m.status)||m.complimentary_granted_at?'expired':m.status),access:access(m),access_until:m.complimentary_granted_at&&!paid?m.complimentary_until:m.access_until,complimentary:comp,complimentary_granted_at:m.complimentary_granted_at,complimentary_until:m.complimentary_until,cancel_at_period_end:m.cancel_at_period_end,billing_period_start:m.billing_period_start,billing_period_end:m.billing_period_end,is_test:m.is_test,portal_available:!!clientFor(m)&&!!portalFor(m)&&!!m.stripe_customer_id};}
+ const {paidAccess: paidEntitlement, complimentaryAccess: complimentaryEntitlement, hasMemberAccess} = require('./entitlement');
+ function paidAccess(m){return paidEntitlement(m,now());}
+ function access(m){return hasMemberAccess(m,now());}
+ function publicMember(m){const comp=complimentaryEntitlement(m,now()),paid=paidAccess(m);return {id:m.id,email:m.email,name:m.name,verified:!!m.verified_at,tier:m.tier,membership_type:comp?'complimentary':paid?'paid':m.complimentary_granted_at?'complimentary_expired':m.is_test?'preview':'unpaid',status:comp&&!paid?'complimentary':paid?m.status:(['preview','active','trialing'].includes(m.status)||m.complimentary_granted_at?'expired':m.status),access:access(m),access_until:m.complimentary_granted_at&&!paid?m.complimentary_until:m.access_until,complimentary:comp,complimentary_granted_at:m.complimentary_granted_at,complimentary_until:m.complimentary_until,cancel_at_period_end:m.cancel_at_period_end,billing_period_start:m.billing_period_start,billing_period_end:m.billing_period_end,is_test:m.is_test,portal_available:!!clientFor(m)&&!!portalFor(m)&&!!m.stripe_customer_id};}
 
  async function accountMail(m,kind){
   if(m.is_test&&m.email!==testEmail)throw fail('Private account emails are restricted to the designated test inbox.',403);if(!m.is_test&&!liveEnabled())throw fail('Membership email is temporarily unavailable.',503);
@@ -204,9 +229,9 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   app.get('/api/membership/me',needPreview,wrap(async(req,res)=>res.json(publicMember(await reconcile(await needMember(req))))));
   app.get('/api/membership/horoscopes',needPreview,wrap(async(req,res)=>{await tick();const m=await reconcile(await needMember(req));if(!access(m))throw fail('Confirm your account and check your membership access on the Account page.',403);res.json((await q('SELECT month,COALESCE(display_month,month) AS display_month,subtitle,featured_at,collection_type,published_title AS title,published AS content,published_demo AS demo,published_at FROM luce_horoscopes WHERE published IS NOT NULL AND collection_hidden=false AND ($1 OR published_demo=false) ORDER BY published_demo,published_at DESC NULLS LAST,month DESC',[m.is_test])).rows);}));
   app.get('/api/membership/places',needPreview,wrap(async(req,res)=>{await needMember(req);await limit('places:'+clientIP(req),300);res.json(chart.searchPlaces(String(req.query.q||'').slice(0,100)));}));
-  app.get('/api/membership/chart',needPreview,wrap(async(req,res)=>{const m=await needMember(req);res.json({profile:m.birth_profile||null,chart:m.birth_chart||null});}));
-  app.put('/api/membership/chart',needPreview,wrap(async(req,res)=>{const m=await needMember(req);await limit('chart:'+m.id,60);const result=chart.calculate(req.body);await q('UPDATE luce_members SET birth_profile=$1,birth_chart=$2 WHERE id=$3',[JSON.stringify(result.profile),JSON.stringify(result),m.id]);res.json({profile:result.profile,chart:result});}));
-  app.delete('/api/membership/chart',needPreview,wrap(async(req,res)=>{const m=await needMember(req);await q('UPDATE luce_members SET birth_profile=NULL,birth_chart=NULL WHERE id=$1',[m.id]);res.json({success:true});}));
+  app.get('/api/membership/chart',needPreview,wrap(async(req,res)=>{const m=await needMember(req);if(!access(await reconcile(m)))throw fail('An active paid or complimentary membership is required.',403);res.json({profile:m.birth_profile||null,chart:m.birth_chart||null});}));
+  app.put('/api/membership/chart',needPreview,wrap(async(req,res)=>{const m=await needMember(req);if(!access(await reconcile(m)))throw fail('An active paid or complimentary membership is required.',403);await limit('chart:'+m.id,60);const result=chart.calculate(req.body);await q('UPDATE luce_members SET birth_profile=$1,birth_chart=$2 WHERE id=$3',[JSON.stringify(result.profile),JSON.stringify(result),m.id]);res.json({profile:result.profile,chart:result});}));
+  app.delete('/api/membership/chart',needPreview,wrap(async(req,res)=>{const m=await needMember(req);if(!access(await reconcile(m)))throw fail('An active paid or complimentary membership is required.',403);await q('UPDATE luce_members SET birth_profile=NULL,birth_chart=NULL WHERE id=$1',[m.id]);res.json({success:true});}));
   app.get('/api/membership/reading',needPreview,wrap(async(req,res)=>{await tick();const m=await reconcile(await needMember(req));if(!access(m))throw fail('Your membership does not currently include content access.',403);if(!/^(?:\d{4}-\d{2}|collection-[a-f0-9-]{36})$/.test(String(req.query.month||'')))throw fail('Choose a published month.');const month=await one('SELECT month,published_title AS title,published AS content,published_demo AS demo FROM luce_horoscopes WHERE month=$1 AND published IS NOT NULL AND collection_hidden=false',[req.query.month]);if(!month||month.demo&&!m.is_test)throw fail('No published horoscope is available for this month.',404);res.json({month:month.month,title:month.title,demo:month.demo,groups:chart.matchingReading(m.birth_chart,month)});}));
   const personalMember=async req=>{const m=await reconcile(await needMember(req));if(!access(m))throw fail('Your membership does not currently include content access.',403);return m;};
   app.get('/api/membership/personal-readings',needPreview,wrap(async(req,res)=>{const m=await personalMember(req);await tick();res.json(await personalReadings.catalog(m));}));

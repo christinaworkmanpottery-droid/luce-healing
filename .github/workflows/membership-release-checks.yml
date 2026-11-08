@@ -1,0 +1,24 @@
+name: Luce membership release checks
+on:
+  pull_request:
+    paths:
+      - 'private-membership/**'
+      - 'test/membership-entitlement.test.js'
+      - 'test/monthly-reading-schedule.test.js'
+      - '.github/workflows/membership-release-checks.yml'
+  workflow_dispatch:
+jobs:
+  membership:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: node --test test/membership-entitlement.test.js test/monthly-reading-schedule.test.js
+      - run: node --check private-membership/chart.js
+      - run: node --check private-membership/member.js
+      - run: node --check private-membership/service.js
+      - run: node --check private-membership/personal-reading.js
