@@ -29,7 +29,25 @@ function calculate(input){const profile=normalize(input),notes=[],dateUTC=Date.p
  notes.push('Western tropical zodiac. Birthplace calculations use the selected city’s coordinates; if your exact location is not listed, use the optional coordinates form. A result near a sign boundary is left uncertain.');
  const placements=bodies.map(body=>{const possible=new Set();let unavailable=false;if(body==='Rising'&&(!profile.time||!profile.place)){unavailable=true;}else if(body==='Rising'&&Math.abs(profile.place.lat)>=66){unavailable=true;notes.push('Rising is not shown for polar latitudes, where the horizon geometry needs specialist checking.');}else{for(const ms of instants){const samples=body==='Rising'?[-300000,0,300000]:[0];for(const delta of samples){const value=body==='Rising'?rising(new Date(ms+delta),profile.place.lat,profile.place.lon):longitude(body,new Date(ms));const margin=body==='Rising'?0.1:interval?0.3:0.06;for(const shift of [-margin,0,margin])possible.add(signs[Math.floor(((value+shift+360)%360)/30)]);}}}
   return {placement:body,sign:!unavailable&&possible.size===1?[...possible][0]:null,reliable:!unavailable&&possible.size===1,possibleSigns:unavailable?[]:[...possible],explanation:meanings[body],note:unavailable?'A reliable Rising sign needs a known birth time and location.':possible.size>1?'This placement may change signs within the possible birth-time range or lies close to a boundary. More precise details may help.':body==='Rising'?'Stable across a five-minute margin on either side of the entered time.':''};});
- return {profile,placements,notes,ambiguous,calculatedAt:new Date().toISOString(),method:{engine:'Astronomy Engine 2.1.19',zodiac:'tropical',timezoneData:moment.tz.dataVersion}};
+ const risingPlacement=placements.find(p=>p.placement==='Rising');
+ // Whole-sign houses: house 1 begins at 0 degrees of the reliable Rising sign.
+ // No houses are assigned when birth time/location or the ascendant is uncertain.
+ let houses=null;
+ if(risingPlacement?.reliable&&profile.place&&profile.time&&instants.length===1){
+  const ascSignIndex=signs.indexOf(risingPlacement.sign);
+  const at=new Date(instants[0]);
+  const planets=['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
+  const housePlanets=planets.map(body=>{
+   const degrees=longitude(body,at);
+   const signIndex=Math.floor(((degrees%360)+360)%360/30);
+   return {planet:body,sign:signs[signIndex],degree:Number((degrees%30).toFixed(2)),house:(signIndex-ascSignIndex+12)%12+1};
+  });
+  houses={system:'Whole Sign',ascendantSign:risingPlacement.sign,
+   cusps:Array.from({length:12},(_,i)=>({house:i+1,sign:signs[(ascSignIndex+i)%12],degree:0})),
+   planets:housePlanets};
+  notes.push('Houses use the Whole Sign house system, not Placidus. Each house begins at 0° of its sign. House positions are unavailable when the birth time or Rising sign is uncertain.');
+ }
+ return {profile,placements,houses,notes,ambiguous,calculatedAt:new Date().toISOString(),method:{engine:'Astronomy Engine 2.1.19',zodiac:'tropical',timezoneData:moment.tz.dataVersion}};
 }
 function matchingReading(chart,month){const groups=[];for(const p of chart?.placements||[]){if(!p.reliable||!p.sign||!month?.content?.[p.sign])continue;let g=groups.find(x=>x.sign===p.sign);if(!g){g={sign:p.sign,content:month.content[p.sign],placements:[]};groups.push(g);}g.placements.push({placement:p.placement,explanation:p.explanation});}return groups;}
 module.exports={calculate,normalize,localCandidates,longitude,rising,searchPlaces,matchingReading,signs,meanings};
