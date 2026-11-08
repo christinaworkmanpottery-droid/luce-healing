@@ -24,13 +24,13 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
  const stripe=testKey?.startsWith('sk_test_')?require('stripe')(testKey):stripeClient;
  const sandboxKey=testKey?.startsWith('sk_test_')||env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
  const testCheckoutEnabled=()=>env.MEMBERSHIP_TEST_CHECKOUT_ENABLED==='true'&&!!sandboxKey&&!!stripe&&!!env.MEMBERSHIP_STRIPE_TEST_WEBHOOK_SECRET&&!!env.MEMBERSHIP_PORTAL_TEST_CONFIGURATION;
- const plans={founding:{amount:295,interval:'month',key:'MEMBERSHIP_TEST_PRICE_FOUNDING'},monthly:{amount:395,interval:'month',key:'MEMBERSHIP_TEST_PRICE_MONTHLY'},annual:{amount:3792,interval:'year',key:'MEMBERSHIP_TEST_PRICE_ANNUAL'}};
+ const plans={founding:{amount:295,interval:'month',key:'MEMBERSHIP_TEST_PRICE_FOUNDING'},monthly:{amount:495,interval:'month',key:'MEMBERSHIP_TEST_PRICE_MONTHLY'},annual:{amount:3995,interval:'year',key:'MEMBERSHIP_TEST_PRICE_ANNUAL'}};
  const liveStripe=env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?stripeClient:null;
- const liveEnabled=()=>env.MEMBERSHIP_LIVE_ENABLED==='true'&&!!liveStripe&&!!env.STRIPE_WEBHOOK_SECRET&&!!env.MEMBERSHIP_PORTAL_LIVE_CONFIGURATION&&!!env.TURNSTILE_SITE_KEY&&!!env.TURNSTILE_SECRET_KEY&&['FOUNDING','MONTHLY','ANNUAL'].every(p=>env['MEMBERSHIP_LIVE_PRICE_'+p]);
+ const liveEnabled=()=>env.MEMBERSHIP_LIVE_ENABLED==='true'&&!!liveStripe&&!!env.STRIPE_WEBHOOK_SECRET&&!!env.MEMBERSHIP_PORTAL_LIVE_CONFIGURATION&&!!env.TURNSTILE_SITE_KEY&&!!env.TURNSTILE_SECRET_KEY&&['MONTHLY','ANNUAL'].every(p=>env['MEMBERSHIP_LIVE_PRICE_'+p]);
  const priceKey=(spec,live)=>live?spec.key.replace('_TEST_','_LIVE_'):spec.key;
  const clientFor=m=>m.is_test?stripe:liveStripe;
  const portalFor=m=>m.is_test?env.MEMBERSHIP_PORTAL_TEST_CONFIGURATION:env.MEMBERSHIP_PORTAL_LIVE_CONFIGURATION;
- const offeredPlan=plan=>plan==='monthly'&&env.MEMBERSHIP_FOUNDING_OFFER_OPEN==='true'?'founding':plan;
+ const offeredPlan=plan=>plan;
 
  const clientIP=req=>{const hops=Math.max(0,Math.min(3,Number(env.NEWSLETTER_TRUST_PROXY_HOPS)||0)),forwarded=String(req.headers['x-forwarded-for']||'').split(',').map(x=>x.trim());return hops&&forwarded.length>=hops?forwarded[forwarded.length-hops]:req.socket?.remoteAddress||'unknown';};
  const now=()=>clock(),later=ms=>new Date(+now()+ms);
