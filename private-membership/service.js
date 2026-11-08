@@ -97,6 +97,8 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
       AND ((m.status='active' AND m.stripe_subscription_id IS NOT NULL AND m.access_until>$1)
         OR (m.complimentary_granted_at IS NOT NULL AND (m.complimentary_until IS NULL OR m.complimentary_until>$1)))
       AND m.birth_chart IS NOT NULL
+      AND jsonb_typeof(m.birth_chart->'placements')='array'
+      AND EXISTS (SELECT 1 FROM jsonb_array_elements(m.birth_chart->'placements') p WHERE p->>'reliable'='true' AND p->>'sign' IS NOT NULL)
       AND NOT EXISTS (SELECT 1 FROM luce_personal_readings r WHERE r.member_id=m.id AND r.month=$2 AND r.state IN ('complete','generating'))
       AND EXISTS (SELECT 1 FROM luce_horoscopes h WHERE h.collection_type='monthly'
         AND COALESCE(h.display_month,h.month)=$2 AND h.published IS NOT NULL
