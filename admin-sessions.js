@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
 const COOKIE = '__Host-luce-admin';
 const OPTIONS = { httpOnly: true, secure: true, sameSite: 'strict', path: '/' };
+const { markAdmin } = require('./analytics');
 const fingerprint = value => crypto.createHash('sha256').update(value).digest('hex');
 
 function createAdminSessions({ dbGet, dbRun, verifyPassword, now = Date.now }) {
@@ -46,6 +47,7 @@ function createAdminSessions({ dbGet, dbRun, verifyPassword, now = Date.now }) {
         const lifetime = (remember ? 30 * 24 : 12) * 60 * 60 * 1000;
         await dbRun('INSERT INTO admin_settings (key, value) VALUES ($1, $2)', [keyFor(token), JSON.stringify({ expires: now() + lifetime, passwordVersion: fingerprint(record.value) })]);
         res.cookie(COOKIE, token, { ...OPTIONS, ...(remember ? { maxAge: lifetime } : {}) });
+        markAdmin(req, res);
         res.json({ authenticated: true });
       } catch { res.status(500).json({ error: 'Unable to sign in. Please try again.' }); }
     });
@@ -54,6 +56,7 @@ function createAdminSessions({ dbGet, dbRun, verifyPassword, now = Date.now }) {
       try {
         const record = await dbGet('SELECT value FROM admin_settings WHERE key = $1', ['admin_password']);
         const authenticated = !!record && await valid(req, record.value);
+        if (authenticated) markAdmin(req, res);
         res.status(authenticated ? 200 : 401).json({ authenticated });
       } catch { res.status(500).json({ error: 'Unable to check your sign-in. Please try again.' }); }
     });
