@@ -1,7 +1,7 @@
 // Editorial order is independent of content, publication dates and newsletter delivery.
 const orderBy = (alias = '') => {
   const p = alias ? alias + '.' : '';
-  return `(SELECT position FROM blog_editorial_order WHERE post_id=${p}id) ASC NULLS LAST, ${p}created_at ASC, ${p}id ASC`;
+  return `(SELECT position FROM blog_editorial_order WHERE post_id=${p}id) IS NOT NULL ASC, COALESCE(${p}publish_at, ${p}created_at) DESC, (SELECT position FROM blog_editorial_order WHERE post_id=${p}id) ASC NULLS LAST, ${p}id DESC`;
 };
 function createBlogOrder(pool) {
   async function transaction(fn) {
