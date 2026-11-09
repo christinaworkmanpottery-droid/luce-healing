@@ -74,7 +74,7 @@ async function personalReading(){
   try{result=await api('personal-readings/'+encodeURIComponent(month));}
   catch(e){if(current===revision){target.innerHTML='<p id="reading-status" role="status"></p><button id="reload-reading">Try again</button>';target.querySelector('#reading-status').textContent=errorMessage(e);target.querySelector('button').onclick=show;}return;}
   if(current!==revision)return;
-  if(result.reading){const r=result.reading;target.innerHTML=`<h2>${esc(r.label)}</h2><p class="muted">Your saved personal reading</p><div class="horoscope">${esc(r.text)}</div><details class="reading-about"><summary>My birth-chart placements</summary><p>${r.placements.map(p=>esc(p.placement+' in '+p.sign)).join(' · ')}</p>${r.omitted.length?`<p class="muted">Not included because a reliable sign was unavailable: ${r.omitted.map(esc).join(', ')}.</p>`:''}</details>`;return;}
+  if(result.reading){const r=result.reading;target.innerHTML=`<h2>${esc(r.label)}</h2><p class="muted">Your saved personal reading</p><div class="horoscope">${esc(r.text)}</div><details class="reading-about"><summary>My birth-chart placements</summary><p>${r.placements.map(p=>esc(p.placement+' in '+p.sign)).join(' · ')}</p>${r.omitted.length?`<p class="muted">Not included because a reliable sign was unavailable: ${r.omitted.map(esc).join(', ')}.</p>`:''}</details>`;readingVoice(target,r.text);try{const savedChart=await api('chart');if(current===revision&&savedChart.chart){const area=document.createElement('div');area.innerHTML='<section class="card"><h2>My natal chart wheel</h2>'+chartWheel(savedChart.chart.houses)+'</section>'+houseDetails(savedChart.chart.houses);target.append(area);}}catch(_){/* Reading remains available if chart lookup fails. */}return;}
   target.innerHTML=`<h2>${esc(monthLabel(month))}</h2>${!catalog.hasChart?'<p>Add your birth details to create your reading.</p><a class="button" href="/members/chart">Add my birth details</a>':!catalog.enabled?'<p>Personal readings are temporarily unavailable. Please try again later.</p>':result.generating?'<p id="reading-status" role="status">Preparing your reading… It will appear here automatically.</p>':catalog.available.some(x=>x.month===month)?'<p>Your birth chart and Christina’s monthly guidance, brought together for you.</p><button id="generate-reading">Create my reading</button><p id="reading-status" role="status"></p>':'<p>No saved reading is available for this month.</p>'}`;
   if(result.generating){if(pollCount++<60)poll=setTimeout(show,3000);else{target.innerHTML+='<button id="check-reading">Check my reading</button>';document.getElementById('check-reading').onclick=()=>{pollCount=0;return show();};}return;}
   const generate=document.getElementById('generate-reading');if(generate)generate.onclick=async e=>{
@@ -88,6 +88,43 @@ async function personalReading(){
  }
  const selector=document.getElementById('personal-month');if(selector){selector.value=selected;selector.onchange=()=>{selected=selector.value;pollCount=0;return show();};}
  await show();
+}
+
+
+const houseTopics=['Identity, appearance, and new beginnings','Resources, values, and security','Communication, learning, and nearby connections','Home, family, and foundations','Creativity, pleasure, and self-expression','Daily routines, work, and wellbeing','Partnerships and one-to-one relationships','Shared resources, trust, and transformation','Higher learning, beliefs, and exploration','Career, public life, and long-term direction','Friendships, community, and aspirations','Rest, reflection, and inner life'];
+function chartWheel(houses){
+ if(!houses?.cusps?.length)return '<p class="muted">A reliable birth time and birthplace are needed to draw your 12-house wheel.</p>';
+ const cx=180,cy=180,outer=158,inner=94;
+ const polar=(r,a)=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];
+ const fmt=n=>Number(n).toFixed(2);
+ const wedges=houses.cusps.map((h,i)=>{
+  const a=(-Math.PI/2)+(i*2*Math.PI/12),b=a+2*Math.PI/12;
+  const p=polar(outer,a),q=polar(outer,b),u=polar(inner,b),v=polar(inner,a),mid=(a+b)/2,t=polar(126,mid);
+  return '<path d="M '+fmt(p[0])+' '+fmt(p[1])+' A '+outer+' '+outer+' 0 0 1 '+fmt(q[0])+' '+fmt(q[1])+' L '+fmt(u[0])+' '+fmt(u[1])+' A '+inner+' '+inner+' 0 0 0 '+fmt(v[0])+' '+fmt(v[1])+' Z" fill="'+(i%2?'#f1e8f4':'#fff')+'" stroke="#82638d" stroke-width="1"/><text x="'+fmt(t[0])+'" y="'+fmt(t[1]-5)+'" text-anchor="middle" font-size="12" font-weight="bold" fill="#392c44">'+h.house+'</text><text x="'+fmt(t[0])+'" y="'+fmt(t[1]+10)+'" text-anchor="middle" font-size="9" fill="#392c44">'+esc(h.sign)+'</text>';
+ }).join('');
+ return '<figure class="natal-wheel"><svg viewBox="0 0 360 360" role="img" aria-label="Whole Sign natal chart wheel with twelve houses and zodiac cusp signs">'+wedges+'<circle cx="180" cy="180" r="92" fill="#fff" stroke="#82638d"/><text x="180" y="168" text-anchor="middle" fill="#392c44" font-size="17">Natal Chart</text><text x="180" y="188" text-anchor="middle" fill="#624373" font-size="13">Whole Sign Houses</text><text x="180" y="208" text-anchor="middle" fill="#624373" font-size="12">Rising: '+esc(houses.ascendantSign)+'</text></svg><figcaption class="muted">House positions are calculated from your saved birth details. Planet degrees and houses are listed below.</figcaption></figure>';
+}
+function houseDetails(houses){
+ if(!houses?.cusps?.length)return '<p class="muted">House placements require a reliable birth time and birthplace.</p>';
+ return '<section class="card"><h2>Your 12 house placements</h2><p class="muted">Whole Sign houses. These are traditional interpretations, not predictions of personal events.</p>'+houses.cusps.map((h,i)=>{
+ const planets=(houses.planets||[]).filter(p=>p.house===h.house);
+ return '<details class="house-detail" '+(i===0?'open':'')+'><summary>House '+h.house+' · '+esc(h.sign)+'</summary><p><strong>Life area:</strong> '+houseTopics[i]+'</p><p><strong>Planets:</strong> '+(planets.length?planets.map(p=>esc(p.planet)+' in '+esc(p.sign)+' at '+esc(p.degree)+'°').join(', '):'No listed planets')+'</p><p>'+esc(h.sign)+' brings its traditional qualities to '+houseTopics[i].toLowerCase()+'.'+(planets.length?' The listed planets add further themes to explore.':'')+'</p></details>';
+ }).join('')+'</section>';
+}
+function readingVoice(target,text){
+ if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window))return;
+ const controls=document.createElement('div');controls.className='actions reading-voice';
+ controls.innerHTML='<button type="button" data-voice="play">Listen to reading</button><button type="button" data-voice="pause">Pause</button><button type="button" data-voice="resume">Resume</button><button type="button" data-voice="stop">Stop</button>';
+ target.append(controls);
+ const synth=window.speechSynthesis;
+ controls.onclick=e=>{
+  const button=e.target.closest('button[data-voice]');if(!button)return;
+  const action=button.dataset.voice;
+  if(action==='stop'){synth.cancel();return;}
+  if(action==='pause'){synth.pause();return;}
+  if(action==='resume'){synth.resume();return;}
+  synth.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang='en-US';utterance.rate=.92;synth.speak(utterance);
+ };
 }
 
 async function birthChart(){const saved=await api('chart'),p=saved.profile||{};let place=p.place,chart=saved.chart;
@@ -106,7 +143,7 @@ el('place-find').onclick=act(async()=>{
  else feedback.textContent=results.length?'Choose your city, region, and country from the results below.':'No matching city was found. Check the spelling or try the city and region without the country.';
 });
 el('custom-use').onclick=()=>{place={id:null,label:el('custom-name').value,lat:el('custom-lat').value,lon:el('custom-lon').value,zone:el('custom-zone').value};el('selected-place').textContent='Custom place: '+place.label+' · '+place.zone;};
-const show=()=>{el('placements').innerHTML=chart?`<section class="card"><h2>Your placements</h2><p>These explanations describe traditional meanings in Western astrology. Use them as a guide to reflection alongside Christina’s monthly readings.</p>${chart.notes.map(n=>`<p class="muted">${esc(n)}</p>`).join('')}</section>`+(chart.houses?`<section class="card"><h2>Your 12 houses</h2><p>Whole Sign houses, calculated from your birth time and birthplace. Each house begins at 0° of its sign.</p>${chart.houses.cusps.map(h=>`<p><strong>House ${h.house}: ${esc(h.sign)}</strong> — ${chart.houses.planets.filter(p=>p.house===h.house).map(p=>esc(p.planet)+' in '+esc(p.sign)).join(', ')||'No listed planets'}</p>`).join('')}</section>`:'<section class="card"><h2>Your 12 houses</h2><p>A reliable birth time and birthplace are required to calculate houses.</p></section>')+chart.placements.map(x=>`<article class="card"><h2>${esc(x.placement)}${x.reliable?' in '+esc(x.sign):' — more details needed'}</h2><p>${esc(x.explanation)}</p>${x.note?`<p class="muted">${esc(x.note)}</p>`:''}${x.reliable?`<a class="button" href="/members?sign=${encodeURIComponent(x.sign)}">Read ${esc(x.sign)} this month</a>`:''}</article>`).join(''):'';};show();
+const show=()=>{el('placements').innerHTML=chart?'<section class="card"><h2>Your natal chart wheel</h2>'+chartWheel(chart.houses)+'</section>'+houseDetails(chart.houses)+`<section class="card"><h2>Your placements</h2><p>These explanations describe traditional meanings in Western astrology. Use them as a guide to reflection alongside Christina’s monthly readings.</p>${chart.notes.map(n=>`<p class="muted">${esc(n)}</p>`).join('')}</section>`+(chart.houses?`<section class="card"><h2>Your 12 houses</h2><p>Whole Sign houses, calculated from your birth time and birthplace. Each house begins at 0° of its sign.</p>${chart.houses.cusps.map(h=>`<p><strong>House ${h.house}: ${esc(h.sign)}</strong> — ${chart.houses.planets.filter(p=>p.house===h.house).map(p=>esc(p.planet)+' in '+esc(p.sign)).join(', ')||'No listed planets'}</p>`).join('')}</section>`:'<section class="card"><h2>Your 12 houses</h2><p>A reliable birth time and birthplace are required to calculate houses.</p></section>')+chart.placements.map(x=>`<article class="card"><h2>${esc(x.placement)}${x.reliable?' in '+esc(x.sign):' — more details needed'}</h2><p>${esc(x.explanation)}</p>${x.note?`<p class="muted">${esc(x.note)}</p>`:''}${x.reliable?`<a class="button" href="/members?sign=${encodeURIComponent(x.sign)}">Read ${esc(x.sign)} this month</a>`:''}</article>`).join(''):'';};show();
 el('birth-form').onsubmit=act(async()=>{const result=await api('chart','PUT',{date:el('birth-date').value,time:el('birth-time').value,unknownTime:el('unknown-time').checked,unknownLocation:el('unknown-place').checked,placeId:place?.id,customPlace:place&&!place.id?place:undefined,occurrence:el('occurrence').value});chart=result.chart;place=result.profile.place;show();feedback.textContent='Birth details saved and placements calculated.';});el('birth-delete').onclick=act(async()=>{if(!confirm('Remove your saved birth details and calculated placements?'))return;await api('chart','DELETE',{});await birthChart();feedback.textContent='Birth details removed.';});}
 
 load().catch(e=>{feedback.textContent=e.message;root.innerHTML='<section class="card"><a class="button" href="/members/review">Open private preview with Admin</a></section>';});
