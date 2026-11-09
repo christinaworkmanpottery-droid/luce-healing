@@ -83,13 +83,13 @@ function createOpenAIProvider({env, fetcher = fetch}) {
     try {
       response = await fetcher('https://api.openai.com/v1/chat/completions', {
         method:'POST',signal:AbortSignal.timeout(60000),headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify({model,store:false,messages,...(/^gpt-5/.test(model)?(name==='reading_grounding_review'?{reasoning_effort:'none',temperature:0.3}:{reasoning_effort:'low'}):{temperature:0.3}),max_completion_tokens:maxTokens,
+        body:JSON.stringify({model,store:false,messages,...(/^gpt-5/.test(model)?(name==='reading_grounding_review'?{reasoning_effort:'none'}:{reasoning_effort:'low'}):{temperature:0.3}),max_completion_tokens:maxTokens,
           response_format:{type:'json_schema',json_schema:{name,strict:true,schema}}})
       });
     } catch (_) { throw fail('The reading service took too long. Please try again shortly.',503); }
-    if (!response.ok) throw fail('The reading service is temporarily unavailable. Please try again shortly.',503);
+    if (!response.ok) { console.error('[Luce personal reading upstream]', {status:response.status, model, stage:name}); throw fail('The reading service is temporarily unavailable. Please try again shortly.',503); }
     let data;try {data=await response.json();}catch(_){throw fail('The reading service returned an incomplete response. Please try again.',502);}
-    if(data.choices?.[0]?.finish_reason!=='stop'||data.choices[0].message?.refusal) throw fail('Your reading could not be completed. Please try again.',502);
+    if(data.choices?.[0]?.finish_reason!=='stop'||data.choices[0].message?.refusal) { console.error('[Luce personal reading completion]', {stage:name, reason:data.choices?.[0]?.finish_reason||'missing', refused:Boolean(data.choices?.[0]?.message?.refusal)}); throw fail('Your reading could not be completed. Please try again.',502); }
     try {return {value:JSON.parse(data.choices[0].message.content),usage:data.usage||null};}
     catch(_){throw fail('Your reading could not be completed. Please try again.',502);}
   }
@@ -108,11 +108,12 @@ For every paragraph, verify that its evidence IDs support its actual monthly cla
       previous = draft.value;
       let rendered, text, localIssue;
       try { rendered=renderNatalReferences(draft.value,context); text=validate(rendered,context); }
-      catch(e) { if(e.status!==502)throw e; localIssue=e.message; }
+      catch(e) { if(e.status!==502)throw e; localIssue=e.message; console.error('[Luce personal reading draft validation]', {attempt:attempt+1, status:e.status}); }
       const review = await request([{role:'system',content:reviewInstructions},{role:'user',content:JSON.stringify({context,reading:(rendered||draft.value).paragraphs})}],reviewSchema,'reading_grounding_review',2500);
       usage.push({draft:draft.usage,review:review.usage});
       if(!localIssue && checks.every(key=>review.value[key]===true))
         return {text,paragraphs:rendered.paragraphs,provider:'openai',model,usage,version};
+      console.error('[Luce personal reading grounding review]', {attempt:attempt+1, failedChecks:checks.filter(key=>review.value[key]!==true), localValidationFailed:Boolean(localIssue), issueCount:Array.isArray(review.value.issues)?review.value.issues.length:0});
       issues = [...(localIssue?[localIssue+' Use only exact {{natal:BODY}} tokens; remove every literal planet/sign name outside tokens, including the ordinary word rising.']:[]),...(Array.isArray(review.value.issues)?review.value.issues:[]),...checks.filter(key=>review.value[key]!==true).map(key=>'Failed check: '+key)];
     }
     // This provider has already used its bounded correction budget.
@@ -229,7 +230,7 @@ function createPersonalReadings({q,now,provider,limit}) {
         RETURNING *`,[JSON.stringify({...result,text}),JSON.stringify(provenance),now(),member.id,month,claim,JSON.stringify(latest.birth_chart)]);
       if(!saved)throw fail('Please reopen this month to check your saved reading.');
       return {reading:publicReading(saved)};
-    }catch(e){await q("UPDATE luce_personal_readings SET state='failed',claim=NULL WHERE member_id=$1 AND month=$2 AND claim=$3 AND state='generating'",[member.id,month,claim]);throw e;}
+    }catch(e){console.error('[Luce personal reading generation failed]', {status:e.status||500, retryable:e.retryable!==false, category:e.status===502?'validation_or_completion':e.status===503?'upstream_unavailable':'other'});await q("UPDATE luce_personal_readings SET state='failed',claim=NULL WHERE member_id=$1 AND month=$2 AND claim=$3 AND state='generating'",[member.id,month,claim]);throw e;}
   }
   return {initialize,catalog,get,generate,auditSaved};
 }
