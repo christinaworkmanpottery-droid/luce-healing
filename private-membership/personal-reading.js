@@ -87,9 +87,9 @@ function createOpenAIProvider({env, fetcher = fetch}) {
           response_format:{type:'json_schema',json_schema:{name,strict:true,schema}}})
       });
     } catch (_) { throw fail('The reading service took too long. Please try again shortly.',503); }
-    if (!response.ok) throw fail('The reading service is temporarily unavailable. Please try again shortly.',503);
+    if (!response.ok) { console.error('[Luce personal reading upstream]', {status:response.status, model, stage:name}); throw fail('The reading service is temporarily unavailable. Please try again shortly.',503); }
     let data;try {data=await response.json();}catch(_){throw fail('The reading service returned an incomplete response. Please try again.',502);}
-    if(data.choices?.[0]?.finish_reason!=='stop'||data.choices[0].message?.refusal) throw fail('Your reading could not be completed. Please try again.',502);
+    if(data.choices?.[0]?.finish_reason!=='stop'||data.choices[0].message?.refusal) { console.error('[Luce personal reading completion]', {stage:name, reason:data.choices?.[0]?.finish_reason||'missing', refused:Boolean(data.choices?.[0]?.message?.refusal)}); throw fail('Your reading could not be completed. Please try again.',502); }
     try {return {value:JSON.parse(data.choices[0].message.content),usage:data.usage||null};}
     catch(_){throw fail('Your reading could not be completed. Please try again.',502);}
   }
@@ -229,7 +229,7 @@ function createPersonalReadings({q,now,provider,limit}) {
         RETURNING *`,[JSON.stringify({...result,text}),JSON.stringify(provenance),now(),member.id,month,claim,JSON.stringify(latest.birth_chart)]);
       if(!saved)throw fail('Please reopen this month to check your saved reading.');
       return {reading:publicReading(saved)};
-    }catch(e){await q("UPDATE luce_personal_readings SET state='failed',claim=NULL WHERE member_id=$1 AND month=$2 AND claim=$3 AND state='generating'",[member.id,month,claim]);throw e;}
+    }catch(e){console.error('[Luce personal reading generation failed]', {status:e.status||500, retryable:e.retryable!==false, category:e.status===502?'validation_or_completion':e.status===503?'upstream_unavailable':'other'});await q("UPDATE luce_personal_readings SET state='failed',claim=NULL WHERE member_id=$1 AND month=$2 AND claim=$3 AND state='generating'",[member.id,month,claim]);throw e;}
   }
   return {initialize,catalog,get,generate,auditSaved};
 }
