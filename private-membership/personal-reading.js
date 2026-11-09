@@ -108,11 +108,12 @@ For every paragraph, verify that its evidence IDs support its actual monthly cla
       previous = draft.value;
       let rendered, text, localIssue;
       try { rendered=renderNatalReferences(draft.value,context); text=validate(rendered,context); }
-      catch(e) { if(e.status!==502)throw e; localIssue=e.message; }
+      catch(e) { if(e.status!==502)throw e; localIssue=e.message; console.error('[Luce personal reading draft validation]', {attempt:attempt+1, status:e.status}); }
       const review = await request([{role:'system',content:reviewInstructions},{role:'user',content:JSON.stringify({context,reading:(rendered||draft.value).paragraphs})}],reviewSchema,'reading_grounding_review',2500);
       usage.push({draft:draft.usage,review:review.usage});
       if(!localIssue && checks.every(key=>review.value[key]===true))
         return {text,paragraphs:rendered.paragraphs,provider:'openai',model,usage,version};
+      console.error('[Luce personal reading grounding review]', {attempt:attempt+1, failedChecks:checks.filter(key=>review.value[key]!==true), localValidationFailed:Boolean(localIssue), issueCount:Array.isArray(review.value.issues)?review.value.issues.length:0});
       issues = [...(localIssue?[localIssue+' Use only exact {{natal:BODY}} tokens; remove every literal planet/sign name outside tokens, including the ordinary word rising.']:[]),...(Array.isArray(review.value.issues)?review.value.issues:[]),...checks.filter(key=>review.value[key]!==true).map(key=>'Failed check: '+key)];
     }
     // This provider has already used its bounded correction budget.
