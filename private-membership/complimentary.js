@@ -12,6 +12,14 @@ function createComplimentary({q,now,scheduleInstant}) {
   await q(`CREATE TABLE IF NOT EXISTS luce_complimentary_redemptions(
    id SERIAL PRIMARY KEY,code_id INTEGER NOT NULL REFERENCES luce_complimentary_codes(id),member_id INTEGER NOT NULL REFERENCES luce_members(id),
    redeemed_at TIMESTAMPTZ NOT NULL,access_until TIMESTAMPTZ,UNIQUE(code_id,member_id))`);
+  // Bridge the existing active 100%-off membership promo into the separate
+  // complimentary entitlement system. Never alter the legacy promo itself.
+  await q(`INSERT INTO luce_complimentary_codes(code,name,active,max_redemptions,duration_days,expires_at)
+    SELECT p.code,COALESCE(NULLIF(p.description,''),'Complimentary membership'),true,NULL,NULL,NULL
+    FROM promo_codes p WHERE p.code='MEMBER1000' AND p.active=1
+      AND p.discount_percent=100 AND p.max_uses IS NULL AND p.expires_at IS NULL
+    ON CONFLICT(code) DO NOTHING`);
+
  }
  async function redeem(c,memberId,value){
   const code=normalize(value);if(!/^[A-Z0-9_-]{3,64}$/.test(code))throw fail('Enter a valid complimentary access code.');
