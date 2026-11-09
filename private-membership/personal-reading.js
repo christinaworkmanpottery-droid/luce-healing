@@ -83,7 +83,7 @@ function createOpenAIProvider({env, fetcher = fetch}) {
     try {
       response = await fetcher('https://api.openai.com/v1/chat/completions', {
         method:'POST',signal:AbortSignal.timeout(60000),headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify({model,store:false,messages,...(/^gpt-5/.test(model)?(name==='reading_grounding_review'?{reasoning_effort:'none',temperature:0.3}:{reasoning_effort:'low'}):{temperature:0.3}),max_completion_tokens:maxTokens,
+        body:JSON.stringify({model,store:false,messages,...(/^gpt-5/.test(model)?(name==='reading_grounding_review'?{reasoning_effort:'none'}:{reasoning_effort:'low'}):{temperature:0.3}),max_completion_tokens:maxTokens,
           response_format:{type:'json_schema',json_schema:{name,strict:true,schema}}})
       });
     } catch (_) { throw fail('The reading service took too long. Please try again shortly.',503); }
