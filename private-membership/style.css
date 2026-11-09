@@ -4,3 +4,5 @@
 
 /* Match public headings without changing the membership layout or accents. */
 h1,h2,h3,h4,h5,h6{color:#43264f}
+
+.natal-wheel{max-width:440px;margin:18px auto;text-align:center}.natal-wheel svg{width:100%;height:auto;display:block}.natal-wheel figcaption{margin-top:10px}.house-detail{padding:13px 0;border-bottom:1px solid #dfd3e6}.house-detail summary{cursor:pointer;font-weight:bold;color:var(--plum);font-size:18px}.house-detail p{margin:8px 0}.reading-voice{margin:18px 0}.reading-voice button{flex:1 1 110px}@media print{.reading-voice,nav,button{display:none!important}.natal-wheel{break-inside:avoid}.house-detail{break-inside:avoid}}
