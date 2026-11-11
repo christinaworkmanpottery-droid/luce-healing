@@ -24,7 +24,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
  const stripe=testKey?.startsWith('sk_test_')?require('stripe')(testKey):stripeClient;
  const sandboxKey=testKey?.startsWith('sk_test_')||env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
  const testCheckoutEnabled=()=>env.MEMBERSHIP_TEST_CHECKOUT_ENABLED==='true'&&!!sandboxKey&&!!stripe&&!!env.MEMBERSHIP_STRIPE_TEST_WEBHOOK_SECRET&&!!env.MEMBERSHIP_PORTAL_TEST_CONFIGURATION;
- const plans={founding:{amount:295,interval:'month',key:'MEMBERSHIP_TEST_PRICE_FOUNDING'},monthly:{amount:495,interval:'month',key:'MEMBERSHIP_TEST_PRICE_MONTHLY'},annual:{amount:3995,interval:'year',key:'MEMBERSHIP_TEST_PRICE_ANNUAL'}};
+ const plans={founding:{amount:295,interval:'month',key:'MEMBERSHIP_TEST_PRICE_FOUNDING'},monthly:{amount:495,interval:'month',key:'MEMBERSHIP_TEST_PRICE_MONTHLY'},annual:{amount:4950,interval:'year',key:'MEMBERSHIP_TEST_PRICE_ANNUAL'}};
  const liveStripe=env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?stripeClient:null;
  const liveEnabled=()=>env.MEMBERSHIP_LIVE_ENABLED==='true'&&!!liveStripe&&!!env.STRIPE_WEBHOOK_SECRET&&!!env.MEMBERSHIP_PORTAL_LIVE_CONFIGURATION&&!!env.TURNSTILE_SITE_KEY&&!!env.TURNSTILE_SECRET_KEY&&['MONTHLY','ANNUAL'].every(p=>env['MEMBERSHIP_LIVE_PRICE_'+p]);
  const priceKey=(spec,live)=>live?spec.key.replace('_TEST_','_LIVE_'):spec.key;
@@ -150,7 +150,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
    if(sub.metadata?.luce_plan){
     if(!checkoutMatch&&m.stripe_subscription_id!==sub.id)throw fail('Checkout identity mismatch.',409);
     const spec=plans[sub.metadata.luce_plan],items=sub.items?.data;
-    if(!spec||items?.length!==1||items[0].quantity!==1||items[0].price?.id!==env[priceKey(spec,live)])throw fail('Subscription price mismatch.',409);
+    if(!spec||items?.length!==1||items[0].quantity!==1||![env[priceKey(spec,live)],...(live&&sub.metadata.luce_plan==='annual'?['price_1UZebSLZJAbDgWCX7mxXrYWQ']:[])].includes(items[0].price?.id))throw fail('Subscription price mismatch.',409);
    }
    if(sub.metadata?.luce_plan)await c.query('UPDATE luce_members SET tier=$1,checkout_id=NULL WHERE id=$2',[sub.metadata.luce_plan,id]);
    await c.query(`UPDATE luce_members SET stripe_customer_id=$1,stripe_subscription_id=$2,status=$3,access_until=$4,cancel_at_period_end=$5,billing_period_start=$6,billing_period_end=$4,billing_synced_at=$7 WHERE id=$8`,[customer,sub.id,sub.status,endDate,!!sub.cancel_at_period_end,start?new Date(start*1000):null,now(),id]);
