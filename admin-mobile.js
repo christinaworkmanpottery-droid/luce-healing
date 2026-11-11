@@ -64,7 +64,7 @@
     const scheduled=posts.filter(p=>!p.published&&p.publish_at).sort((a,b)=>new Date(a.publish_at)-new Date(b.publish_at));
     const drafts=posts.filter(p=>!p.published&&!p.publish_at);
     const dateTime=x=>x?new Date(x).toLocaleString('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}):'Not scheduled';
-    root.innerHTML=`<details open class="admin-card"><summary>Scheduled Posts (${scheduled.length})</summary><div id="scheduled-blog-posts"></div></details><details class="admin-card"><summary>Draft Posts (${drafts.length})</summary><div id="draft-blog-posts"></div></details><details class="admin-card"><summary>Published Posts (${published.length})</summary><p>The first published post is featured on your homepage. Move to top changes that featured post.</p><p id="blog-order-message" role="status" aria-live="polite"></p><label>Find a published post<input id="blog-order-search" type="search" placeholder="Search titles"></label><div id="blog-order-list"></div></details>`;
+    root.innerHTML=`<details open class="admin-card"><summary>Scheduled Posts (${scheduled.length})</summary><div id="scheduled-blog-posts"></div></details><details class="admin-card"><summary>Draft Posts (${drafts.length})</summary><div id="draft-blog-posts"></div></details><details open class="admin-card"><summary>Published Posts (${published.length})</summary><p>The first published post is featured on your homepage. Move to top changes that featured post.</p><p id="blog-order-message" role="status" aria-live="polite"></p><label>Find a published post<input id="blog-order-search" type="search" placeholder="Search titles"></label><div id="blog-order-list"></div></details>`;
     const cardFor=p=>{
       const i=published.findIndex(x=>x.id===p.id);
       const status=p.published?'Published':p.publish_at?'Scheduled for '+dateTime(p.publish_at):'Draft';
@@ -79,9 +79,9 @@
       const b=e.target.closest('button');if(!b||saving)return;
       if(b.dataset.move){
         const ids=published.map(p=>p.id),previous=[...ids],id=Number(b.dataset.move),from=ids.indexOf(id),to=b.dataset.direction==='top'?0:from+Number(b.dataset.direction);
-        if(to<0||to>=ids.length)return;ids.splice(from,1);ids.splice(to,0,id);saving=true;
+        if(from<0||to<0||to>=ids.length)return;ids.splice(from,1);ids.splice(to,0,id);saving=true;
         root.querySelectorAll('button').forEach(b=>b.disabled=true);
-        try {await request('blog-order','PUT',{ids,previous});posts=ids.map(id=>posts.find(p=>p.id===id)).concat(posts.filter(p=>!p.published));renderBlogs(root,id);root.querySelector('#blog-order-message').textContent='Order saved. The first post is featured on your homepage.';}
+        try {const saved=await request('blog-order','PUT',{ids,previous});posts=saved.ids.map(id=>posts.find(p=>p.id===id)).concat(posts.filter(p=>!p.published));renderBlogs(root,id);root.querySelector('#blog-order-message').textContent='Order saved. The first post is featured on your homepage.';}
         catch(err){renderBlogs(root);root.querySelector('#blog-order-message').textContent=err.message+' Your move was not applied. Reopen Blog to refresh.';}
         finally{saving=false;}
       }
