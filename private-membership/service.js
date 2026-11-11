@@ -16,7 +16,7 @@ const fail=(message,status=400)=>Object.assign(Error(message),{status});
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const emailOK=v=>typeof v==='string'&&v.length<=254&&/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(v);
 const cookie=(req,name)=>{const v=String(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='));return v?v.slice(name.length+1):'';};
-function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),stripeClient,fetcher=fetch,readingProvider}){
+function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),stripeClient,membershipStripeClient,fetcher=fetch,readingProvider}){
  const q=(s,p=[])=>pool.query(s,p),one=async(s,p)=>(await q(s,p)).rows[0];
  const origin='https://lucehealing.com',testEmail='info@christinaworkman.com';
  // Reuse the site's client. A same-account test credential may override it for private testing only.
@@ -28,8 +28,26 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
  const liveStripe=env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?stripeClient:null;
  const liveEnabled=()=>env.MEMBERSHIP_LIVE_ENABLED==='true'&&!!liveStripe&&!!env.STRIPE_WEBHOOK_SECRET&&!!env.MEMBERSHIP_PORTAL_LIVE_CONFIGURATION&&!!env.TURNSTILE_SITE_KEY&&!!env.TURNSTILE_SECRET_KEY&&['MONTHLY','ANNUAL'].every(p=>env['MEMBERSHIP_LIVE_PRICE_'+p]);
  const priceKey=(spec,live)=>live?spec.key.replace('_TEST_','_LIVE_'):spec.key;
- const clientFor=m=>m.is_test?stripe:liveStripe;
- const portalFor=m=>m.is_test?env.MEMBERSHIP_PORTAL_TEST_CONFIGURATION:env.MEMBERSHIP_PORTAL_LIVE_CONFIGURATION;
+ const membershipAccount='acct_1TD7xKLZJAbDgWCX';
+ const dedicatedKey=env.MEMBERSHIP_STRIPE_LIVE_KEY;
+ const membershipStripe=dedicatedKey?.startsWith('sk_live_')?(membershipStripeClient||require('stripe')(dedicatedKey)):null;
+ // Existing Stripe identities remain attached to the legacy account. Only new
+ // membership checkout uses the dedicated account; purchased readings stay legacy.
+ const accountFor=m=>m.is_test?'test':m.stripe_billing_account||((m.stripe_customer_id||m.stripe_subscription_id||m.checkout_id)?'legacy':membershipStripe?membershipAccount:'legacy');
+ const clientFor=m=>m.is_test?stripe:accountFor(m)===membershipAccount?membershipStripe:liveStripe;
+ const portalFor=m=>m.is_test?env.MEMBERSHIP_PORTAL_TEST_CONFIGURATION:accountFor(m)===membershipAccount?env.MEMBERSHIP_ACCOUNT_PORTAL_CONFIGURATION:env.MEMBERSHIP_PORTAL_LIVE_CONFIGURATION;
+ let checkedAccount;
+ async function verifyMembershipAccount(){
+  if(!membershipStripe||!env.MEMBERSHIP_STRIPE_LIVE_WEBHOOK_SECRET||!env.MEMBERSHIP_ACCOUNT_PORTAL_CONFIGURATION)throw fail('Membership checkout configuration needs attention.',503);
+  if(!checkedAccount){
+   const account=await membershipStripe.accounts.retrieve();
+   if(account.id!==membershipAccount)throw fail('Membership Stripe account does not match.',503);
+   const portal=await membershipStripe.billingPortal.configurations.retrieve(env.MEMBERSHIP_ACCOUNT_PORTAL_CONFIGURATION);
+   if(!portal.active||!portal.livemode||!portal.features?.subscription_cancel?.enabled||portal.features.subscription_cancel.mode!=='at_period_end'||portal.features?.subscription_update?.enabled)throw fail('Membership billing settings need attention.',503);
+   checkedAccount=true;
+  }
+ }
+
  const offeredPlan=plan=>plan;
 
  const clientIP=req=>{const hops=Math.max(0,Math.min(3,Number(env.NEWSLETTER_TRUST_PROXY_HOPS)||0)),forwarded=String(req.headers['x-forwarded-for']||'').split(',').map(x=>x.trim());return hops&&forwarded.length>=hops?forwarded[forwarded.length-hops]:req.socket?.remoteAddress||'unknown';};
@@ -53,6 +71,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   await complimentary.initialize();
   await personalReadings.initialize();
   await purchases.initialize();
+  await q('ALTER TABLE luce_members ADD COLUMN IF NOT EXISTS stripe_billing_account TEXT');
   await q('ALTER TABLE luce_members ADD COLUMN IF NOT EXISTS checkout_id TEXT, ADD COLUMN IF NOT EXISTS checkout_nonce TEXT, ADD COLUMN IF NOT EXISTS checkout_plan TEXT');
   await q('ALTER TABLE luce_members ADD COLUMN IF NOT EXISTS birth_profile JSONB, ADD COLUMN IF NOT EXISTS birth_chart JSONB');
   await personalReadings.auditSaved();
@@ -135,7 +154,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   catch(_){await q('DELETE FROM luce_member_tokens WHERE token_hash=$1',[hash(t)]);throw fail('Email could not be sent. Please try again.',503);}
  }
  async function consume(t,kind,fn){if(!/^[a-f0-9]{64}$/.test(t||''))throw fail('Invalid or expired link. Request a new email.',410);return tx(async c=>{const r=(await c.query('DELETE FROM luce_member_tokens WHERE token_hash=$1 AND kind=$2 AND expires_at>$3 RETURNING member_id',[hash(t),kind,now()])).rows[0];if(!r)throw fail('Invalid or expired link. Request a new email.',410);return fn(c,r.member_id);});}
- async function syncSubscription(sub){
+ async function syncSubscription(sub,billingAccount='legacy'){
   const live=sub.livemode===true;if(live&&!liveStripe)throw fail('Live membership billing is not configured.',503);
   const id=Number(sub.metadata?.luce_member_id);if(!Number.isInteger(id)||sub.metadata?.luce_membership!==(live?'membership':'preview'))return;
   const customer=typeof sub.customer==='string'?sub.customer:sub.customer?.id;
@@ -143,6 +162,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   const start=sub.current_period_start||sub.items?.data?.[0]?.current_period_start;
   const endDate=end?new Date(end*1000):null;
   await tx(async c=>{const m=(await c.query('SELECT * FROM luce_members WHERE id=$1 FOR UPDATE',[id])).rows[0];if(!m||m.is_test===live)return;
+   if(live&&accountFor(m)!==billingAccount)throw fail('Subscription account mismatch.',409);
    if(m.stripe_customer_id&&m.stripe_customer_id!==customer)throw fail('Subscription identity mismatch.',409);
    const checkoutMatch=m.checkout_nonce&&sub.metadata?.luce_checkout_nonce===m.checkout_nonce;
    if(m.stripe_subscription_id&&m.stripe_subscription_id!==sub.id&&!checkoutMatch)return;
@@ -161,9 +181,11 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   const member=await needMember(req);
   const live=!member.is_test,stripe=clientFor(member);if(!member.verified_at)throw fail('Confirm your email first.',403);if(live&&!liveEnabled()||!live&&(!testCheckoutEnabled()||member.email!==testEmail))throw fail('Checkout is unavailable for this account.',403);
   if(!['monthly','annual'].includes(req.body.plan))throw fail('Choose monthly or annual membership.');
+  if(live&&accountFor(member)===membershipAccount)await verifyMembershipAccount();
   await limit('checkout:'+member.id,20);
   return tx(async c=>{
    const m=(await c.query('SELECT * FROM luce_members WHERE id=$1 FOR UPDATE',[member.id])).rows[0];
+   if(accountFor(m)!==accountFor(member))throw fail('Billing changed. Refresh your account.',409);
    if(complimentary.active(m))throw fail('You have active complimentary access. No subscription or payment is needed.',409);
    if(m.stripe_subscription_id){const sub=await stripe.subscriptions.retrieve(m.stripe_subscription_id);if(sub.livemode!==live)throw fail('Stripe billing mode mismatch.',403);if(!['canceled','incomplete_expired'].includes(sub.status))throw fail('You already have a subscription. Use Manage billing.',409);}
    const plan=offeredPlan(req.body.plan),spec=plans[plan],priceId=env[priceKey(spec,live)];
@@ -174,26 +196,36 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
    if(price.livemode!==live||!price.active||price.currency!=='usd'||price.unit_amount!==spec.amount||price.recurring?.interval!==spec.interval||price.recurring?.interval_count!==1||price.recurring?.usage_type!=='licensed'||price.billing_scheme!=='per_unit')throw fail('Stripe price does not match the approved membership price.',409);
    if(m.checkout_id){const old=await stripe.checkout.sessions.retrieve(m.checkout_id);if(old.livemode!==live)throw fail('Stripe billing mode mismatch.',403);if(old.status==='complete')throw fail('Payment is being confirmed. Refresh your account shortly.',409);if(old.status==='open'){if(m.checkout_plan===plan)return {url:old.url};await stripe.checkout.sessions.expire(old.id);}}
    // A deterministic attempt identity keeps API retries idempotent after a transaction rollback.
-   const nonce=hash('checkout:'+m.id+':'+(m.checkout_id||m.stripe_subscription_id||'first')+':'+plan);
+   const nonce=hash('checkout:'+accountFor(m)+':'+m.id+':'+(m.checkout_id||m.stripe_subscription_id||'first')+':'+plan);
    const metadata={luce_member_id:String(m.id),luce_membership:live?'membership':'preview',luce_plan:plan,luce_checkout_nonce:nonce};
    const result=await stripe.checkout.sessions.create({mode:'subscription',payment_method_types:['card'],line_items:[{price:priceId,quantity:1}],...(m.stripe_customer_id?{customer:m.stripe_customer_id}:{customer_email:m.email}),client_reference_id:String(m.id),metadata,subscription_data:{metadata},success_url:origin+'/members/account?checkout=success',cancel_url:origin+'/members/account?checkout=canceled'}, {idempotencyKey:'luce-membership-'+(live?'live':'test')+':'+m.id+':'+nonce});
    if(result.livemode!==live)throw fail('Stripe billing mode mismatch.',403);
-   await c.query('UPDATE luce_members SET checkout_id=$1,checkout_nonce=$2,checkout_plan=$3 WHERE id=$4',[result.id,nonce,plan,m.id]);
+   await c.query('UPDATE luce_members SET checkout_id=$1,checkout_nonce=$2,checkout_plan=$3,stripe_billing_account=$4 WHERE id=$5',[result.id,nonce,plan,accountFor(m),m.id]);
    return {url:result.url};
   });
  }
- async function reconcile(m){if(complimentary.active(m))return m;const stripe=clientFor(m);if(stripe&&m.stripe_subscription_id&&(!m.billing_synced_at||+now()-new Date(m.billing_synced_at)>60000)){try{await syncSubscription(await stripe.subscriptions.retrieve(m.stripe_subscription_id));}catch(_){throw fail('Unable to confirm membership billing. Please try again shortly.',503);}return one('SELECT * FROM luce_members WHERE id=$1',[m.id]);}return m;}
- async function handleLiveEvent(event){
-  if(event.livemode!==true||!liveStripe)return false;
-  if(await purchases.handleEvent(event))return true;
+ async function reconcile(m){if(complimentary.active(m))return m;const stripe=clientFor(m);
+  if(stripe&&m.checkout_id&&accountFor(m)===membershipAccount){
+   const checkout=await stripe.checkout.sessions.retrieve(m.checkout_id);
+   if(checkout.livemode===!m.is_test&&checkout.status==='complete'&&checkout.mode==='subscription'&&checkout.client_reference_id===String(m.id)&&checkout.metadata?.luce_checkout_nonce===m.checkout_nonce&&checkout.subscription){
+    const id=typeof checkout.subscription==='string'?checkout.subscription:checkout.subscription.id;
+    await syncSubscription(await stripe.subscriptions.retrieve(id),accountFor(m));
+    m=await one('SELECT * FROM luce_members WHERE id=$1',[m.id]);
+   }
+  }
+ if(stripe&&m.stripe_subscription_id&&(!m.billing_synced_at||+now()-new Date(m.billing_synced_at)>60000)){try{await syncSubscription(await stripe.subscriptions.retrieve(m.stripe_subscription_id),accountFor(m));}catch(_){throw fail('Unable to confirm membership billing. Please try again shortly.',503);}return one('SELECT * FROM luce_members WHERE id=$1',[m.id]);}return m;}
+ async function handleLiveEvent(event,billingAccount='legacy'){
+  const eventStripe=billingAccount===membershipAccount?membershipStripe:liveStripe;
+  if(event.livemode!==true||!eventStripe)return false;
+  if(billingAccount==='legacy'&&await purchases.handleEvent(event))return true;
   const obj=event.data.object;let id,sub;
   if(event.type==='checkout.session.completed'&&obj.mode==='subscription'&&obj.metadata?.luce_membership==='membership')id=typeof obj.subscription==='string'?obj.subscription:obj.subscription?.id;
   else if(event.type.startsWith('customer.subscription.')&&obj.metadata?.luce_membership==='membership'){if(event.type==='customer.subscription.deleted')sub=obj;else id=obj.id;}
   else if(['invoice.paid','invoice.payment_failed','invoice.payment_action_required'].includes(event.type)){const ref=obj.subscription||obj.parent?.subscription_details?.subscription;id=typeof ref==='string'?ref:ref?.id;}
-  if(id)sub=await liveStripe.subscriptions.retrieve(id);
+  if(id)sub=await eventStripe.subscriptions.retrieve(id);
   if(sub?.metadata?.luce_membership!=='membership')return false;
   if(await one('SELECT id FROM luce_member_events WHERE id=$1',[event.id]))return true;
-  await syncSubscription(sub);await q('INSERT INTO luce_member_events(id,event_type) VALUES($1,$2) ON CONFLICT DO NOTHING',[event.id,event.type]);return true;
+  await syncSubscription(sub,billingAccount);await q('INSERT INTO luce_member_events(id,event_type) VALUES($1,$2) ON CONFLICT DO NOTHING',[event.id,event.type]);return true;
  }
  function register(app,checkAdmin){
   purchases.register(app);
@@ -240,6 +272,12 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   app.get('/api/membership/personal-readings/:month',needPreview,wrap(async(req,res)=>res.json(await personalReadings.get(await personalMember(req),req.params.month))));
   app.post('/api/membership/personal-readings/:month',needPreview,wrap(async(req,res)=>{const m=await personalMember(req);await tick();res.json(await personalReadings.generate(m,req.params.month));}));
   app.post('/api/membership/portal',needPreview,wrap(async(req,res)=>{const m=await needMember(req),stripe=clientFor(m),portal=portalFor(m);if(!m.verified_at)throw fail('Confirm your email first.',403);if(!stripe||!m.stripe_customer_id||!portal)throw fail('Billing management is not available for this account.',409);const config=await stripe.billingPortal.configurations.retrieve(portal);if(config.livemode===m.is_test||config.active===false||!config.features?.subscription_cancel?.enabled||config.features.subscription_cancel.mode!=='at_period_end'||config.features?.subscription_update?.enabled)throw fail('Membership billing settings need attention.',409);const result=await stripe.billingPortal.sessions.create({customer:m.stripe_customer_id,configuration:config.id,return_url:origin+'/members/account'});res.json({url:result.url});}));
+  app.post('/api/membership/stripe/webhook/live',wrap(async(req,res)=>{
+   if(!membershipStripe||!env.MEMBERSHIP_STRIPE_LIVE_WEBHOOK_SECRET)throw fail('Membership webhook is not configured.',503);
+   let event;try{event=membershipStripe.webhooks.constructEvent(req.body,req.headers['stripe-signature'],env.MEMBERSHIP_STRIPE_LIVE_WEBHOOK_SECRET);}catch(_){throw fail('Invalid webhook signature.',400);}
+   if(event.livemode!==true)throw fail('Live events required.',403);
+   await handleLiveEvent(event,membershipAccount);res.json({received:true});
+  }));
   app.post('/api/membership/stripe/webhook',wrap(async(req,res)=>{if(!stripe||!env.MEMBERSHIP_STRIPE_TEST_WEBHOOK_SECRET)throw fail('Sandbox webhook is not configured.',503);let event;try{event=stripe.webhooks.constructEvent(req.body,req.headers['stripe-signature'],env.MEMBERSHIP_STRIPE_TEST_WEBHOOK_SECRET);}catch(_){throw fail('Invalid webhook signature.',400);}if(event.livemode!==false)throw fail('Live membership events are disabled.',403);if(await one('SELECT id FROM luce_member_events WHERE id=$1',[event.id]))return res.json({received:true});const obj=event.data.object;let sub;if(event.type==='checkout.session.completed'&&obj.mode==='subscription'&&obj.subscription)sub=await stripe.subscriptions.retrieve(typeof obj.subscription==='string'?obj.subscription:obj.subscription.id);if(event.type.startsWith('customer.subscription.'))sub=event.type==='customer.subscription.deleted'?obj:await stripe.subscriptions.retrieve(obj.id);if(['invoice.paid','invoice.payment_failed','invoice.payment_action_required'].includes(event.type)){const id=obj.subscription||obj.parent?.subscription_details?.subscription;if(id)sub=await stripe.subscriptions.retrieve(typeof id==='string'?id:id.id);}if(sub)await syncSubscription(sub);await q('INSERT INTO luce_member_events(id,event_type) VALUES($1,$2) ON CONFLICT DO NOTHING',[event.id,event.type]);res.json({received:true});}));
   const admin=(method,url,fn)=>app[method]('/api/admin/membership'+url,checkAdmin,wrap(fn));
   admin('get','/complimentary-codes',async(req,res)=>res.json(await complimentary.list()));
