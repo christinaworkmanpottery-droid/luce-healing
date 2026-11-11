@@ -168,7 +168,9 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
    if(m.stripe_subscription_id){const sub=await stripe.subscriptions.retrieve(m.stripe_subscription_id);if(sub.livemode!==live)throw fail('Stripe billing mode mismatch.',403);if(!['canceled','incomplete_expired'].includes(sub.status))throw fail('You already have a subscription. Use Manage billing.',409);}
    const plan=offeredPlan(req.body.plan),spec=plans[plan],priceId=env[priceKey(spec,live)];
    if(!priceId)throw fail('Membership price is not configured.',503);
-   const price=await stripe.prices.retrieve(priceId);
+   let price;
+   try { price=await stripe.prices.retrieve(priceId); }
+   catch(e) { if(e.code==='resource_missing') { console.error('[Luce membership] configured Stripe price missing from checkout account', {plan, priceId, stripeAccountHint: live?'live':'test'}); throw fail('Membership checkout configuration needs attention.',503); } throw e; }
    if(price.livemode!==live||!price.active||price.currency!=='usd'||price.unit_amount!==spec.amount||price.recurring?.interval!==spec.interval||price.recurring?.interval_count!==1||price.recurring?.usage_type!=='licensed'||price.billing_scheme!=='per_unit')throw fail('Stripe price does not match the approved membership price.',409);
    if(m.checkout_id){const old=await stripe.checkout.sessions.retrieve(m.checkout_id);if(old.livemode!==live)throw fail('Stripe billing mode mismatch.',403);if(old.status==='complete')throw fail('Payment is being confirmed. Refresh your account shortly.',409);if(old.status==='open'){if(m.checkout_plan===plan)return {url:old.url};await stripe.checkout.sessions.expire(old.id);}}
    // A deterministic attempt identity keeps API retries idempotent after a transaction rollback.
