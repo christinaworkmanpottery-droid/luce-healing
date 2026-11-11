@@ -1657,6 +1657,12 @@ app.get('/blog/:slug', async (req, res) => {
             <h1>${escapedTitle}</h1>
             <div class="blog-post-meta">${date} · ${readingTime} min read</div>
             <div class="blog-post-body">${seo.headings(post.content)}</div>
+            <div style="margin:24px 0;padding:20px;background:#f7f0fa;border:1px solid #e4d6ea;border-radius:12px">
+                <p style="margin:0 0 10px;color:#392c44;font-weight:600">Enjoying this astrology forecast?</p>
+                <p style="margin:0 0 12px;color:#51465b">Explore your monthly astrology with Luce Healing, or get new reflections delivered to your inbox.</p>
+                <a href="/astrology-membership" style="display:inline-block;margin:0 12px 8px 0;color:#624373;font-weight:700">Explore Astrology Membership →</a>
+                <a href="/subscribe" style="display:inline-block;color:#624373;font-weight:700">Get free astrology emails →</a>
+            </div>
             ${relatedHTML}
         </article>
         <aside style="padding:28px;margin-top:32px;background:#eee7f3;border-radius:12px;text-align:center">
