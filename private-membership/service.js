@@ -150,7 +150,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
    if(sub.metadata?.luce_plan){
     if(!checkoutMatch&&m.stripe_subscription_id!==sub.id)throw fail('Checkout identity mismatch.',409);
     const spec=plans[sub.metadata.luce_plan],items=sub.items?.data;
-    if(!spec||items?.length!==1||items[0].quantity!==1||items[0].price?.id!==env[priceKey(spec,live)])throw fail('Subscription price mismatch.',409);
+    if(!spec||items?.length!==1||items[0].quantity!==1||![env[priceKey(spec,live)],...(live&&sub.metadata.luce_plan==='annual'?['price_1UZebSLZJAbDgWCX7mxXrYWQ']:[])].includes(items[0].price?.id))throw fail('Subscription price mismatch.',409);
    }
    if(sub.metadata?.luce_plan)await c.query('UPDATE luce_members SET tier=$1,checkout_id=NULL WHERE id=$2',[sub.metadata.luce_plan,id]);
    await c.query(`UPDATE luce_members SET stripe_customer_id=$1,stripe_subscription_id=$2,status=$3,access_until=$4,cancel_at_period_end=$5,billing_period_start=$6,billing_period_end=$4,billing_synced_at=$7 WHERE id=$8`,[customer,sub.id,sub.status,endDate,!!sub.cancel_at_period_end,start?new Date(start*1000):null,now(),id]);
