@@ -14,6 +14,8 @@ function createComplimentary({q,now,scheduleInstant}) {
    redeemed_at TIMESTAMPTZ NOT NULL,access_until TIMESTAMPTZ,UNIQUE(code_id,member_id))`);
   // Bridge the existing active 100%-off membership promo into the separate
   // complimentary entitlement system. Never alter the legacy promo itself.
+  const legacy = await q("SELECT to_regclass('promo_codes') IS NOT NULL AS available");
+  if (!legacy.rows[0].available) return;
   await q(`INSERT INTO luce_complimentary_codes(code,name,active,max_redemptions,duration_days,expires_at)
     SELECT p.code,COALESCE(NULLIF(p.description,''),'Complimentary membership'),true,NULL,NULL,NULL
     FROM promo_codes p WHERE p.code='MEMBER1000' AND p.active=1

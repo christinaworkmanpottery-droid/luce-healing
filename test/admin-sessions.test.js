@@ -14,7 +14,7 @@ function setup() {
   const routes = {};
   sessions.register(Object.fromEntries(['get', 'post', 'delete'].map(method => [method, (path, handler) => { routes[method] = handler; }])));
   const req = (body = {}, cookie = '', origin = 'https://lucehealing.com') => ({ body, headers: { cookie, origin }, get: () => 'lucehealing.com' });
-  const res = () => ({ code: 200, set() {}, status(code) { this.code = code; return this; }, json(body) { this.body = body; }, cookie(name, value, options) { this.saved = { name, value, options }; }, clearCookie() { this.cleared = true; } });
+  const res = () => ({ code: 200, set() {}, status(code) { this.code = code; return this; }, json(body) { this.body = body; }, cookie(name, value, options) { if (name === '__Host-luce-admin') this.saved = { name, value, options }; }, clearCookie() { this.cleared = true; } });
   return { data, sessions, routes, req, res, advance: ms => { time += ms; } };
 }
 
