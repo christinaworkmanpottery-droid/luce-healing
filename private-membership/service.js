@@ -49,7 +49,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
  }
 
  const offeredPlan=plan=>plan;
- const annualOfferActive=date=>+date>=Date.parse('2026-11-25T08:00:00Z') && +date<Date.parse('2026-12-01T08:00:00Z');
+ const {isBlackFriday:annualOfferActive,nativeCheckoutDeadline}=require('../promotion-deadline');
 
  const clientIP=req=>{const hops=Math.max(0,Math.min(3,Number(env.NEWSLETTER_TRUST_PROXY_HOPS)||0)),forwarded=String(req.headers['x-forwarded-for']||'').split(',').map(x=>x.trim());return hops&&forwarded.length>=hops?forwarded[forwarded.length-hops]:req.socket?.remoteAddress||'unknown';};
  const now=()=>clock(),later=ms=>new Date(+now()+ms);
@@ -199,7 +199,7 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
    // A deterministic attempt identity keeps API retries idempotent after a transaction rollback.
    const nonce=hash('checkout:'+accountFor(m)+':'+m.id+':'+(m.checkout_id||m.stripe_subscription_id||'first')+':'+plan);
    const metadata={luce_member_id:String(m.id),luce_membership:live?'membership':'preview',luce_plan:plan,luce_checkout_nonce:nonce};
-   const result=await stripe.checkout.sessions.create({mode:'subscription',...(plan==='annual' && annualOfferActive(now()) ? {discounts:[{coupon:'luce-bf2026-annual'}]} : {}),payment_method_types:['card'],line_items:[{price:priceId,quantity:1}],...(m.stripe_customer_id?{customer:m.stripe_customer_id}:{customer_email:m.email}),client_reference_id:String(m.id),metadata,subscription_data:{metadata},success_url:origin+'/members/account?checkout=success',cancel_url:origin+'/members/account?checkout=canceled'}, {idempotencyKey:'luce-membership-'+(live?'live':'test')+':'+m.id+':'+nonce});
+   const result=await stripe.checkout.sessions.create({mode:'subscription',...(plan==='annual' && annualOfferActive(now()) ? {discounts:[{coupon:'luce-bf2026-annual'}],...nativeCheckoutDeadline(now())} : {}),payment_method_types:['card'],line_items:[{price:priceId,quantity:1}],...(m.stripe_customer_id?{customer:m.stripe_customer_id}:{customer_email:m.email}),client_reference_id:String(m.id),metadata,subscription_data:{metadata},success_url:origin+'/members/account?checkout=success',cancel_url:origin+'/members/account?checkout=canceled'}, {idempotencyKey:'luce-membership-'+(live?'live':'test')+':'+m.id+':'+nonce});
    if(result.livemode!==live)throw fail('Stripe billing mode mismatch.',403);
    await c.query('UPDATE luce_members SET checkout_id=$1,checkout_nonce=$2,checkout_plan=$3,stripe_billing_account=$4 WHERE id=$5',[result.id,nonce,plan,accountFor(m),m.id]);
    return {url:result.url};

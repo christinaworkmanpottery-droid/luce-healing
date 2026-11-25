@@ -1766,6 +1766,7 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
     if (!stripe) return res.status(503).json({error:'Your request was recorded, but payment is temporarily unavailable. Contact Christina before submitting again.'});
     const domain = process.env.DOMAIN || 'http://localhost:3000';
     const session = await stripe.checkout.sessions.create({
+      ...(!promoCode && Number(order.checkout_amount) === 2640 ? require('./promotion-deadline').nativeCheckoutDeadline(Date.now()) : {}),
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
