@@ -38,9 +38,10 @@ function createReadingNotifications({pool, getTransporter, stripe, logger=consol
   }
   async function submitOrder({name,email,birthDate,birthTime,birthLocation,question,purchaserId,promoCode}) {
     const values=[name,email.trim(),birthDate,birthTime||null,birthLocation,question,purchaserId];
+    const blackFriday = Date.now() >= Date.parse('2026-11-25T08:00:00Z') && Date.now() < Date.parse('2026-12-01T08:00:00Z');
     if (!promoCode) return (await q(`INSERT INTO astrology_reading_orders
       (client_name,email,birth_date,birth_time,birth_location,question,luce_customer_id)
-      VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *,3300 AS checkout_amount`,values)).rows[0];
+      VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *,${blackFriday ? 2640 : 3300} AS checkout_amount`,values)).rows[0];
     if(typeof promoCode!=='string'||promoCode.length>100) throw Object.assign(new Error('Invalid promotion code'),{status:400});
     const row=(await q(`WITH promotion AS (
       UPDATE promo_codes SET times_used=COALESCE(times_used,0)+1
