@@ -1771,7 +1771,7 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
         price_data: {
           currency: 'usd',
           product_data: {
-            name: 'One Question Astrology Reading — $33',
+            name: 'One Question Astrology Reading',
             description: `Personalized birth chart reading for ${name}. Delivered by email within 1–3 days.`
           },
           unit_amount: order.checkout_amount
@@ -1779,7 +1779,7 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
         quantity: 1
       }],
       mode: 'payment',
-      allow_promotion_codes: !promoCode,
+      allow_promotion_codes: !promoCode && Number(order.checkout_amount) === 3300,
       success_url: `${domain}/reading-success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${domain}/#book-reading`,
       customer_email: email,
