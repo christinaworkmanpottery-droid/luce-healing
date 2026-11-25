@@ -48,6 +48,8 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
   }
  }
 
+ const promo=require('../promotion-deadline');
+ for(const client of [membershipStripe,liveStripe,stripe])promo.recoverAtDeadline(client);
  const offeredPlan=plan=>plan;
  const {isBlackFriday:annualOfferActive,nativeCheckoutDeadline}=require('../promotion-deadline');
 
@@ -195,11 +197,13 @@ function createMembership({pool,getMailer,env=process.env,clock=()=>new Date(),s
    try { price=await stripe.prices.retrieve(priceId); }
    catch(e) { if(e.code==='resource_missing') { console.error('[Luce membership] configured Stripe price missing from checkout account', {plan, priceId, stripeAccountHint: live?'live':'test'}); throw fail('Membership checkout configuration needs attention.',503); } throw e; }
    if(price.livemode!==live||!price.active||price.currency!=='usd'||price.unit_amount!==spec.amount||price.recurring?.interval!==spec.interval||price.recurring?.interval_count!==1||price.recurring?.usage_type!=='licensed'||price.billing_scheme!=='per_unit')throw fail('Stripe price does not match the approved membership price.',409);
-   if(m.checkout_id){const old=await stripe.checkout.sessions.retrieve(m.checkout_id);if(old.livemode!==live)throw fail('Stripe billing mode mismatch.',403);if(old.status==='complete')throw fail('Payment is being confirmed. Refresh your account shortly.',409);if(old.status==='open'){if(m.checkout_plan===plan)return {url:old.url};await stripe.checkout.sessions.expire(old.id);}}
+   if(m.checkout_id){const old=await stripe.checkout.sessions.retrieve(m.checkout_id);if(old.livemode!==live)throw fail('Stripe billing mode mismatch.',403);if(old.status==='complete')throw fail('Payment is being confirmed. Refresh your account shortly.',409);if(await promo.reusableSession(stripe,old)){if(m.checkout_plan===plan)return {url:old.url};await stripe.checkout.sessions.expire(old.id);}}
    // A deterministic attempt identity keeps API retries idempotent after a transaction rollback.
    const nonce=hash('checkout:'+accountFor(m)+':'+m.id+':'+(m.checkout_id||m.stripe_subscription_id||'first')+':'+plan);
+   const annualOffer=plan==='annual' && annualOfferActive(now());
    const metadata={luce_member_id:String(m.id),luce_membership:live?'membership':'preview',luce_plan:plan,luce_checkout_nonce:nonce};
-   const result=await stripe.checkout.sessions.create({mode:'subscription',...(plan==='annual' && annualOfferActive(now()) ? {discounts:[{coupon:'luce-bf2026-annual'}],...nativeCheckoutDeadline(now())} : {}),payment_method_types:['card'],line_items:[{price:priceId,quantity:1}],...(m.stripe_customer_id?{customer:m.stripe_customer_id}:{customer_email:m.email}),client_reference_id:String(m.id),metadata,subscription_data:{metadata},success_url:origin+'/members/account?checkout=success',cancel_url:origin+'/members/account?checkout=canceled'}, {idempotencyKey:'luce-membership-'+(live?'live':'test')+':'+m.id+':'+nonce});
+   const result=await stripe.checkout.sessions.create({mode:'subscription',...(annualOffer ? {discounts:[{coupon:'luce-bf2026-annual'}],...nativeCheckoutDeadline(now())} : {}),payment_method_types:['card'],line_items:[{price:priceId,quantity:1}],...(m.stripe_customer_id?{customer:m.stripe_customer_id}:{customer_email:m.email}),client_reference_id:String(m.id),metadata:{...metadata,...(annualOffer?{promotion:promo.marker}:{})},subscription_data:{metadata},success_url:origin+'/members/account?checkout=success',cancel_url:origin+'/members/account?checkout=canceled'}, {idempotencyKey:'luce-membership-'+(live?'live':'test')+':'+m.id+':'+nonce});
+   await promo.protectSession(stripe,result);
    if(result.livemode!==live)throw fail('Stripe billing mode mismatch.',403);
    await c.query('UPDATE luce_members SET checkout_id=$1,checkout_nonce=$2,checkout_plan=$3,stripe_billing_account=$4 WHERE id=$5',[result.id,nonce,plan,accountFor(m),m.id]);
    return {url:result.url};

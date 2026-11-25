@@ -1787,6 +1787,7 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
       metadata: {
         type: 'astrology_reading',
         reading_order_id: String(order.id),
+        ...(!promoCode && Number(order.checkout_amount) === 2640 ? {promotion:require('./promotion-deadline').marker} : {}),
         client_name: name,
         birth_date: birthDate,
         birth_time: birthTime || 'Not provided',
@@ -1794,6 +1795,7 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
         question: question.substring(0, 500)
       }
     }, {idempotencyKey: `reading-order-${order.id}`});
+    await require('./promotion-deadline').protectSession(stripe,session);
     await dbRun('UPDATE astrology_reading_orders SET stripe_session_id=$2 WHERE id=$1',[order.id,session.id]);
     res.json({ url: session.url });
   } catch (error) {

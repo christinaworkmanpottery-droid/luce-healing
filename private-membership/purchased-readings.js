@@ -57,13 +57,14 @@ function createPurchasedReadings({q,tx,now,provider,stripe,liveEnabled,needMembe
    const r=(await c.query('SELECT * FROM luce_purchased_readings WHERE id=$1 AND purchaser_id=$2 FOR UPDATE',[id,m.id])).rows[0];
    if(!r)throw fail('Reading not found.',404);if(r.paid_at)return {paid:true,id:r.id};
    let checkoutVersion=r.checkout_version||0;
-   if(r.checkout_id){const old=await stripe.checkout.sessions.retrieve(r.checkout_id);if(old.status==='complete')return {confirm:true,id:r.id};if(old.status==='open')return {url:old.url};if(old.status!=='expired')throw fail('Please check your payment status before trying again.',409);checkoutVersion++;}
+   if(r.checkout_id){const old=await stripe.checkout.sessions.retrieve(r.checkout_id);if(old.status==='complete')return {confirm:true,id:r.id};if(await require('../promotion-deadline').reusableSession(stripe,old))return {url:old.url};if(!['open','expired'].includes(old.status))throw fail('Please check your payment status before trying again.',409);checkoutVersion++;}
    const amount=priceAt(now());
    const s=await stripe.checkout.sessions.create({mode:'payment',...(amount===1036?nativeCheckoutDeadline(now()):{}),payment_method_types:['card'],customer_email:m.email,
-    client_reference_id:r.id,metadata:{luce_product:'personalized_monthly',purchase_id:r.id},
+    client_reference_id:r.id,metadata:{luce_product:'personalized_monthly',purchase_id:r.id,...(amount===1036?{promotion:require('../promotion-deadline').marker}:{})},
     line_items:[{price_data:{currency:'usd',unit_amount:amount,product_data:{name:'Luce Healing Personalized Monthly Reading',description:label(r.month)+' · One-time purchase'}},quantity:1}],
     success_url:origin+'/my-purchased-readings?reading='+r.id,cancel_url:origin+'/my-purchased-readings?reading='+r.id},
     {idempotencyKey:'luce-personalized:'+r.id+':'+checkoutVersion});
+   await require('../promotion-deadline').protectSession(stripe,s);
    if(!s.id||!s.url||s.livemode!==true)throw fail('Payment configuration needs attention.',503);
    await c.query('UPDATE luce_purchased_readings SET checkout_id=$1,checkout_version=$3,amount=$4 WHERE id=$2',[s.id,r.id,checkoutVersion,amount]);return {url:s.url};
   });
