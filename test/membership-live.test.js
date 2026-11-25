@@ -18,7 +18,7 @@ return {stripe,db,sent,call,admin,open,signup,secret,verify,webhook,service,env,
 test('public verified signup has no free access; live checkout, billing isolation, cancellation and rejoin',async()=>{
  const h=await harness({STRIPE_SECRET_KEY:'sk_live_fake',STRIPE_WEBHOOK_SECRET:'whsec_live_fake',MEMBERSHIP_LIVE_ENABLED:'true',MEMBERSHIP_FOUNDING_OFFER_OPEN:'true',MEMBERSHIP_LIVE_PRICE_FOUNDING:'price_live_f',MEMBERSHIP_LIVE_PRICE_MONTHLY:'price_live_m',MEMBERSHIP_LIVE_PRICE_ANNUAL:'price_live_a',MEMBERSHIP_PORTAL_LIVE_CONFIGURATION:'bpc_live',TURNSTILE_SITE_KEY:'test-site',TURNSTILE_SECRET_KEY:'test-secret'});
  const requests=[];let session,sub,mode=true;
- h.stripe.prices={retrieve:async id=>({id,livemode:mode,active:true,currency:'usd',unit_amount:{price_live_f:295,price_live_m:395,price_live_a:3792}[id],recurring:{interval:id==='price_live_a'?'year':'month',interval_count:1,usage_type:'licensed'},billing_scheme:'per_unit'})};
+ h.stripe.prices={retrieve:async id=>({id,livemode:mode,active:true,currency:'usd',unit_amount:{price_live_f:295,price_live_m:495,price_live_a:4950}[id],recurring:{interval:id==='price_live_a'?'year':'month',interval_count:1,usage_type:'licensed'},billing_scheme:'per_unit'})};
  h.stripe.checkout={sessions:{create:async(params,options)=>{requests.push({params,options});return session={id:'cs_live_'+requests.length,url:'https://checkout.stripe.com/live-example',status:'open',livemode:true}},retrieve:async()=>session,expire:async()=>{session.status='expired'}}};
  h.stripe.billingPortal.configurations.retrieve=async()=>({id:'bpc_live',livemode:true,active:true,features:{subscription_cancel:{enabled:true,mode:'at_period_end'},subscription_update:{enabled:false}}});
  const sync=async status=>{sub={...sub,status};h.setSub(sub);return h.service.handleLiveEvent({id:'evt_live_'+Math.random(),livemode:true,type:'customer.subscription.updated',data:{object:sub}})};
@@ -34,10 +34,10 @@ test('public verified signup has no free access; live checkout, billing isolatio
   assert.equal((await h.call('/api/membership/horoscopes')).status,403);
   mode=false;assert.equal((await h.call('/api/membership/checkout','POST',{plan:'monthly'})).status,409);mode=true;
   assert.equal((await h.call('/api/membership/checkout','POST',{plan:'monthly',amount:1})).status,200);
-  assert.equal(requests[0].params.line_items[0].price,'price_live_f');assert.equal(requests[0].params.subscription_data.metadata.luce_membership,'membership');
+  assert.equal(requests[0].params.line_items[0].price,'price_live_m');assert.equal(requests[0].params.subscription_data.metadata.luce_membership,'membership');
   await h.call('/api/membership/checkout','POST',{plan:'monthly'});assert.equal(requests.length,1);
-  sub={id:'sub_live_first',customer:'cus_test',livemode:true,status:'active',metadata:requests[0].params.subscription_data.metadata,items:{data:[{quantity:1,price:{id:'price_live_f'},current_period_start:1790000000,current_period_end:1792000000}]}};await sync('active');
-  m=(await h.call('/api/membership/me')).data;assert.equal(m.access,true);assert.equal(m.tier,'founding');
+  sub={id:'sub_live_first',customer:'cus_test',livemode:true,status:'active',metadata:requests[0].params.subscription_data.metadata,items:{data:[{quantity:1,price:{id:'price_live_m'},current_period_start:1790000000,current_period_end:1792000000}]}};await sync('active');
+  m=(await h.call('/api/membership/me')).data;assert.equal(m.access,true);assert.equal(m.tier,'monthly');
   const months=await h.call('/api/membership/horoscopes');assert.equal(months.status,200);assert.equal(months.data.length,0);
   assert.equal((await h.call('/api/membership/reading?month=2099-01')).status,404);
   const before=(await h.db.query('SELECT * FROM luce_members WHERE id=$1',[m.id])).rows[0];await h.service.syncSubscription({...sub,livemode:false,metadata:{...sub.metadata,luce_membership:'preview'},status:'canceled'});assert.equal((await h.db.query('SELECT status FROM luce_members WHERE id=$1',[m.id])).rows[0].status,before.status);
