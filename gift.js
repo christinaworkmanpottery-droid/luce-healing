@@ -1,9 +1,10 @@
 const catalog=window.luceGiftCatalog;
+const giftPrice=p=>p.id==='question' && Date.now()>=Date.parse('2026-11-25T08:00:00Z') && Date.now()<Date.parse('2026-12-01T08:00:00Z') ? '26.40' : String(p.price);
 const byId=id=>document.getElementById(id);
 const productSelect=byId('gift-product');
-for(const p of catalog){const option=document.createElement('option');option.value=p.id;option.textContent=p.name+' — $'+p.price;productSelect.append(option);}
-function describe(p){return p.name+' · $'+p.price+'. Written delivery: '+p.days+' after the recipient supplies their details.'+(p.consultation?' Includes a '+p.consultation+'-minute consultation, arranged with the recipient.':' No consultation included.');}
-function updateGift(){const p=catalog.find(p=>p.id===productSelect.value);byId('gift-description').textContent=describe(p);byId('gift-buy').textContent='Buy Gift — $'+p.price;}
+for(const p of catalog){const option=document.createElement('option');option.value=p.id;option.textContent=p.name+' — $'+giftPrice(p);productSelect.append(option);}
+function describe(p, purchase=false){return p.name+(purchase?' · $'+giftPrice(p):'')+'. Written delivery: '+p.days+' after the recipient supplies their details.'+(p.consultation?' Includes a '+p.consultation+'-minute consultation, arranged with the recipient.':' No consultation included.');}
+function updateGift(){const p=catalog.find(p=>p.id===productSelect.value);byId('gift-description').textContent=describe(p,true);byId('gift-buy').textContent='Buy Gift — $'+giftPrice(p);}
 productSelect.addEventListener('change',updateGift);updateGift();
 async function api(path,body){const response=await fetch(path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});const data=await response.json();if(!response.ok)throw new Error(data.error||'Please try again.');return data;}
 byId('gift-purchase').addEventListener('submit',async e=>{e.preventDefault();if(!e.target.reportValidity())return;const button=byId('gift-buy');button.disabled=true;try{const data=await api('/api/gifts/checkout',Object.fromEntries(new FormData(e.target)));if(!data.url)throw new Error('Unable to open checkout. Please try again.');location.href=data.url;}catch(err){byId('purchase-status').textContent=err.message;}finally{button.disabled=false;}});
