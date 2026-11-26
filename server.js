@@ -1766,12 +1766,13 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
     if (!stripe) return res.status(503).json({error:'Your request was recorded, but payment is temporarily unavailable. Contact Christina before submitting again.'});
     const domain = process.env.DOMAIN || 'http://localhost:3000';
     const session = await stripe.checkout.sessions.create({
+      ...(!promoCode && Number(order.checkout_amount) === 2640 ? require('./promotion-deadline').nativeCheckoutDeadline(Date.now()) : {}),
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
           currency: 'usd',
           product_data: {
-            name: 'One Question Astrology Reading — $33',
+            name: 'One Question Astrology Reading',
             description: `Personalized birth chart reading for ${name}. Delivered by email within 1–3 days.`
           },
           unit_amount: order.checkout_amount
@@ -1779,13 +1780,14 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
         quantity: 1
       }],
       mode: 'payment',
-      allow_promotion_codes: !promoCode,
+      allow_promotion_codes: !promoCode && Number(order.checkout_amount) === 3300,
       success_url: `${domain}/reading-success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${domain}/#book-reading`,
       customer_email: email,
       metadata: {
         type: 'astrology_reading',
         reading_order_id: String(order.id),
+        ...(!promoCode && Number(order.checkout_amount) === 2640 ? {promotion:require('./promotion-deadline').marker} : {}),
         client_name: name,
         birth_date: birthDate,
         birth_time: birthTime || 'Not provided',
@@ -1793,6 +1795,7 @@ app.post('/api/astrology-reading/checkout', async (req, res) => {
         question: question.substring(0, 500)
       }
     }, {idempotencyKey: `reading-order-${order.id}`});
+    await require('./promotion-deadline').protectSession(stripe,session);
     await dbRun('UPDATE astrology_reading_orders SET stripe_session_id=$2 WHERE id=$1',[order.id,session.id]);
     res.json({ url: session.url });
   } catch (error) {

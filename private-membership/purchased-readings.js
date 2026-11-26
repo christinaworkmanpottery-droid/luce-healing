@@ -5,7 +5,9 @@ const fail=(message,status=400)=>Object.assign(Error(message),{status});
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const validId=s=>/^[a-f0-9-]{36}$/.test(s||'');
 const label=m=>new Date(m+'-01T12:00:00Z').toLocaleDateString('en-US',{month:'long',year:'numeric',timeZone:'UTC'});
-const amount=1295,lease=10*60*1000;
+const lease=10*60*1000;
+const {isBlackFriday,nativeCheckoutDeadline}=require('../promotion-deadline');
+const priceAt=t=>isBlackFriday(t) ? 1036 : 1295;
 function createPurchasedReadings({q,tx,now,provider,stripe,liveEnabled,needMember,session,limit,wrap,tick,origin}){
  const one=async(s,p)=>(await q(s,p)).rows[0];
  let stopped=false;
@@ -24,7 +26,7 @@ function createPurchasedReadings({q,tx,now,provider,stripe,liveEnabled,needMembe
  AND published_demo=false AND collection_hidden=false ORDER BY featured_at DESC NULLS LAST,published_at DESC,month DESC`,[now()])).rows;}
  const monthOf=r=>r.display_month||r.month;
  const monthly=r=>r.collection_type==='monthly'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(monthOf(r));
- async function catalog(){const rows=await sources();return {price:amount,currency:'usd',enabled:!!enabled(),months:[...new Set(rows.filter(r=>monthly(r)&&r.published.General?.trim()&&chart.signs.every(s=>r.published[s]?.trim())).map(monthOf))].map(month=>({month,label:label(month)}))};}
+ async function catalog(){const rows=await sources();return {price:priceAt(now()),currency:'usd',enabled:!!enabled(),months:[...new Set(rows.filter(r=>monthly(r)&&r.published.General?.trim()&&chart.signs.every(s=>r.published[s]?.trim())).map(monthOf))].map(month=>({month,label:label(month)}))};}
  async function owned(m,id){if(!validId(id))throw fail('Reading not found.',404);const r=await one('SELECT * FROM luce_purchased_readings WHERE id=$1 AND purchaser_id=$2',[id,m.id]);if(!r)throw fail('Reading not found.',404);return r;}
  // Explicit allowlist: never expose account IDs, payment IDs, source content, city coordinates, or provider metadata.
  function view(r,shared=false){const p=r.birth_profile;return {...(!shared?{id:r.id,state:r.state,paid:!!r.paid_at,purchasedAt:r.paid_at,error:r.last_error}:{}),recipient:r.recipient,month:r.month,label:label(r.month),
@@ -55,14 +57,16 @@ function createPurchasedReadings({q,tx,now,provider,stripe,liveEnabled,needMembe
    const r=(await c.query('SELECT * FROM luce_purchased_readings WHERE id=$1 AND purchaser_id=$2 FOR UPDATE',[id,m.id])).rows[0];
    if(!r)throw fail('Reading not found.',404);if(r.paid_at)return {paid:true,id:r.id};
    let checkoutVersion=r.checkout_version||0;
-   if(r.checkout_id){const old=await stripe.checkout.sessions.retrieve(r.checkout_id);if(old.status==='complete')return {confirm:true,id:r.id};if(old.status==='open')return {url:old.url};if(old.status!=='expired')throw fail('Please check your payment status before trying again.',409);checkoutVersion++;}
-   const s=await stripe.checkout.sessions.create({mode:'payment',payment_method_types:['card'],customer_email:m.email,
-    client_reference_id:r.id,metadata:{luce_product:'personalized_monthly',purchase_id:r.id},
+   if(r.checkout_id){const old=await stripe.checkout.sessions.retrieve(r.checkout_id);if(old.status==='complete')return {confirm:true,id:r.id};if(await require('../promotion-deadline').reusableSession(stripe,old))return {url:old.url};if(!['open','expired'].includes(old.status))throw fail('Please check your payment status before trying again.',409);checkoutVersion++;}
+   const amount=priceAt(now());
+   const s=await stripe.checkout.sessions.create({mode:'payment',...(amount===1036?nativeCheckoutDeadline(now()):{}),payment_method_types:['card'],customer_email:m.email,
+    client_reference_id:r.id,metadata:{luce_product:'personalized_monthly',purchase_id:r.id,...(amount===1036?{promotion:require('../promotion-deadline').marker}:{})},
     line_items:[{price_data:{currency:'usd',unit_amount:amount,product_data:{name:'Luce Healing Personalized Monthly Reading',description:label(r.month)+' · One-time purchase'}},quantity:1}],
     success_url:origin+'/my-purchased-readings?reading='+r.id,cancel_url:origin+'/my-purchased-readings?reading='+r.id},
     {idempotencyKey:'luce-personalized:'+r.id+':'+checkoutVersion});
+   await require('../promotion-deadline').protectSession(stripe,s);
    if(!s.id||!s.url||s.livemode!==true)throw fail('Payment configuration needs attention.',503);
-   await c.query('UPDATE luce_purchased_readings SET checkout_id=$1,checkout_version=$3 WHERE id=$2',[s.id,r.id,checkoutVersion]);return {url:s.url};
+   await c.query('UPDATE luce_purchased_readings SET checkout_id=$1,checkout_version=$3,amount=$4 WHERE id=$2',[s.id,r.id,checkoutVersion,amount]);return {url:s.url};
   });
  }
  async function recordPayment(s){

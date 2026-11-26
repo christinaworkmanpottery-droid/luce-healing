@@ -23,3 +23,5 @@ jobs:
       - run: node --check private-membership/member.js
       - run: node --check private-membership/service.js
       - run: node --check private-membership/personal-reading.js
+
+      - run: node --check private-membership/purchased-readings.js && node --check private-membership/purchased.js && node --check reading-notifications.js && node --check server.js
