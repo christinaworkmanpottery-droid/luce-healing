@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const promo = require('./promotion-deadline');
 const catalog = {
  question:{name:'One-question email reading',price:3300},
  '6month':{name:'6-month written forecast',price:7500},
@@ -12,7 +13,7 @@ module.exports = function({app,pool,stripe,checkAdminPassword,getMailer,domain})
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){console.error('Gift request failed:',e.message);res.status(500).json({error:'Unable to process this gift right now. Please try again.'});}};
  const emailValid=s=>typeof s==='string'&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)&&s.length<255;
  const clean=s=>String(s||'').trim();
- async function initialize(){await query(`CREATE TABLE IF NOT EXISTS reading_gifts (
+ async function initialize(){promo.recoverAtDeadline(stripe);await query(`CREATE TABLE IF NOT EXISTS reading_gifts (
  id SERIAL PRIMARY KEY, product TEXT NOT NULL, price INTEGER NOT NULL, buyer_name TEXT NOT NULL, buyer_email TEXT NOT NULL,
  message TEXT NOT NULL DEFAULT '', token TEXT NOT NULL UNIQUE, stripe_session_id TEXT UNIQUE,
  payment_status TEXT NOT NULL DEFAULT 'pending', redeemed_at TIMESTAMP, recipient JSONB,
@@ -37,9 +38,13 @@ module.exports = function({app,pool,stripe,checkAdminPassword,getMailer,domain})
   if(!stripe)return res.status(503).json({error:'Payments are temporarily unavailable.'});
   const b=req.body,p=catalog[b.product];
   if(!p||!clean(b.buyer_name)||clean(b.buyer_name).length>120||!emailValid(b.buyer_email)||clean(b.message).length>500)return res.status(400).json({error:'Choose a reading and enter your name and valid email address.'});
-  const gift=(await query('INSERT INTO reading_gifts(product,price,buyer_name,buyer_email,message,token) VALUES($1,$2,$3,$4,$5,$6) RETURNING id',[b.product,p.price,clean(b.buyer_name),clean(b.buyer_email),clean(b.message),crypto.randomBytes(32).toString('hex')])).rows[0];
-  const session=await stripe.checkout.sessions.create({mode:'payment',payment_method_types:['card'],customer_email:clean(b.buyer_email),line_items:[{price_data:{currency:'usd',unit_amount:p.price,product_data:{name:'Gift: '+p.name}},quantity:1}],metadata:{type:'reading_gift',gift_id:String(gift.id)},success_url:domain+'/gift?session_id={CHECKOUT_SESSION_ID}',cancel_url:domain+'/gift'});
+  const now = Date.now();
+  const discounted = b.product === 'question' && promo.isBlackFriday(now);
+  const amount = discounted ? 2640 : p.price;
+  const gift=(await query('INSERT INTO reading_gifts(product,price,buyer_name,buyer_email,message,token) VALUES($1,$2,$3,$4,$5,$6) RETURNING id',[b.product,amount,clean(b.buyer_name),clean(b.buyer_email),clean(b.message),crypto.randomBytes(32).toString('hex')])).rows[0];
+  const session=await stripe.checkout.sessions.create({mode:'payment',...(discounted ? promo.nativeCheckoutDeadline(now) : {}),payment_method_types:['card'],customer_email:clean(b.buyer_email),line_items:[{price_data:{currency:'usd',unit_amount:amount,product_data:{name:'Gift: '+p.name}},quantity:1}],metadata:{type:'reading_gift',gift_id:String(gift.id),...(discounted ? {promotion:promo.marker} : {})},success_url:domain+'/gift?session_id={CHECKOUT_SESSION_ID}',cancel_url:domain+'/gift'});
   await query('UPDATE reading_gifts SET stripe_session_id=$1 WHERE id=$2',[session.id,gift.id]);
+  await promo.protectSession(stripe,session);
   res.json({url:session.url});
  }));
  app.get('/api/gifts/purchase',route(async(req,res)=>{
