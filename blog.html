@@ -309,5 +309,5 @@ menuButton.setAttribute('role','button');menuButton.setAttribute('tabindex','0')
 function toggleBlogMenu(){const open=document.querySelector('.nav-menu').classList.toggle('active');menuButton.setAttribute('aria-expanded',String(open));}
 menuButton.addEventListener('click',toggleBlogMenu);menuButton.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleBlogMenu();}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelector('.nav-menu').classList.remove('active');menuButton.setAttribute('aria-expanded','false');}});
-</script></body>
+</script><script src="/black-friday-banner.js" defer></script></body>
 </html>
